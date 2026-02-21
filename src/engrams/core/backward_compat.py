@@ -6,11 +6,11 @@ users transition from ConPort to Engrams without losing data or breaking
 existing configurations.
 """
 
+import logging
 import os
 import shutil
 from pathlib import Path
 from typing import Optional
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +31,9 @@ def detect_and_migrate_old_conport(workspace_id: str) -> None:
 
     # Only migrate if old path exists and new path doesn't
     if old_db_path.exists() and not new_db_path.exists():
-        logger.info(f"Detected ConPort directory at {old_db_path.parent}, migrating to Engrams...")
+        logger.info(
+            f"Detected ConPort directory at {old_db_path.parent}, migrating to Engrams..."
+        )
         try:
             # Create new engrams directory if it doesn't exist
             new_db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -58,8 +60,7 @@ def detect_and_migrate_old_conport(workspace_id: str) -> None:
 
 
 def get_workspace_with_fallback(
-    explicit_workspace: Optional[str] = None,
-    auto_detect: bool = True
+    explicit_workspace: Optional[str] = None, auto_detect: bool = True
 ) -> Optional[str]:
     """
     Get workspace ID with fallback to old ConPort environment variable.

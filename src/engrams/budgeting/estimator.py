@@ -16,6 +16,7 @@ _tiktoken_encoding = None
 
 try:
     import tiktoken
+
     _tiktoken_encoding = tiktoken.get_encoding("cl100k_base")
     _tiktoken_available = True
     log.debug("tiktoken available for accurate token estimation")
@@ -62,17 +63,17 @@ def _count_tokens(text: str) -> int:
 def _format_entity(entity: Dict[str, Any], format: str) -> str:
     """Format an entity into text for token estimation."""
     parts = []
-    entity_type = entity.get('_type', entity.get('type', 'unknown'))
+    entity_type = entity.get("_type", entity.get("type", "unknown"))
 
     if format == "compact":
         # Minimal: type + key identifier field
         parts.append(f"[{entity_type}]")
-        for field in ['summary', 'name', 'description', 'key']:
+        for field in ["summary", "name", "description", "key"]:
             if entity.get(field):
                 parts.append(str(entity[field]))
                 break
-        if entity.get('tags'):
-            tags = entity['tags']
+        if entity.get("tags"):
+            tags = entity["tags"]
             if isinstance(tags, list):
                 parts.append(f"tags: {', '.join(tags)}")
             else:
@@ -80,19 +81,19 @@ def _format_entity(entity: Dict[str, Any], format: str) -> str:
 
     elif format == "standard":
         parts.append(f"[{entity_type}]")
-        for field in ['summary', 'name', 'description', 'key', 'status']:
+        for field in ["summary", "name", "description", "key", "status"]:
             if entity.get(field):
                 parts.append(f"{field}: {entity[field]}")
-        if entity.get('rationale'):
+        if entity.get("rationale"):
             parts.append(f"rationale: {entity['rationale']}")
-        if entity.get('tags'):
-            tags = entity['tags']
+        if entity.get("tags"):
+            tags = entity["tags"]
             if isinstance(tags, list):
                 parts.append(f"tags: {', '.join(tags)}")
             else:
                 parts.append(f"tags: {tags}")
-        if entity.get('value'):
-            val = entity['value']
+        if entity.get("value"):
+            val = entity["value"]
             val_str = json.dumps(val) if not isinstance(val, str) else val
             if len(val_str) > 500:
                 val_str = val_str[:500] + "..."
@@ -101,9 +102,9 @@ def _format_entity(entity: Dict[str, Any], format: str) -> str:
     elif format == "verbose":
         # Everything
         for key, value in entity.items():
-            if key.startswith('_') or value is None:
+            if key.startswith("_") or value is None:
                 continue
             val_str = json.dumps(value) if not isinstance(value, str) else value
             parts.append(f"{key}: {val_str}")
 
-    return '\n'.join(parts)
+    return "\n".join(parts)

@@ -4,7 +4,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from .templates import get_sections_for_level, get_default_budget, BRIEFING_SECTIONS
+from .templates import BRIEFING_SECTIONS, get_default_budget, get_sections_for_level
 
 log = logging.getLogger(__name__)
 
@@ -74,27 +74,31 @@ def generate_briefing(
             # Calculate staleness
             staleness_days = _compute_staleness_days(now, updated_at)
 
-            briefing_sections.append({
-                "id": section_id,
-                "title": section_def["title"],
-                "content": content,
-                "staleness_days": staleness_days,
-                "entity_count": entity_count,
-                "is_stale": (
-                    staleness_days is not None
-                    and staleness_days > stale_threshold_days
-                ),
-            })
+            briefing_sections.append(
+                {
+                    "id": section_id,
+                    "title": section_def["title"],
+                    "content": content,
+                    "staleness_days": staleness_days,
+                    "entity_count": entity_count,
+                    "is_stale": (
+                        staleness_days is not None
+                        and staleness_days > stale_threshold_days
+                    ),
+                }
+            )
         except Exception as e:
             log.warning("Failed to fetch section '%s': %s", section_id, e)
-            briefing_sections.append({
-                "id": section_id,
-                "title": section_def["title"],
-                "content": {"error": str(e)},
-                "staleness_days": None,
-                "entity_count": 0,
-                "is_stale": False,
-            })
+            briefing_sections.append(
+                {
+                    "id": section_id,
+                    "title": section_def["title"],
+                    "content": {"error": str(e)},
+                    "staleness_days": None,
+                    "entity_count": 0,
+                    "is_stale": False,
+                }
+            )
 
     # Get total counts for coverage stats if not already gathered
     if total_decisions == 0:
@@ -152,13 +156,15 @@ def check_briefing_staleness(
         requires = section_def.get("requires_feature")
 
         if requires and not _check_feature_available(workspace_id, requires):
-            staleness_info.append({
-                "section_id": section_id,
-                "title": section_def["title"],
-                "status": "feature_unavailable",
-                "staleness_days": None,
-                "is_stale": False,
-            })
+            staleness_info.append(
+                {
+                    "section_id": section_id,
+                    "title": section_def["title"],
+                    "status": "feature_unavailable",
+                    "staleness_days": None,
+                    "is_stale": False,
+                }
+            )
             continue
 
         try:
@@ -167,25 +173,29 @@ def check_briefing_staleness(
             )
             staleness_days = _compute_staleness_days(now, updated_at)
 
-            staleness_info.append({
-                "section_id": section_id,
-                "title": section_def["title"],
-                "status": "available",
-                "staleness_days": staleness_days,
-                "is_stale": (
-                    staleness_days is not None
-                    and staleness_days > stale_threshold_days
-                ),
-            })
+            staleness_info.append(
+                {
+                    "section_id": section_id,
+                    "title": section_def["title"],
+                    "status": "available",
+                    "staleness_days": staleness_days,
+                    "is_stale": (
+                        staleness_days is not None
+                        and staleness_days > stale_threshold_days
+                    ),
+                }
+            )
         except Exception as e:
-            staleness_info.append({
-                "section_id": section_id,
-                "title": section_def["title"],
-                "status": "error",
-                "staleness_days": None,
-                "is_stale": False,
-                "error": str(e),
-            })
+            staleness_info.append(
+                {
+                    "section_id": section_id,
+                    "title": section_def["title"],
+                    "status": "error",
+                    "staleness_days": None,
+                    "is_stale": False,
+                    "error": str(e),
+                }
+            )
 
     return {
         "stale_threshold_days": stale_threshold_days,
@@ -248,9 +258,7 @@ def get_section_detail(
 # ---------------------------------------------------------------------------
 
 
-def _compute_staleness_days(
-    now: datetime, updated_at: Any
-) -> Optional[int]:
+def _compute_staleness_days(now: datetime, updated_at: Any) -> Optional[int]:
     """Compute the number of days since *updated_at*.
 
     Returns ``None`` when the timestamp cannot be parsed.
@@ -259,9 +267,7 @@ def _compute_staleness_days(
         return None
     try:
         if isinstance(updated_at, str):
-            updated_at = datetime.fromisoformat(
-                updated_at.replace("Z", "+00:00")
-            )
+            updated_at = datetime.fromisoformat(updated_at.replace("Z", "+00:00"))
         if not getattr(updated_at, "tzinfo", None):
             updated_at = updated_at.replace(tzinfo=timezone.utc)
         return (now - updated_at).days
@@ -362,14 +368,10 @@ def _fetch_section_data(
         patterns = database.get_system_patterns(workspace_id)
         most_recent = None
         for p in patterns:
-            p_date = getattr(p, "updated_at", None) or getattr(
-                p, "created_at", None
-            )
+            p_date = getattr(p, "updated_at", None) or getattr(p, "created_at", None)
             most_recent = _most_recent_date(most_recent, p_date)
         content = {
-            "product_context": (
-                ctx.content if hasattr(ctx, "content") else {}
-            ),
+            "product_context": (ctx.content if hasattr(ctx, "content") else {}),
             "top_patterns": [_entity_to_dict(p) for p in patterns],
         }
         return content, len(patterns) + 1, most_recent
@@ -381,9 +383,7 @@ def _fetch_section_data(
         decisions = database.get_decisions(workspace_id, limit=10)
         most_recent = None
         for d in decisions:
-            d_date = getattr(d, "updated_at", None) or getattr(
-                d, "created_at", None
-            )
+            d_date = getattr(d, "updated_at", None) or getattr(d, "created_at", None)
             most_recent = _most_recent_date(most_recent, d_date)
         return [_entity_to_dict(d) for d in decisions], len(decisions), most_recent
 
@@ -397,9 +397,7 @@ def _fetch_section_data(
         try:
             from ..governance import db_operations as gov_db_ops
 
-            rules = gov_db_ops.get_governance_rules(
-                workspace_id, scope_id=scope_id
-            )
+            rules = gov_db_ops.get_governance_rules(workspace_id, scope_id=scope_id)
             return [_entity_to_dict(r) for r in rules], len(rules), None
         except Exception:
             return [], 0, None
@@ -421,9 +419,7 @@ def _fetch_section_data(
             pass
         most_recent = None
         for p in all_tasks:
-            p_date = getattr(p, "updated_at", None) or getattr(
-                p, "created_at", None
-            )
+            p_date = getattr(p, "updated_at", None) or getattr(p, "created_at", None)
             most_recent = _most_recent_date(most_recent, p_date)
         return [_entity_to_dict(p) for p in all_tasks], len(all_tasks), most_recent
 
@@ -441,9 +437,7 @@ def _fetch_section_data(
         decisions = database.get_decisions(workspace_id, limit=500)
         most_recent = None
         for d in decisions:
-            d_date = getattr(d, "updated_at", None) or getattr(
-                d, "created_at", None
-            )
+            d_date = getattr(d, "updated_at", None) or getattr(d, "created_at", None)
             most_recent = _most_recent_date(most_recent, d_date)
         return [_entity_to_dict(d) for d in decisions], len(decisions), most_recent
 
@@ -454,9 +448,7 @@ def _fetch_section_data(
         patterns = database.get_system_patterns(workspace_id)
         most_recent = None
         for p in patterns:
-            p_date = getattr(p, "updated_at", None) or getattr(
-                p, "created_at", None
-            )
+            p_date = getattr(p, "updated_at", None) or getattr(p, "created_at", None)
             most_recent = _most_recent_date(most_recent, p_date)
         return [_entity_to_dict(p) for p in patterns], len(patterns), most_recent
 
@@ -464,9 +456,7 @@ def _fetch_section_data(
     # glossary  – ProjectGlossary custom data
     # ------------------------------------------------------------------
     if section_id == "glossary":
-        glossary = database.get_custom_data(
-            workspace_id, category="ProjectGlossary"
-        )
+        glossary = database.get_custom_data(workspace_id, category="ProjectGlossary")
         return [_entity_to_dict(g) for g in glossary], len(glossary), None
 
     # ------------------------------------------------------------------

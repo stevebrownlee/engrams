@@ -1,35 +1,35 @@
 """Functions implementing the logic for each MCP tool."""
 
-import logging
-from pathlib import Path
 import json
-import re # For markdown parsing
-from typing import Dict, Any, List, Optional
-from datetime import datetime # Added missing import
+import logging
+import re  # For markdown parsing
+from datetime import datetime  # Added missing import
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 from pydantic import ValidationError
 
+from ..core.exceptions import ContextPortalError, DatabaseError, ToolArgumentError
 from ..db import database as db
 from ..db import models
-from ..core.exceptions import ToolArgumentError, DatabaseError, ContextPortalError
 
 # Lazy imports for optional dependencies (embedding service requires heavy ML stack)
 # These will be imported only when actually needed
 embedding_service = None
 vector_store_service = None
 
-from ..governance import models as gov_models
-from ..governance import db_operations as gov_db_ops
-from ..governance import conflict_detector
-from ..bindings import models as binding_models
 from ..bindings import db_operations as binding_db_ops
 from ..bindings import matcher as binding_matcher
+from ..bindings import models as binding_models
 from ..budgeting import models as budget_models
-from ..budgeting.scorer import score_entities
-from ..budgeting.selector import select_context, estimate_context_size
 from ..budgeting.profiles import DEFAULT_WEIGHTS
-from ..onboarding import models as onboarding_models
+from ..budgeting.scorer import score_entities
+from ..budgeting.selector import estimate_context_size, select_context
+from ..governance import conflict_detector
+from ..governance import db_operations as gov_db_ops
+from ..governance import models as gov_models
 from ..onboarding import briefing as onboarding_briefing
+from ..onboarding import models as onboarding_models
 
 log = logging.getLogger(__name__)
 
@@ -41,14 +41,18 @@ def _ensure_embedding_service():
         try:
             from ..core import embedding_service as _es
             from ..db import vector_store_service as _vss
+
             embedding_service = _es
             vector_store_service = _vss
         except ImportError as e:
             log.warning(f"Embedding service not available: {e}")
-            raise ToolArgumentError("Semantic search requires sentence-transformers and dependencies to be installed")
+            raise ToolArgumentError(
+                "Semantic search requires sentence-transformers and dependencies to be installed"
+            )
 
 
 # --- Governance Integration Helper ---
+
 
 def _apply_governance_checks(
     workspace_id: str,
@@ -85,60 +89,68 @@ def _apply_governance_checks(
 
         # Map item_type to table name
         table_map = {
-            'decision': 'decisions',
-            'system_pattern': 'system_patterns',
-            'progress_entry': 'progress_entries',
-            'custom_data': 'custom_data',
+            "decision": "decisions",
+            "system_pattern": "system_patterns",
+            "progress_entry": "progress_entries",
+            "custom_data": "custom_data",
         }
         table = table_map.get(item_type)
         if not table:
-            log.warning("Governance: unknown item_type '%s', skipping scope assignment", item_type)
+            log.warning(
+                "Governance: unknown item_type '%s', skipping scope assignment",
+                item_type,
+            )
             return response
 
         # Update scope_id and visibility on the item
-        vis = visibility or 'workspace'
+        vis = visibility or "workspace"
         cursor.execute(
             f"UPDATE {table} SET scope_id = ?, visibility = ?, override_status = 'pending_review' WHERE id = ?",
-            (scope_id, vis, item_id)
+            (scope_id, vis, item_id),
         )
         conn.commit()
         cursor.close()
 
         # Check for conflicts with team rules
         scope = gov_db_ops.get_scope_by_id(workspace_id, scope_id)
-        if scope and scope.scope_type == 'individual' and scope.parent_scope_id:
+        if scope and scope.scope_type == "individual" and scope.parent_scope_id:
             # This is an individual scope with a team parent — run conflict detection
             conflicts = conflict_detector.check_conflicts(
-                workspace_id, item_type, item_data,
-                scope_id=scope_id
+                workspace_id, item_type, item_data, scope_id=scope_id
             )
             if conflicts and conflicts.has_conflict:
                 response["governance_warnings"] = [
-                    c if isinstance(c, str) else c
-                    for c in conflicts.conflicts
+                    c if isinstance(c, str) else c for c in conflicts.conflicts
                 ]
                 response["governance_action"] = conflicts.action
                 response["override_status"] = "conflict_detected"
                 if conflicts.warnings:
-                    response.setdefault("governance_warnings", []).extend(conflicts.warnings)
+                    response.setdefault("governance_warnings", []).extend(
+                        conflicts.warnings
+                    )
 
                 # Update override_status in DB
                 try:
                     gov_db_ops.update_item_override_status(
-                        workspace_id, item_type, item_id,
-                        override_status="conflict_detected"
+                        workspace_id,
+                        item_type,
+                        item_id,
+                        override_status="conflict_detected",
                     )
                 except Exception as status_err:
-                    log.warning("Governance: failed to update override_status: %s", status_err)
+                    log.warning(
+                        "Governance: failed to update override_status: %s", status_err
+                    )
             else:
                 # No conflict — mark as compliant
                 try:
                     gov_db_ops.update_item_override_status(
-                        workspace_id, item_type, item_id,
-                        override_status="compliant"
+                        workspace_id, item_type, item_id, override_status="compliant"
                     )
                 except Exception as status_err:
-                    log.warning("Governance: failed to update override_status: %s", status_err)
+                    log.warning(
+                        "Governance: failed to update override_status: %s", status_err
+                    )
 
         response["scope_id"] = scope_id
         response["visibility"] = vis
@@ -151,8 +163,13 @@ def _apply_governance_checks(
 
 # --- Tool Handler Functions ---
 
+
 # --- FTS Query Utilities (handler layer) ---
-def _prepare_fts_query(query: str, allowed_columns: Optional[List[str]] = None, default_column: Optional[str] = None) -> str:
+def _prepare_fts_query(
+    query: str,
+    allowed_columns: Optional[List[str]] = None,
+    default_column: Optional[str] = None,
+) -> str:
     """Normalize user-provided FTS MATCH queries to avoid parser errors without touching DB layer.
 
     - If the query contains a colon but not with a known column prefix, treat it as a literal.
@@ -175,18 +192,19 @@ def _prepare_fts_query(query: str, allowed_columns: Optional[List[str]] = None, 
     def as_literal(text: str) -> str:
         esc = text.replace('"', '""')
         if default_column:
-            return f"{default_column}:\"{esc}\""
-        return f"\"{esc}\""
+            return f'{default_column}:"{esc}"'
+        return f'"{esc}"'
 
     # If colon is present but not using a known prefix, treat entire query as literal
-    if ':' in q and not has_known_prefix:
+    if ":" in q and not has_known_prefix:
         return as_literal(q)
 
     # If special characters that commonly break the parser are present, quote as literal
-    if any(ch in q for ch in ['.', '/', '\\', '"']) and not has_known_prefix:
+    if any(ch in q for ch in [".", "/", "\\", '"']) and not has_known_prefix:
         return as_literal(q)
 
     return q
+
 
 def handle_get_product_context(args: models.GetContextArgs) -> Dict[str, Any]:
     """
@@ -200,8 +218,11 @@ def handle_get_product_context(args: models.GetContextArgs) -> Dict[str, Any]:
         raise ContextPortalError(f"Database error getting product context: {e}")
     except Exception as e:
         # Log the full error for debugging if it's truly unexpected
-        log.exception(f"Unexpected error in get_product_context for workspace {args.workspace_id}")
+        log.exception(
+            f"Unexpected error in get_product_context for workspace {args.workspace_id}"
+        )
         raise ContextPortalError(f"Unexpected error in get_product_context: {e}")
+
 
 def handle_update_product_context(args: models.UpdateContextArgs) -> Dict[str, Any]:
     """
@@ -216,13 +237,18 @@ def handle_update_product_context(args: models.UpdateContextArgs) -> Dict[str, A
         db.update_product_context(args.workspace_id, args)
         # FastMCP expects direct results. A status message is a reasonable result.
         return {"status": "success", "message": "Product context updated successfully."}
-    except ValidationError as e: # Should not happen if FastMCP validates schema, but good for direct calls
-         raise ToolArgumentError(f"Invalid content structure: {e}")
+    except (
+        ValidationError
+    ) as e:  # Should not happen if FastMCP validates schema, but good for direct calls
+        raise ToolArgumentError(f"Invalid content structure: {e}")
     except DatabaseError as e:
         raise ContextPortalError(f"Database error updating product context: {e}")
     except Exception as e:
-        log.exception(f"Unexpected error in update_product_context for workspace {args.workspace_id}")
+        log.exception(
+            f"Unexpected error in update_product_context for workspace {args.workspace_id}"
+        )
         raise ContextPortalError(f"Unexpected error in update_product_context: {e}")
+
 
 def handle_log_decision(args: models.LogDecisionArgs) -> Dict[str, Any]:
     """
@@ -235,7 +261,7 @@ def handle_log_decision(args: models.LogDecisionArgs) -> Dict[str, Any]:
             summary=args.summary,
             rationale=args.rationale,
             implementation_details=args.implementation_details,
-            tags=args.tags
+            tags=args.tags,
             # Timestamp is added automatically by the Pydantic model's default_factory
         )
         logged_decision = db.log_decision(args.workspace_id, decision_to_log)
@@ -257,21 +283,30 @@ def handle_log_decision(args: models.LogDecisionArgs) -> Dict[str, Any]:
                     "engrams_item_type": "decision",
                     "summary": logged_decision.summary,
                     "timestamp_created": logged_decision.timestamp.isoformat(),
-                    "tags": ", ".join(logged_decision.tags) if logged_decision.tags else None
+                    "tags": (
+                        ", ".join(logged_decision.tags)
+                        if logged_decision.tags
+                        else None
+                    ),
                 }
                 vector_store_service.upsert_item_embedding(
                     workspace_id=args.workspace_id,
                     item_type="decision",
                     item_id=str(logged_decision.id),
                     vector=vector,
-                    metadata=metadata_for_vector
+                    metadata=metadata_for_vector,
                 )
-                log.info(f"Successfully generated and stored embedding for decision ID {logged_decision.id}")
+                log.info(
+                    f"Successfully generated and stored embedding for decision ID {logged_decision.id}"
+                )
             except Exception as e_embed:
-                log.error(f"Failed to generate/store embedding for decision ID {logged_decision.id}: {e_embed}", exc_info=True)
+                log.error(
+                    f"Failed to generate/store embedding for decision ID {logged_decision.id}: {e_embed}",
+                    exc_info=True,
+                )
         # --- End Add to Vector Store ---
 
-        response = logged_decision.model_dump(mode='json')
+        response = logged_decision.model_dump(mode="json")
         return _apply_governance_checks(
             workspace_id=args.workspace_id,
             item_type="decision",
@@ -284,10 +319,14 @@ def handle_log_decision(args: models.LogDecisionArgs) -> Dict[str, Any]:
     except DatabaseError as e:
         raise ContextPortalError(f"Database error logging decision: {e}")
     except Exception as e:
-        log.exception(f"Unexpected error in log_decision for workspace {args.workspace_id}")
+        log.exception(
+            f"Unexpected error in log_decision for workspace {args.workspace_id}"
+        )
         raise ContextPortalError(f"Unexpected error in log_decision: {e}")
 
+
 # --- Added handlers --- # This comment might be outdated, these are just more handlers
+
 
 def handle_get_decisions(args: models.GetDecisionsArgs) -> List[Dict[str, Any]]:
     """
@@ -300,16 +339,21 @@ def handle_get_decisions(args: models.GetDecisionsArgs) -> List[Dict[str, Any]]:
             args.workspace_id,
             limit=args.limit,
             tags_filter_include_all=args.tags_filter_include_all,
-            tags_filter_include_any=args.tags_filter_include_any
+            tags_filter_include_any=args.tags_filter_include_any,
         )
-        return [d.model_dump(mode='json') for d in decisions_list]
+        return [d.model_dump(mode="json") for d in decisions_list]
     except DatabaseError as e:
         raise ContextPortalError(f"Database error getting decisions: {e}")
     except Exception as e:
-        log.exception(f"Unexpected error in get_decisions for workspace {args.workspace_id}")
+        log.exception(
+            f"Unexpected error in get_decisions for workspace {args.workspace_id}"
+        )
         raise ContextPortalError(f"Unexpected error in get_decisions: {e}")
 
-def handle_search_decisions_fts(args: models.SearchDecisionsArgs) -> List[Dict[str, Any]]:
+
+def handle_search_decisions_fts(
+    args: models.SearchDecisionsArgs,
+) -> List[Dict[str, Any]]:
     """
     Handles the 'search_decisions_fts' MCP tool.
     Assumes 'args' is an already validated Pydantic model instance.
@@ -322,16 +366,17 @@ def handle_search_decisions_fts(args: models.SearchDecisionsArgs) -> List[Dict[s
             default_column="summary",
         )
         decisions_list = db.search_decisions_fts(
-            args.workspace_id,
-            query_term=safe_query,
-            limit=args.limit
+            args.workspace_id, query_term=safe_query, limit=args.limit
         )
-        return [d.model_dump(mode='json') for d in decisions_list]
+        return [d.model_dump(mode="json") for d in decisions_list]
     except DatabaseError as e:
         raise ContextPortalError(f"Database error searching decisions: {e}")
     except Exception as e:
-        log.exception(f"Unexpected error in search_decisions_fts for workspace {args.workspace_id}")
+        log.exception(
+            f"Unexpected error in search_decisions_fts for workspace {args.workspace_id}"
+        )
         raise ContextPortalError(f"Unexpected error in search_decisions_fts: {e}")
+
 
 def handle_get_active_context(args: models.GetContextArgs) -> Dict[str, Any]:
     """
@@ -344,8 +389,11 @@ def handle_get_active_context(args: models.GetContextArgs) -> Dict[str, Any]:
     except DatabaseError as e:
         raise ContextPortalError(f"Database error getting active context: {e}")
     except Exception as e:
-        log.exception(f"Unexpected error in get_active_context for workspace {args.workspace_id}")
+        log.exception(
+            f"Unexpected error in get_active_context for workspace {args.workspace_id}"
+        )
         raise ContextPortalError(f"Unexpected error in get_active_context: {e}")
+
 
 def handle_update_active_context(args: models.UpdateContextArgs) -> Dict[str, Any]:
     """
@@ -359,13 +407,16 @@ def handle_update_active_context(args: models.UpdateContextArgs) -> Dict[str, An
         # The database function 'db.update_active_context' now expects UpdateContextArgs.
         db.update_active_context(args.workspace_id, args)
         return {"status": "success", "message": "Active context updated successfully."}
-    except ValidationError as e: # Should not happen if FastMCP validates
-         raise ToolArgumentError(f"Invalid content structure: {e}")
+    except ValidationError as e:  # Should not happen if FastMCP validates
+        raise ToolArgumentError(f"Invalid content structure: {e}")
     except DatabaseError as e:
         raise ContextPortalError(f"Database error updating active context: {e}")
     except Exception as e:
-        log.exception(f"Unexpected error in update_active_context for workspace {args.workspace_id}")
+        log.exception(
+            f"Unexpected error in update_active_context for workspace {args.workspace_id}"
+        )
         raise ContextPortalError(f"Unexpected error in update_active_context: {e}")
+
 
 def handle_log_progress(args: models.LogProgressArgs) -> Dict[str, Any]:
     """
@@ -377,27 +428,37 @@ def handle_log_progress(args: models.LogProgressArgs) -> Dict[str, Any]:
         progress_to_log = models.ProgressEntry(
             status=args.status,
             description=args.description,
-            parent_id=args.parent_id
+            parent_id=args.parent_id,
             # linked_item_type and linked_item_id are not part of ProgressEntry model itself
         )
         logged_progress = db.log_progress(args.workspace_id, progress_to_log)
 
         # If linking information is provided, create the link
-        if args.linked_item_type and args.linked_item_id and logged_progress.id is not None:
+        if (
+            args.linked_item_type
+            and args.linked_item_id
+            and logged_progress.id is not None
+        ):
             try:
                 link_to_create = models.ContextLink(
-                    source_item_type="progress_entry", # The progress entry is the source
-                    source_item_id=str(logged_progress.id), # ID of the newly created progress entry
+                    source_item_type="progress_entry",  # The progress entry is the source
+                    source_item_id=str(
+                        logged_progress.id
+                    ),  # ID of the newly created progress entry
                     target_item_type=args.linked_item_type,
                     target_item_id=args.linked_item_id,
-                    relationship_type=args.link_relationship_type, # Use the relationship type from args
-                    description=f"Progress entry '{logged_progress.description[:30]}...' automatically linked."
+                    relationship_type=args.link_relationship_type,  # Use the relationship type from args
+                    description=f"Progress entry '{logged_progress.description[:30]}...' automatically linked.",
                 )
                 db.log_context_link(args.workspace_id, link_to_create)
-                log.info(f"Automatically linked progress entry ID {logged_progress.id} to {args.linked_item_type} ID {args.linked_item_id}")
+                log.info(
+                    f"Automatically linked progress entry ID {logged_progress.id} to {args.linked_item_type} ID {args.linked_item_id}"
+                )
             except Exception as link_e:
                 # Log the linking error but don't let it fail the whole progress logging
-                log.error(f"Failed to automatically link progress entry ID {logged_progress.id} for workspace {args.workspace_id}: {link_e}")
+                log.error(
+                    f"Failed to automatically link progress entry ID {logged_progress.id} for workspace {args.workspace_id}: {link_e}"
+                )
                 # Optionally, add this error to the response if the MCP tool schema supports it
 
         # --- Add to Vector Store ---
@@ -412,23 +473,34 @@ def handle_log_progress(args: models.LogProgressArgs) -> Dict[str, Any]:
                     "engrams_item_id": str(logged_progress.id),
                     "engrams_item_type": "progress_entry",
                     "status": logged_progress.status,
-                    "description_snippet": logged_progress.description[:100], # Snippet for quick view
+                    "description_snippet": logged_progress.description[
+                        :100
+                    ],  # Snippet for quick view
                     "timestamp_created": logged_progress.timestamp.isoformat(),
-                    "parent_id": str(logged_progress.parent_id) if logged_progress.parent_id else None
+                    "parent_id": (
+                        str(logged_progress.parent_id)
+                        if logged_progress.parent_id
+                        else None
+                    ),
                 }
                 vector_store_service.upsert_item_embedding(
                     workspace_id=args.workspace_id,
                     item_type="progress_entry",
                     item_id=str(logged_progress.id),
                     vector=vector,
-                    metadata=metadata_for_vector
+                    metadata=metadata_for_vector,
                 )
-                log.info(f"Successfully generated and stored embedding for progress entry ID {logged_progress.id}")
+                log.info(
+                    f"Successfully generated and stored embedding for progress entry ID {logged_progress.id}"
+                )
             except Exception as e_embed:
-                log.error(f"Failed to generate/store embedding for progress entry ID {logged_progress.id}: {e_embed}", exc_info=True)
+                log.error(
+                    f"Failed to generate/store embedding for progress entry ID {logged_progress.id}: {e_embed}",
+                    exc_info=True,
+                )
         # --- End Add to Vector Store ---
 
-        response = logged_progress.model_dump(mode='json')
+        response = logged_progress.model_dump(mode="json")
         return _apply_governance_checks(
             workspace_id=args.workspace_id,
             item_type="progress_entry",
@@ -441,8 +513,11 @@ def handle_log_progress(args: models.LogProgressArgs) -> Dict[str, Any]:
     except DatabaseError as e:
         raise ContextPortalError(f"Database error logging progress: {e}")
     except Exception as e:
-        log.exception(f"Unexpected error in log_progress for workspace {args.workspace_id}")
+        log.exception(
+            f"Unexpected error in log_progress for workspace {args.workspace_id}"
+        )
         raise ContextPortalError(f"Unexpected error in log_progress: {e}")
+
 
 def handle_get_progress(args: models.GetProgressArgs) -> List[Dict[str, Any]]:
     """
@@ -455,14 +530,17 @@ def handle_get_progress(args: models.GetProgressArgs) -> List[Dict[str, Any]]:
             args.workspace_id,
             status_filter=args.status_filter,
             parent_id_filter=args.parent_id_filter,
-            limit=args.limit
+            limit=args.limit,
         )
-        return [p.model_dump(mode='json') for p in progress_list]
+        return [p.model_dump(mode="json") for p in progress_list]
     except DatabaseError as e:
         raise ContextPortalError(f"Database error getting progress: {e}")
     except Exception as e:
-        log.exception(f"Unexpected error in get_progress for workspace {args.workspace_id}")
+        log.exception(
+            f"Unexpected error in get_progress for workspace {args.workspace_id}"
+        )
         raise ContextPortalError(f"Unexpected error in get_progress: {e}")
+
 
 def handle_update_progress(args: models.UpdateProgressArgs) -> Dict[str, Any]:
     """
@@ -481,19 +559,32 @@ def handle_update_progress(args: models.UpdateProgressArgs) -> Dict[str, Any]:
             # For now, we will skip re-embedding on update and log a warning.
             # A future enhancement would be to implement db.get_progress_entry_by_id
             # and then call vector_store_service.upsert_item_embedding here.
-            log.warning(f"Vector store update skipped for progress entry ID {args.progress_id} on update. Requires db.get_progress_entry_by_id for accurate re-embedding.")
+            log.warning(
+                f"Vector store update skipped for progress entry ID {args.progress_id} on update. Requires db.get_progress_entry_by_id for accurate re-embedding."
+            )
             # --- End Update Vector Store ---
 
-            return {"status": "success", "message": f"Progress entry ID {args.progress_id} updated successfully."}
+            return {
+                "status": "success",
+                "message": f"Progress entry ID {args.progress_id} updated successfully.",
+            }
         else:
-            return {"status": "success", "message": f"Progress entry ID {args.progress_id} not found for update."}
-    except ValueError as e: # Catch validation errors from the handler/db call
-         raise ToolArgumentError(str(e))
+            return {
+                "status": "success",
+                "message": f"Progress entry ID {args.progress_id} not found for update.",
+            }
+    except ValueError as e:  # Catch validation errors from the handler/db call
+        raise ToolArgumentError(str(e))
     except DatabaseError as e:
-        raise ContextPortalError(f"Database error updating progress entry ID {args.progress_id}: {e}")
+        raise ContextPortalError(
+            f"Database error updating progress entry ID {args.progress_id}: {e}"
+        )
     except Exception as e:
-        log.exception(f"Unexpected error in handle_update_progress for workspace {args.workspace_id}, ID {args.progress_id}")
+        log.exception(
+            f"Unexpected error in handle_update_progress for workspace {args.workspace_id}, ID {args.progress_id}"
+        )
         raise ContextPortalError(f"Unexpected error updating progress entry: {e}")
+
 
 def handle_delete_progress_by_id(args: models.DeleteProgressByIdArgs) -> Dict[str, Any]:
     """
@@ -501,7 +592,9 @@ def handle_delete_progress_by_id(args: models.DeleteProgressByIdArgs) -> Dict[st
     Deletes a progress entry by its ID.
     """
     try:
-        deleted_from_db = db.delete_progress_entry_by_id(args.workspace_id, args.progress_id)
+        deleted_from_db = db.delete_progress_entry_by_id(
+            args.workspace_id, args.progress_id
+        )
 
         if deleted_from_db:
             try:
@@ -509,27 +602,43 @@ def handle_delete_progress_by_id(args: models.DeleteProgressByIdArgs) -> Dict[st
                 vector_store_service.delete_item_embedding(
                     workspace_id=args.workspace_id,
                     item_type="progress_entry",
-                    item_id=str(args.progress_id)
+                    item_id=str(args.progress_id),
                 )
-                log.info(f"Successfully deleted embedding for progress entry ID {args.progress_id}")
+                log.info(
+                    f"Successfully deleted embedding for progress entry ID {args.progress_id}"
+                )
                 # --- End Delete from Vector Store ---
-                return {"status": "success", "message": f"Progress entry ID {args.progress_id} and its embedding deleted successfully."}
+                return {
+                    "status": "success",
+                    "message": f"Progress entry ID {args.progress_id} and its embedding deleted successfully.",
+                }
             except Exception as e_vec_del:
-                log.error(f"Failed to delete embedding for progress entry ID {args.progress_id} (DB record was deleted): {e_vec_del}", exc_info=True)
+                log.error(
+                    f"Failed to delete embedding for progress entry ID {args.progress_id} (DB record was deleted): {e_vec_del}",
+                    exc_info=True,
+                )
                 # Return success for DB deletion but acknowledge embedding deletion failure.
                 return {
                     "status": "partial_success",
-                    "message": f"Progress entry ID {args.progress_id} deleted from database, but failed to delete its embedding: {e_vec_del}"
+                    "message": f"Progress entry ID {args.progress_id} deleted from database, but failed to delete its embedding: {e_vec_del}",
                 }
         else:
             # This case means the ID was valid (e.g. integer) but not found in DB.
             # No need to attempt vector deletion if not found in DB.
-            return {"status": "success", "message": f"Progress entry ID {args.progress_id} not found in database."}
+            return {
+                "status": "success",
+                "message": f"Progress entry ID {args.progress_id} not found in database.",
+            }
     except DatabaseError as e:
-        raise ContextPortalError(f"Database error deleting progress entry ID {args.progress_id}: {e}")
+        raise ContextPortalError(
+            f"Database error deleting progress entry ID {args.progress_id}: {e}"
+        )
     except Exception as e:
-        log.exception(f"Unexpected error in handle_delete_progress_by_id for workspace {args.workspace_id}, ID {args.progress_id}")
+        log.exception(
+            f"Unexpected error in handle_delete_progress_by_id for workspace {args.workspace_id}, ID {args.progress_id}"
+        )
         raise ContextPortalError(f"Unexpected error deleting progress entry: {e}")
+
 
 def handle_log_system_pattern(args: models.LogSystemPatternArgs) -> Dict[str, Any]:
     """
@@ -538,7 +647,9 @@ def handle_log_system_pattern(args: models.LogSystemPatternArgs) -> Dict[str, An
     Returns the logged system pattern as a dictionary.
     """
     try:
-        pattern_to_log = models.SystemPattern(name=args.name, description=args.description, tags=args.tags)
+        pattern_to_log = models.SystemPattern(
+            name=args.name, description=args.description, tags=args.tags
+        )
         logged_pattern = db.log_system_pattern(args.workspace_id, pattern_to_log)
 
         # --- Add to Vector Store ---
@@ -552,22 +663,29 @@ def handle_log_system_pattern(args: models.LogSystemPatternArgs) -> Dict[str, An
                     "engrams_item_id": str(logged_pattern.id),
                     "engrams_item_type": "system_pattern",
                     "name": logged_pattern.name,
-                    "timestamp_created": logged_pattern.timestamp.isoformat(), # Assuming SystemPattern has a timestamp
-                    "tags": ", ".join(logged_pattern.tags) if logged_pattern.tags else None
+                    "timestamp_created": logged_pattern.timestamp.isoformat(),  # Assuming SystemPattern has a timestamp
+                    "tags": (
+                        ", ".join(logged_pattern.tags) if logged_pattern.tags else None
+                    ),
                 }
                 vector_store_service.upsert_item_embedding(
                     workspace_id=args.workspace_id,
                     item_type="system_pattern",
                     item_id=str(logged_pattern.id),
                     vector=vector,
-                    metadata=metadata_for_vector
+                    metadata=metadata_for_vector,
                 )
-                log.info(f"Successfully generated and stored embedding for system pattern ID {logged_pattern.id}")
+                log.info(
+                    f"Successfully generated and stored embedding for system pattern ID {logged_pattern.id}"
+                )
             except Exception as e_embed:
-                log.error(f"Failed to generate/store embedding for system pattern ID {logged_pattern.id}: {e_embed}", exc_info=True)
+                log.error(
+                    f"Failed to generate/store embedding for system pattern ID {logged_pattern.id}: {e_embed}",
+                    exc_info=True,
+                )
         # --- End Add to Vector Store ---
 
-        response = logged_pattern.model_dump(mode='json')
+        response = logged_pattern.model_dump(mode="json")
         return _apply_governance_checks(
             workspace_id=args.workspace_id,
             item_type="system_pattern",
@@ -580,10 +698,15 @@ def handle_log_system_pattern(args: models.LogSystemPatternArgs) -> Dict[str, An
     except DatabaseError as e:
         raise ContextPortalError(f"Database error logging system pattern: {e}")
     except Exception as e:
-        log.exception(f"Unexpected error in log_system_pattern for workspace {args.workspace_id}")
+        log.exception(
+            f"Unexpected error in log_system_pattern for workspace {args.workspace_id}"
+        )
         raise ContextPortalError(f"Unexpected error in log_system_pattern: {e}")
 
-def handle_get_system_patterns(args: models.GetSystemPatternsArgs) -> List[Dict[str, Any]]:
+
+def handle_get_system_patterns(
+    args: models.GetSystemPatternsArgs,
+) -> List[Dict[str, Any]]:
     """
     Handles the 'get_system_patterns' MCP tool.
     Assumes 'args' is an already validated Pydantic model instance.
@@ -593,16 +716,21 @@ def handle_get_system_patterns(args: models.GetSystemPatternsArgs) -> List[Dict[
         patterns_list = db.get_system_patterns(
             args.workspace_id,
             tags_filter_include_all=args.tags_filter_include_all,
-            tags_filter_include_any=args.tags_filter_include_any
+            tags_filter_include_any=args.tags_filter_include_any,
         )
-        return [p.model_dump(mode='json') for p in patterns_list]
+        return [p.model_dump(mode="json") for p in patterns_list]
     except DatabaseError as e:
         raise ContextPortalError(f"Database error getting system patterns: {e}")
     except Exception as e:
-        log.exception(f"Unexpected error in get_system_patterns for workspace {args.workspace_id}")
+        log.exception(
+            f"Unexpected error in get_system_patterns for workspace {args.workspace_id}"
+        )
         raise ContextPortalError(f"Unexpected error in get_system_patterns: {e}")
 
-def handle_get_engrams_schema(args: models.GetConportSchemaArgs) -> Dict[str, Dict[str, Any]]:
+
+def handle_get_engrams_schema(
+    args: models.GetConportSchemaArgs,
+) -> Dict[str, Dict[str, Any]]:
     """
     Handles the 'get_engrams_schema' MCP tool.
     Retrieves the JSON schema for all registered Engrams tools.
@@ -613,39 +741,57 @@ def handle_get_engrams_schema(args: models.GetConportSchemaArgs) -> Dict[str, Di
         tool_schemas: Dict[str, Dict[str, Any]] = {}
         for tool_name, model_class in models.TOOL_ARG_MODELS.items():
             # Ensure model_class is a Pydantic BaseModel before calling model_json_schema
-            if hasattr(model_class, 'model_json_schema') and callable(model_class.model_json_schema):
+            if hasattr(model_class, "model_json_schema") and callable(
+                model_class.model_json_schema
+            ):
                 tool_schemas[tool_name] = model_class.model_json_schema()
             else:
                 # This case should ideally not happen if TOOL_ARG_MODELS is correctly populated
-                log.warning(f"Model class for tool '{tool_name}' is not a Pydantic model or does not have 'model_json_schema' method.")
+                log.warning(
+                    f"Model class for tool '{tool_name}' is not a Pydantic model or does not have 'model_json_schema' method."
+                )
                 tool_schemas[tool_name] = {"error": "Schema not available"}
 
         return tool_schemas
     except Exception as e:
-        log.exception(f"Unexpected error in get_engrams_schema for workspace {args.workspace_id}")
+        log.exception(
+            f"Unexpected error in get_engrams_schema for workspace {args.workspace_id}"
+        )
         # Return a more structured error if possible, or a generic one
         raise ContextPortalError(f"Unexpected error retrieving Engrams schema: {e}")
 
-def handle_get_recent_activity_summary(args: models.GetRecentActivitySummaryArgs) -> Dict[str, Any]:
+
+def handle_get_recent_activity_summary(
+    args: models.GetRecentActivitySummaryArgs,
+) -> Dict[str, Any]:
     """
     Handles the 'get_recent_activity_summary' MCP tool.
     Retrieves a summary of recent activity from the database.
     """
     try:
-        log.info(f"Handling get_recent_activity_summary for workspace {args.workspace_id} with args: {args.model_dump_json()}")
+        log.info(
+            f"Handling get_recent_activity_summary for workspace {args.workspace_id} with args: {args.model_dump_json()}"
+        )
         summary_data = db.get_recent_activity_summary_data(
             workspace_id=args.workspace_id,
             hours_ago=args.hours_ago,
             since_timestamp=args.since_timestamp,
-            limit_per_type=args.limit_per_type if args.limit_per_type is not None else 5 # Ensure default if None
+            limit_per_type=(
+                args.limit_per_type if args.limit_per_type is not None else 5
+            ),  # Ensure default if None
         )
         return summary_data
     except DatabaseError as e:
-        log.error(f"Database error in get_recent_activity_summary for workspace {args.workspace_id}: {e}")
+        log.error(
+            f"Database error in get_recent_activity_summary for workspace {args.workspace_id}: {e}"
+        )
         raise ContextPortalError(f"Database error retrieving recent activity: {e}")
     except Exception as e:
-        log.exception(f"Unexpected error in get_recent_activity_summary for workspace {args.workspace_id}")
+        log.exception(
+            f"Unexpected error in get_recent_activity_summary for workspace {args.workspace_id}"
+        )
         raise ContextPortalError(f"Unexpected error retrieving recent activity: {e}")
+
 
 def handle_log_custom_data(args: models.LogCustomDataArgs) -> Dict[str, Any]:
     """
@@ -654,7 +800,9 @@ def handle_log_custom_data(args: models.LogCustomDataArgs) -> Dict[str, Any]:
     Returns the logged custom data entry as a dictionary.
     """
     try:
-        data_to_log = models.CustomData(category=args.category, key=args.key, value=args.value)
+        data_to_log = models.CustomData(
+            category=args.category, key=args.key, value=args.value
+        )
         # Assuming CustomData model has a metadata field, or we add it if needed for cache_hint
         # For now, the LogCustomDataArgs does not have metadata.
         # If it did: data_to_log = models.CustomData(category=args.category, key=args.key, value=args.value, metadata=args.metadata)
@@ -672,14 +820,18 @@ def handle_log_custom_data(args: models.LogCustomDataArgs) -> Dict[str, Any]:
                     # Simple JSON string representation for dict/list
                     text_to_embed = json.dumps(logged_data.value)
                 except TypeError:
-                    log.warning(f"Custom data value for {logged_data.category}/{logged_data.key} is not JSON serializable for embedding.")
+                    log.warning(
+                        f"Custom data value for {logged_data.category}/{logged_data.key} is not JSON serializable for embedding."
+                    )
 
             if text_to_embed:
                 # Add category and key to text for better contextual embedding
                 contextual_text_to_embed = f"Category: {logged_data.category}\nKey: {logged_data.key}\nValue: {text_to_embed}"
                 try:
                     _ensure_embedding_service()
-                    vector = embedding_service.get_embedding(contextual_text_to_embed.strip())
+                    vector = embedding_service.get_embedding(
+                        contextual_text_to_embed.strip()
+                    )
 
                     metadata_for_vector = {
                         "engrams_item_id": str(logged_data.id),
@@ -690,27 +842,39 @@ def handle_log_custom_data(args: models.LogCustomDataArgs) -> Dict[str, Any]:
                         # "value_type": str(type(logged_data.value).__name__) # Could be useful metadata
                     }
                     # Add metadata from CustomData if it exists and is simple
-                    if hasattr(logged_data, 'metadata') and isinstance(logged_data.metadata, dict):
-                         for k, v in logged_data.metadata.items():
-                            if isinstance(v, (str, int, float, bool)): # Only simple types for Chroma metadata
+                    if hasattr(logged_data, "metadata") and isinstance(
+                        logged_data.metadata, dict
+                    ):
+                        for k, v in logged_data.metadata.items():
+                            if isinstance(
+                                v, (str, int, float, bool)
+                            ):  # Only simple types for Chroma metadata
                                 metadata_for_vector[f"custom_meta_{k}"] = v
-
 
                     vector_store_service.upsert_item_embedding(
                         workspace_id=args.workspace_id,
                         item_type="custom_data",
-                        item_id=str(logged_data.id), # Using internal DB ID as part of Chroma ID
+                        item_id=str(
+                            logged_data.id
+                        ),  # Using internal DB ID as part of Chroma ID
                         vector=vector,
-                        metadata=metadata_for_vector
+                        metadata=metadata_for_vector,
                     )
-                    log.info(f"Successfully generated and stored embedding for custom_data ID {logged_data.id} ({logged_data.category}/{logged_data.key})")
+                    log.info(
+                        f"Successfully generated and stored embedding for custom_data ID {logged_data.id} ({logged_data.category}/{logged_data.key})"
+                    )
                 except Exception as e_embed:
-                    log.error(f"Failed to generate/store embedding for custom_data ID {logged_data.id} ({logged_data.category}/{logged_data.key}): {e_embed}", exc_info=True)
+                    log.error(
+                        f"Failed to generate/store embedding for custom_data ID {logged_data.id} ({logged_data.category}/{logged_data.key}): {e_embed}",
+                        exc_info=True,
+                    )
             else:
-                log.debug(f"Skipping embedding for custom_data ID {logged_data.id} ({logged_data.category}/{logged_data.key}) as value is not text-like.")
+                log.debug(
+                    f"Skipping embedding for custom_data ID {logged_data.id} ({logged_data.category}/{logged_data.key}) as value is not text-like."
+                )
         # --- End Add to Vector Store ---
 
-        response = logged_data.model_dump(mode='json')
+        response = logged_data.model_dump(mode="json")
         return _apply_governance_checks(
             workspace_id=args.workspace_id,
             item_type="custom_data",
@@ -723,8 +887,11 @@ def handle_log_custom_data(args: models.LogCustomDataArgs) -> Dict[str, Any]:
     except DatabaseError as e:
         raise ContextPortalError(f"Database error logging custom data: {e}")
     except Exception as e:
-        log.exception(f"Unexpected error in log_custom_data for workspace {args.workspace_id}")
+        log.exception(
+            f"Unexpected error in log_custom_data for workspace {args.workspace_id}"
+        )
         raise ContextPortalError(f"Unexpected error in log_custom_data: {e}")
+
 
 def handle_get_custom_data(args: models.GetCustomDataArgs) -> List[Dict[str, Any]]:
     """
@@ -733,15 +900,20 @@ def handle_get_custom_data(args: models.GetCustomDataArgs) -> List[Dict[str, Any
     Returns a list of custom data entry dictionaries.
     """
     try:
-        data_list = db.get_custom_data(args.workspace_id, category=args.category, key=args.key)
-        return [d.model_dump(mode='json') for d in data_list]
-    except ValueError as e: # From db function if key w/o category, or other validation
-         raise ToolArgumentError(str(e)) # Pass specific error message
+        data_list = db.get_custom_data(
+            args.workspace_id, category=args.category, key=args.key
+        )
+        return [d.model_dump(mode="json") for d in data_list]
+    except ValueError as e:  # From db function if key w/o category, or other validation
+        raise ToolArgumentError(str(e))  # Pass specific error message
     except DatabaseError as e:
         raise ContextPortalError(f"Database error getting custom data: {e}")
     except Exception as e:
-        log.exception(f"Unexpected error in get_custom_data for workspace {args.workspace_id}")
+        log.exception(
+            f"Unexpected error in get_custom_data for workspace {args.workspace_id}"
+        )
         raise ContextPortalError(f"Unexpected error in get_custom_data: {e}")
+
 
 def handle_delete_custom_data(args: models.DeleteCustomDataArgs) -> Dict[str, Any]:
     """
@@ -750,18 +922,31 @@ def handle_delete_custom_data(args: models.DeleteCustomDataArgs) -> Dict[str, An
     Returns a status message dictionary.
     """
     try:
-        deleted = db.delete_custom_data(args.workspace_id, category=args.category, key=args.key)
+        deleted = db.delete_custom_data(
+            args.workspace_id, category=args.category, key=args.key
+        )
         if deleted:
-            return {"status": "success", "message": f"Custom data '{args.category}/{args.key}' deleted."}
+            return {
+                "status": "success",
+                "message": f"Custom data '{args.category}/{args.key}' deleted.",
+            }
         else:
-            return {"status": "success", "message": f"Custom data '{args.category}/{args.key}' not found for deletion."}
+            return {
+                "status": "success",
+                "message": f"Custom data '{args.category}/{args.key}' not found for deletion.",
+            }
     except DatabaseError as e:
         raise ContextPortalError(f"Database error deleting custom data: {e}")
     except Exception as e:
-        log.exception(f"Unexpected error in delete_custom_data for workspace {args.workspace_id}")
+        log.exception(
+            f"Unexpected error in delete_custom_data for workspace {args.workspace_id}"
+        )
         raise ContextPortalError(f"Unexpected error in delete_custom_data: {e}")
 
-def handle_search_project_glossary_fts(args: models.SearchProjectGlossaryArgs) -> List[Dict[str, Any]]:
+
+def handle_search_project_glossary_fts(
+    args: models.SearchProjectGlossaryArgs,
+) -> List[Dict[str, Any]]:
     """
     Handles the 'search_project_glossary_fts' MCP tool.
     Assumes 'args' is an already validated Pydantic model instance.
@@ -774,18 +959,23 @@ def handle_search_project_glossary_fts(args: models.SearchProjectGlossaryArgs) -
             default_column="value_text",
         )
         glossary_entries = db.search_project_glossary_fts(
-            args.workspace_id,
-            query_term=safe_query,
-            limit=args.limit
+            args.workspace_id, query_term=safe_query, limit=args.limit
         )
-        return [entry.model_dump(mode='json') for entry in glossary_entries]
+        return [entry.model_dump(mode="json") for entry in glossary_entries]
     except DatabaseError as e:
         raise ContextPortalError(f"Database error searching project glossary: {e}")
     except Exception as e:
-        log.exception(f"Unexpected error in search_project_glossary_fts for workspace {args.workspace_id}")
-        raise ContextPortalError(f"Unexpected error in search_project_glossary_fts: {e}")
+        log.exception(
+            f"Unexpected error in search_project_glossary_fts for workspace {args.workspace_id}"
+        )
+        raise ContextPortalError(
+            f"Unexpected error in search_project_glossary_fts: {e}"
+        )
 
-def handle_search_custom_data_value_fts(args: models.SearchCustomDataValueArgs) -> List[Dict[str, Any]]:
+
+def handle_search_custom_data_value_fts(
+    args: models.SearchCustomDataValueArgs,
+) -> List[Dict[str, Any]]:
     """
     Handles the 'search_custom_data_value_fts' MCP tool.
     Searches custom data entries using FTS, optionally filtered by category.
@@ -800,24 +990,32 @@ def handle_search_custom_data_value_fts(args: models.SearchCustomDataValueArgs) 
             args.workspace_id,
             query_term=safe_query,
             category_filter=args.category_filter,
-            limit=args.limit
+            limit=args.limit,
         )
-        return [item.model_dump(mode='json') for item in results]
+        return [item.model_dump(mode="json") for item in results]
     except DatabaseError as e:
         raise ContextPortalError(f"Database error searching custom data values: {e}")
     except Exception as e:
-        log.exception(f"Unexpected error in search_custom_data_value_fts for workspace {args.workspace_id}")
+        log.exception(
+            f"Unexpected error in search_custom_data_value_fts for workspace {args.workspace_id}"
+        )
         raise ContextPortalError(f"Unexpected error searching custom data values: {e}")
+
 
 # --- Semantic Search Handler ---
 
-async def handle_semantic_search_conport(args: models.SemanticSearchConportArgs) -> List[Dict[str, Any]]:
+
+async def handle_semantic_search_conport(
+    args: models.SemanticSearchConportArgs,
+) -> List[Dict[str, Any]]:
     """
     Handles the 'semantic_search_conport' MCP tool.
     Performs a semantic search using embeddings and vector store, with optional metadata filters.
     """
     try:
-        log.info(f"Handling semantic_search_conport for workspace {args.workspace_id} with query: '{args.query_text[:50]}...'")
+        log.info(
+            f"Handling semantic_search_conport for workspace {args.workspace_id} with query: '{args.query_text[:50]}...'"
+        )
 
         query_vector = embedding_service.get_embedding(args.query_text)
 
@@ -826,28 +1024,37 @@ async def handle_semantic_search_conport(args: models.SemanticSearchConportArgs)
         and_conditions = []
 
         if args.filter_item_types:
-            and_conditions.append({"engrams_item_type": {"$in": args.filter_item_types}})
+            and_conditions.append(
+                {"engrams_item_type": {"$in": args.filter_item_types}}
+            )
 
         if args.filter_tags_include_all:
             # For $all behavior with $contains, we need an $and for each tag
-            tag_all_conditions = [{"tags": {"$contains": tag}} for tag in args.filter_tags_include_all]
+            tag_all_conditions = [
+                {"tags": {"$contains": tag}} for tag in args.filter_tags_include_all
+            ]
             if tag_all_conditions:
                 and_conditions.append({"$and": tag_all_conditions})
 
         if args.filter_tags_include_any:
             # For $or behavior with $contains
-            tag_any_conditions = [{"tags": {"$contains": tag}} for tag in args.filter_tags_include_any]
+            tag_any_conditions = [
+                {"tags": {"$contains": tag}} for tag in args.filter_tags_include_any
+            ]
             if tag_any_conditions:
                 and_conditions.append({"$or": tag_any_conditions})
 
         if args.filter_custom_data_categories:
             # This filter is only meaningful if 'custom_data' is in item_types or no item_types are specified
-            category_condition = {"category": {"$in": args.filter_custom_data_categories}}
-            if args.filter_item_types and 'custom_data' in args.filter_item_types:
+            category_condition = {
+                "category": {"$in": args.filter_custom_data_categories}
+            }
+            if args.filter_item_types and "custom_data" in args.filter_item_types:
                 and_conditions.append(category_condition)
-            elif not args.filter_item_types: # If no item_type filter, apply category filter broadly (might hit non-custom_data items if they had 'category' metadata)
-                 and_conditions.append(category_condition)
-
+            elif (
+                not args.filter_item_types
+            ):  # If no item_type filter, apply category filter broadly (might hit non-custom_data items if they had 'category' metadata)
+                and_conditions.append(category_condition)
 
         if and_conditions:
             if len(and_conditions) == 1:
@@ -861,7 +1068,7 @@ async def handle_semantic_search_conport(args: models.SemanticSearchConportArgs)
             workspace_id=args.workspace_id,
             query_vector=query_vector,
             top_k=args.top_k,
-            filters=chroma_filters if chroma_filters else None
+            filters=chroma_filters if chroma_filters else None,
         )
 
         # Process results: search_results is List[Dict] with 'chroma_doc_id', 'distance', 'metadata'
@@ -873,8 +1080,8 @@ async def handle_semantic_search_conport(args: models.SemanticSearchConportArgs)
         enriched_results = []
         for res in search_results:
             meta = res.get("metadata", {})
-            item_id = meta.get("engrams_item_id")
-            item_type = meta.get("engrams_item_type")
+            meta.get("engrams_item_id")
+            meta.get("engrams_item_type")
 
             # Here you could fetch the full item from SQLite using item_id and item_type
             # For example:
@@ -887,22 +1094,32 @@ async def handle_semantic_search_conport(args: models.SemanticSearchConportArgs)
             #     if full_item_list:
             #         res["full_item_data"] = full_item_list[0].model_dump(mode='json')
 
-
-            enriched_results.append(res) # For now, just pass through
+            enriched_results.append(res)  # For now, just pass through
 
         return enriched_results
 
-    except RuntimeError as re: # Catch errors from embedding or vector store service
+    except RuntimeError as re:  # Catch errors from embedding or vector store service
         log.error(f"Runtime error during semantic search: {re}", exc_info=True)
         raise ContextPortalError(f"Error during semantic search operation: {re}")
-    except DatabaseError as dbe: # Catch errors from SQLite if enriching results
-        log.error(f"Database error during semantic search result enrichment: {dbe}", exc_info=True)
-        raise ContextPortalError(f"Database error processing semantic search results: {dbe}")
+    except DatabaseError as dbe:  # Catch errors from SQLite if enriching results
+        log.error(
+            f"Database error during semantic search result enrichment: {dbe}",
+            exc_info=True,
+        )
+        raise ContextPortalError(
+            f"Database error processing semantic search results: {dbe}"
+        )
     except Exception as e:
-        log.exception(f"Unexpected error in handle_semantic_search_conport for workspace {args.workspace_id}")
-        raise ContextPortalError(f"Unexpected error during semantic search: {type(e).__name__}")
+        log.exception(
+            f"Unexpected error in handle_semantic_search_conport for workspace {args.workspace_id}"
+        )
+        raise ContextPortalError(
+            f"Unexpected error during semantic search: {type(e).__name__}"
+        )
+
 
 # --- Export Tool Handler ---
+
 
 def _format_product_context_md(data: Dict[str, Any]) -> str:
     lines = ["# Product Context\n"]
@@ -914,10 +1131,11 @@ def _format_product_context_md(data: Dict[str, Any]) -> str:
         elif isinstance(value, list):
             for item in value:
                 lines.append(f"*   {item}\n")
-        else: # Fallback for other types
+        else:  # Fallback for other types
             lines.append(str(value) + "\n")
         lines.append("\n")
     return "".join(lines)
+
 
 def _format_active_context_md(data: Dict[str, Any]) -> str:
     lines = ["# Active Context\n"]
@@ -929,17 +1147,20 @@ def _format_active_context_md(data: Dict[str, Any]) -> str:
         elif isinstance(value, list):
             for item in value:
                 lines.append(f"*   {item}\n")
-        else: # Fallback for other types
+        else:  # Fallback for other types
             lines.append(str(value) + "\n")
         lines.append("\n")
     return "".join(lines)
+
 
 def _format_decisions_md(decisions: List[models.Decision]) -> str:
     lines = ["# Decision Log\n"]
     for dec in sorted(decisions, key=lambda x: x.timestamp, reverse=True):
         lines.append("\n---\n")
         lines.append("## Decision\n")
-        lines.append(f"*   [{dec.timestamp.strftime('%Y-%m-%d %H:%M:%S')}] {dec.summary}\n")
+        lines.append(
+            f"*   [{dec.timestamp.strftime('%Y-%m-%d %H:%M:%S')}] {dec.summary}\n"
+        )
         if dec.rationale:
             lines.append("\n## Rationale\n")
             lines.append(f"*   {dec.rationale}\n")
@@ -947,6 +1168,7 @@ def _format_decisions_md(decisions: List[models.Decision]) -> str:
             lines.append("\n## Implementation Details\n")
             lines.append(f"*   {dec.implementation_details}\n")
     return "".join(lines)
+
 
 def _format_progress_md(progress_entries: List[models.ProgressEntry]) -> str:
     lines = ["# Progress Log\n"]
@@ -957,34 +1179,52 @@ def _format_progress_md(progress_entries: List[models.ProgressEntry]) -> str:
     if status_map["DONE"]:
         lines.append("\n## Completed Tasks\n")
         for entry in status_map["DONE"]:
-            lines.append(f"*   [{entry.timestamp.strftime('%Y-%m-%d %H:%M:%S')}] {entry.description}\n")
+            lines.append(
+                f"*   [{entry.timestamp.strftime('%Y-%m-%d %H:%M:%S')}] {entry.description}\n"
+            )
     if status_map["IN_PROGRESS"]:
         lines.append("\n## In Progress Tasks\n")
         for entry in status_map["IN_PROGRESS"]:
-            lines.append(f"*   [{entry.timestamp.strftime('%Y-%m-%d %H:%M:%S')}] {entry.description}\n")
+            lines.append(
+                f"*   [{entry.timestamp.strftime('%Y-%m-%d %H:%M:%S')}] {entry.description}\n"
+            )
     if status_map["TODO"]:
         lines.append("\n## TODO Tasks\n")
         for entry in status_map["TODO"]:
-            lines.append(f"*   [{entry.timestamp.strftime('%Y-%m-%d %H:%M:%S')}] {entry.description}\n")
+            lines.append(
+                f"*   [{entry.timestamp.strftime('%Y-%m-%d %H:%M:%S')}] {entry.description}\n"
+            )
     return "".join(lines)
+
 
 def _format_system_patterns_md(patterns: List[models.SystemPattern]) -> str:
     from datetime import timezone
 
     def _to_aware_utc(dt):
         # Treat naive as UTC for export consistency
-        return dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt.astimezone(timezone.utc)
+        return (
+            dt.replace(tzinfo=timezone.utc)
+            if dt.tzinfo is None
+            else dt.astimezone(timezone.utc)
+        )
 
     lines = ["# System Patterns\n"]
-    for pattern in sorted(patterns, key=lambda x: _to_aware_utc(x.timestamp), reverse=True): # Sort by timestamp
+    for pattern in sorted(
+        patterns, key=lambda x: _to_aware_utc(x.timestamp), reverse=True
+    ):  # Sort by timestamp
         lines.append("\n---\n")
         lines.append(f"## {pattern.name}\n")
-        lines.append(f"*   [{pattern.timestamp.strftime('%Y-%m-%d %H:%M:%S')}]\n") # Add timestamp
+        lines.append(
+            f"*   [{pattern.timestamp.strftime('%Y-%m-%d %H:%M:%S')}]\n"
+        )  # Add timestamp
         if pattern.description:
             lines.append(f"{pattern.description}\n")
     return "".join(lines)
 
-def handle_export_engrams_to_markdown(args: models.ExportConportToMarkdownArgs) -> Dict[str, Any]:
+
+def handle_export_engrams_to_markdown(
+    args: models.ExportConportToMarkdownArgs,
+) -> Dict[str, Any]:
     """
     Exports all Engrams data for a workspace to markdown files.
     Assumes 'args' is an already validated Pydantic model instance.
@@ -995,7 +1235,9 @@ def handle_export_engrams_to_markdown(args: models.ExportConportToMarkdownArgs) 
 
     try:
         output_path.mkdir(parents=True, exist_ok=True)
-        log.info(f"Exporting Engrams data for workspace '{args.workspace_id}' to '{output_path}'")
+        log.info(
+            f"Exporting Engrams data for workspace '{args.workspace_id}' to '{output_path}'"
+        )
 
         files_created = []
 
@@ -1014,14 +1256,14 @@ def handle_export_engrams_to_markdown(args: models.ExportConportToMarkdownArgs) 
             files_created.append("active_context.md")
 
         # Decisions
-        decisions = db.get_decisions(args.workspace_id, limit=None) # Get all
+        decisions = db.get_decisions(args.workspace_id, limit=None)  # Get all
         if decisions:
             with open(output_path / "decision_log.md", "w", encoding="utf-8") as f:
                 f.write(_format_decisions_md(decisions))
             files_created.append("decision_log.md")
 
         # Progress
-        progress_entries = db.get_progress(args.workspace_id, limit=None) # Get all
+        progress_entries = db.get_progress(args.workspace_id, limit=None)  # Get all
         if progress_entries:
             with open(output_path / "progress_log.md", "w", encoding="utf-8") as f:
                 f.write(_format_progress_md(progress_entries))
@@ -1043,48 +1285,76 @@ def handle_export_engrams_to_markdown(args: models.ExportConportToMarkdownArgs) 
             for item in custom_data_entries:
                 if item.category not in categories:
                     categories[item.category] = []
-                value_str = json.dumps(item.value, indent=2) if not isinstance(item.value, str) else item.value
-                categories[item.category].append(f"### {item.key}\n\n*   [{item.timestamp.strftime('%Y-%m-%d %H:%M:%S')}]\n\n```json\n{value_str}\n```\n")
+                value_str = (
+                    json.dumps(item.value, indent=2)
+                    if not isinstance(item.value, str)
+                    else item.value
+                )
+                categories[item.category].append(
+                    f"### {item.key}\n\n*   [{item.timestamp.strftime('%Y-%m-%d %H:%M:%S')}]\n\n```json\n{value_str}\n```\n"
+                )
 
-
-            for category_name_from_loop, items_md in categories.items(): # Renamed category to avoid clash
-                cat_file_name = "".join(c if c.isalnum() else "_" for c in category_name_from_loop) + ".md"
+            for (
+                category_name_from_loop,
+                items_md,
+            ) in categories.items():  # Renamed category to avoid clash
+                cat_file_name = (
+                    "".join(c if c.isalnum() else "_" for c in category_name_from_loop)
+                    + ".md"
+                )
                 with open(custom_data_path / cat_file_name, "w", encoding="utf-8") as f:
-                    f.write(f"# Custom Data: {category_name_from_loop}\n\n" + "\n---\n".join(items_md))
+                    f.write(
+                        f"# Custom Data: {category_name_from_loop}\n\n"
+                        + "\n---\n".join(items_md)
+                    )
                 files_created.append(f"custom_data/{cat_file_name}")
 
-        return {"status": "success", "message": f"Engrams data exported to '{output_path}'. Files created: {', '.join(files_created)}"}
+        return {
+            "status": "success",
+            "message": f"Engrams data exported to '{output_path}'. Files created: {', '.join(files_created)}",
+        }
 
     except DatabaseError as e:
         raise ContextPortalError(f"Database error during export: {e}")
     except IOError as e:
-        raise ContextPortalError(f"File system error during export to '{output_path}': {e}")
+        raise ContextPortalError(
+            f"File system error during export to '{output_path}': {e}"
+        )
     except Exception as e:
-        log.exception(f"Unexpected error in export_engrams_to_markdown for workspace {args.workspace_id}")
+        log.exception(
+            f"Unexpected error in export_engrams_to_markdown for workspace {args.workspace_id}"
+        )
         raise ContextPortalError(f"Unexpected error during export: {e}")
+
 
 # --- Import Tool Handler ---
 
+
 def _parse_key_value_markdown_section(section_content: str) -> str:
     """Helper to extract content from a simple markdown section."""
-    lines = [line.strip() for line in section_content.strip().split('\n') if line.strip()]
+    lines = [
+        line.strip() for line in section_content.strip().split("\n") if line.strip()
+    ]
     # Remove potential list markers like '* '
     cleaned_lines = [re.sub(r"^\*   ", "", line) for line in lines]
     return "\n".join(cleaned_lines).strip()
+
 
 def _parse_product_or_active_context_md(content: str) -> Dict[str, Any]:
     """Parses product_context.md or active_context.md content."""
     data = {}
     # Split by '## ' to get sections, ignoring the initial '# Title' part
-    sections = re.split(r'\n## ', content)[1:]
+    sections = re.split(r"\n## ", content)[1:]
 
     # First section is usually an introduction before the first '## '
-    intro_match = re.match(r'^#\s\w+\sContext\n+(.*?)\n## ', content, re.DOTALL | re.MULTILINE)
+    intro_match = re.match(
+        r"^#\s\w+\sContext\n+(.*?)\n## ", content, re.DOTALL | re.MULTILINE
+    )
     if intro_match:
         data["introduction"] = intro_match.group(1).strip()
 
     for section in sections:
-        parts = section.split('\n', 1)
+        parts = section.split("\n", 1)
         heading_full = parts[0].strip()
         section_content = parts[1] if len(parts) > 1 else ""
 
@@ -1092,21 +1362,24 @@ def _parse_product_or_active_context_md(content: str) -> Dict[str, Any]:
         key = heading_full.replace(" ", "")
         key = key[0].lower() + key[1:] if key else ""
 
-        if key: # Ensure key is not empty
-             # For "Recent Changes", we expect a list-like structure.
+        if key:  # Ensure key is not empty
+            # For "Recent Changes", we expect a list-like structure.
             if "Recent Changes" in heading_full:
-                 data[key] = _parse_key_value_markdown_section(section_content) # Keep as single string
+                data[key] = _parse_key_value_markdown_section(
+                    section_content
+                )  # Keep as single string
             else:
                 data[key] = _parse_key_value_markdown_section(section_content)
     return data
+
 
 def _parse_decisions_md(content: str) -> List[Dict[str, str]]:
     """Parses decision_log.md content."""
     decisions = []
     # Split by '---' separator, then process each decision block
-    decision_blocks = content.split('\n---\n')
+    decision_blocks = content.split("\n---\n")
     for block in decision_blocks:
-        if not block.strip() or "## Decision" not in block :
+        if not block.strip() or "## Decision" not in block:
             continue
 
         summary_match = re.search(r"## Decision\n\*\s*\[.*?\]\s*(.+)", block, re.DOTALL)
@@ -1115,40 +1388,59 @@ def _parse_decisions_md(content: str) -> List[Dict[str, str]]:
         rationale_match = re.search(r"## Rationale\n\*\s*(.+)", block, re.DOTALL)
         rationale = rationale_match.group(1).strip() if rationale_match else None
         # Handle multi-line rationale
-        if rationale_match and '\n*' in rationale: # crude check for multi-bullet rationale
-            rationale = "\n".join([line.strip().lstrip('*').strip() for line in rationale.split('\n')])
+        if (
+            rationale_match and "\n*" in rationale
+        ):  # crude check for multi-bullet rationale
+            rationale = "\n".join(
+                [line.strip().lstrip("*").strip() for line in rationale.split("\n")]
+            )
 
+        impl_details_match = re.search(
+            r"## Implementation Details\n\*\s*(.+)", block, re.DOTALL
+        )
+        impl_details = (
+            impl_details_match.group(1).strip() if impl_details_match else None
+        )
+        if (
+            impl_details_match and "\n*" in impl_details
+        ):  # crude check for multi-bullet details
+            impl_details = "\n".join(
+                [line.strip().lstrip("*").strip() for line in impl_details.split("\n")]
+            )
 
-        impl_details_match = re.search(r"## Implementation Details\n\*\s*(.+)", block, re.DOTALL)
-        impl_details = impl_details_match.group(1).strip() if impl_details_match else None
-        if impl_details_match and '\n*' in impl_details: # crude check for multi-bullet details
-            impl_details = "\n".join([line.strip().lstrip('*').strip() for line in impl_details.split('\n')])
-
-        decisions.append({
-            "summary": summary,
-            "rationale": rationale,
-            "implementation_details": impl_details
-        })
+        decisions.append(
+            {
+                "summary": summary,
+                "rationale": rationale,
+                "implementation_details": impl_details,
+            }
+        )
     return decisions
+
 
 def _parse_progress_md(content: str) -> List[Dict[str, str]]:
     """Parses progress_log.md content."""
     progress_items = []
-    current_status = "TODO" # Default
+    current_status = "TODO"  # Default
 
-    for line in content.split('\n'):
+    for line in content.split("\n"):
         line = line.strip()
         if line.startswith("## Completed Tasks"):
             current_status = "DONE"
-        elif line.startswith("## In Progress Tasks") or line.startswith("## Current Tasks"):
+        elif line.startswith("## In Progress Tasks") or line.startswith(
+            "## Current Tasks"
+        ):
             current_status = "IN_PROGRESS"
         elif line.startswith("## TODO Tasks") or line.startswith("## Next Steps"):
             current_status = "TODO"
         elif line.startswith("*"):
             description = re.sub(r"^\*\s*(\[.*?\]\s*)?", "", line).strip()
             if description:
-                progress_items.append({"status": current_status, "description": description})
+                progress_items.append(
+                    {"status": current_status, "description": description}
+                )
     return progress_items
+
 
 def _parse_system_patterns_md(content: str) -> List[Dict[str, str]]:
     """Parses system_patterns.md content."""
@@ -1156,30 +1448,45 @@ def _parse_system_patterns_md(content: str) -> List[Dict[str, str]]:
     current_name = None
     current_desc_lines = []
 
-    for line in content.split('\n'):
+    for line in content.split("\n"):
         line = line.strip()
         if line.startswith("## "):
-            if current_name: # Save previous pattern
-                patterns.append({"name": current_name, "description": "\n".join(current_desc_lines).strip() or None})
+            if current_name:  # Save previous pattern
+                patterns.append(
+                    {
+                        "name": current_name,
+                        "description": "\n".join(current_desc_lines).strip() or None,
+                    }
+                )
                 current_desc_lines = []
             current_name = line[3:].strip()
         elif current_name and line and not line.startswith("#"):
             current_desc_lines.append(line)
 
-    if current_name: # Save the last pattern
-        patterns.append({"name": current_name, "description": "\n".join(current_desc_lines).strip() or None})
+    if current_name:  # Save the last pattern
+        patterns.append(
+            {
+                "name": current_name,
+                "description": "\n".join(current_desc_lines).strip() or None,
+            }
+        )
     return patterns
 
-def _parse_custom_data_category_md(content: str, category_name: str) -> List[Dict[str, Any]]:
+
+def _parse_custom_data_category_md(
+    content: str, category_name: str
+) -> List[Dict[str, Any]]:
     """Parses a custom_data category markdown file."""
     items = []
     # Split by '### ' for keys, then parse the JSON block
-    key_blocks = re.split(r'\n### ', content)
+    key_blocks = re.split(r"\n### ", content)
     for block in key_blocks:
         if not block.strip() or "```json" not in block:
             continue
 
-        key_match = re.match(r"(.+?)\n+```json\n(.*?)\n```", block.strip(), re.DOTALL | re.MULTILINE)
+        key_match = re.match(
+            r"(.+?)\n+```json\n(.*?)\n```", block.strip(), re.DOTALL | re.MULTILINE
+        )
         if key_match:
             key = key_match.group(1).strip()
             json_str_value = key_match.group(2).strip()
@@ -1187,11 +1494,15 @@ def _parse_custom_data_category_md(content: str, category_name: str) -> List[Dic
                 value = json.loads(json_str_value)
                 items.append({"category": category_name, "key": key, "value": value})
             except json.JSONDecodeError as e:
-                log.warning(f"Could not parse JSON for custom data {category_name}/{key}: {e}. Value: '{json_str_value}'")
+                log.warning(
+                    f"Could not parse JSON for custom data {category_name}/{key}: {e}. Value: '{json_str_value}'"
+                )
     return items
 
 
-def handle_import_markdown_to_conport(args: models.ImportMarkdownToConportArgs) -> Dict[str, Any]:
+def handle_import_markdown_to_conport(
+    args: models.ImportMarkdownToConportArgs,
+) -> Dict[str, Any]:
     """
     Imports data from markdown files into Engrams for a workspace.
     Assumes 'args' is an already validated Pydantic model instance.
@@ -1203,22 +1514,54 @@ def handle_import_markdown_to_conport(args: models.ImportMarkdownToConportArgs) 
     if not input_path.is_dir():
         raise ToolArgumentError(f"Input directory not found: {input_path}")
 
-    log.info(f"Importing Engrams data for workspace '{args.workspace_id}' from '{input_path}'")
-    summary_report = {"status": "success", "message": "Import process initiated.", "files_processed": [], "items_logged": {}, "errors": []}
+    log.info(
+        f"Importing Engrams data for workspace '{args.workspace_id}' from '{input_path}'"
+    )
+    summary_report = {
+        "status": "success",
+        "message": "Import process initiated.",
+        "files_processed": [],
+        "items_logged": {},
+        "errors": [],
+    }
 
     # This handler will be called by a tool wrapper in main.py.
     # It calls other refactored handlers in this file.
 
     # Define which handler and Pydantic model to use for each file type
     file_processing_map = {
-        "product_context.md": (_parse_product_or_active_context_md, handle_update_product_context, models.UpdateContextArgs),
-        "active_context.md": (_parse_product_or_active_context_md, handle_update_active_context, models.UpdateContextArgs),
-        "decision_log.md": (_parse_decisions_md, handle_log_decision, models.LogDecisionArgs),
-        "progress_log.md": (_parse_progress_md, handle_log_progress, models.LogProgressArgs),
-        "system_patterns.md": (_parse_system_patterns_md, handle_log_system_pattern, models.LogSystemPatternArgs),
+        "product_context.md": (
+            _parse_product_or_active_context_md,
+            handle_update_product_context,
+            models.UpdateContextArgs,
+        ),
+        "active_context.md": (
+            _parse_product_or_active_context_md,
+            handle_update_active_context,
+            models.UpdateContextArgs,
+        ),
+        "decision_log.md": (
+            _parse_decisions_md,
+            handle_log_decision,
+            models.LogDecisionArgs,
+        ),
+        "progress_log.md": (
+            _parse_progress_md,
+            handle_log_progress,
+            models.LogProgressArgs,
+        ),
+        "system_patterns.md": (
+            _parse_system_patterns_md,
+            handle_log_system_pattern,
+            models.LogSystemPatternArgs,
+        ),
     }
 
-    for filename, (parser_func, target_handler_func, pydantic_arg_model) in file_processing_map.items():
+    for filename, (
+        parser_func,
+        target_handler_func,
+        pydantic_arg_model,
+    ) in file_processing_map.items():
         file_to_import = input_path / filename
         if file_to_import.is_file():
             try:
@@ -1227,21 +1570,31 @@ def handle_import_markdown_to_conport(args: models.ImportMarkdownToConportArgs) 
                 parsed_data = parser_func(content_str)
                 summary_report["files_processed"].append(filename)
 
-                item_type_key = filename.split('.')[0] # Define item_type_key
+                item_type_key = filename.split(".")[0]  # Define item_type_key
 
                 if item_type_key in ["product_context", "active_context"]:
                     # For these, parsed_data is the content dict itself
-                    handler_call_args = pydantic_arg_model(workspace_id=args.workspace_id, content=parsed_data)
+                    handler_call_args = pydantic_arg_model(
+                        workspace_id=args.workspace_id, content=parsed_data
+                    )
                     target_handler_func(handler_call_args)
-                    summary_report["items_logged"][item_type_key] = summary_report["items_logged"].get(item_type_key, 0) + 1
-                else: # List based items (decisions, progress, system_patterns)
-                    for item_data in parsed_data: # parsed_data is a list of dicts
-                        handler_call_args = pydantic_arg_model(workspace_id=args.workspace_id, **item_data)
+                    summary_report["items_logged"][item_type_key] = (
+                        summary_report["items_logged"].get(item_type_key, 0) + 1
+                    )
+                else:  # List based items (decisions, progress, system_patterns)
+                    for item_data in parsed_data:  # parsed_data is a list of dicts
+                        handler_call_args = pydantic_arg_model(
+                            workspace_id=args.workspace_id, **item_data
+                        )
                         target_handler_func(handler_call_args)
-                        summary_report["items_logged"][item_type_key] = summary_report["items_logged"].get(item_type_key, 0) + 1
+                        summary_report["items_logged"][item_type_key] = (
+                            summary_report["items_logged"].get(item_type_key, 0) + 1
+                        )
             except Exception as e:
                 log.error(f"Error processing file {filename}: {e}")
-                summary_report["errors"].append(f"Error processing {filename}: {str(e)}")
+                summary_report["errors"].append(
+                    f"Error processing {filename}: {str(e)}"
+                )
         else:
             log.warning(f"File not found for import: {file_to_import}")
             summary_report["errors"].append(f"File not found: {filename}")
@@ -1250,23 +1603,36 @@ def handle_import_markdown_to_conport(args: models.ImportMarkdownToConportArgs) 
     custom_data_dir = input_path / "custom_data"
     if custom_data_dir.is_dir():
         summary_report["files_processed"].append("custom_data/*")
-        for category_md_file in custom_data_dir.glob("*.md"): # Renamed variable
+        for category_md_file in custom_data_dir.glob("*.md"):  # Renamed variable
             try:
                 category_name = category_md_file.stem.replace("_", " ")
                 with open(category_md_file, "r", encoding="utf-8") as f:
                     content_str = f.read()
-                parsed_custom_items = _parse_custom_data_category_md(content_str, category_name)
+                parsed_custom_items = _parse_custom_data_category_md(
+                    content_str, category_name
+                )
                 for item_data in parsed_custom_items:
                     # item_data already contains 'category', 'key', 'value'
-                    handler_args = models.LogCustomDataArgs(workspace_id=args.workspace_id, **item_data)
+                    handler_args = models.LogCustomDataArgs(
+                        workspace_id=args.workspace_id, **item_data
+                    )
                     handle_log_custom_data(handler_args)
-                    summary_report["items_logged"]["custom_data"] = summary_report["items_logged"].get("custom_data", 0) + 1
+                    summary_report["items_logged"]["custom_data"] = (
+                        summary_report["items_logged"].get("custom_data", 0) + 1
+                    )
             except Exception as e:
-                log.error(f"Error processing custom data file {category_md_file.name}: {e}")
-                summary_report["errors"].append(f"Error processing {category_md_file.name}: {str(e)}")
+                log.error(
+                    f"Error processing custom data file {category_md_file.name}: {e}"
+                )
+                summary_report["errors"].append(
+                    f"Error processing {category_md_file.name}: {str(e)}"
+                )
 
-    summary_report["message"] = f"Engrams data import from '{input_path}' complete. See details."
+    summary_report["message"] = (
+        f"Engrams data import from '{input_path}' complete. See details."
+    )
     return summary_report
+
 
 def handle_link_engrams_items(args: models.LinkConportItemsArgs) -> Dict[str, Any]:
     """
@@ -1280,17 +1646,20 @@ def handle_link_engrams_items(args: models.LinkConportItemsArgs) -> Dict[str, An
             target_item_type=args.target_item_type,
             target_item_id=args.target_item_id,
             relationship_type=args.relationship_type,
-            description=args.description
+            description=args.description,
             # workspace_id is handled by the db function based on connection
             # timestamp is handled by Pydantic model default_factory
         )
         logged_link = db.log_context_link(args.workspace_id, link_to_create)
-        return logged_link.model_dump(mode='json')
+        return logged_link.model_dump(mode="json")
     except DatabaseError as e:
         raise ContextPortalError(f"Database error linking Engrams items: {e}")
     except Exception as e:
-        log.exception(f"Unexpected error in link_engrams_items for workspace {args.workspace_id}")
+        log.exception(
+            f"Unexpected error in link_engrams_items for workspace {args.workspace_id}"
+        )
         raise ContextPortalError(f"Unexpected error linking Engrams items: {e}")
+
 
 def handle_get_linked_items(args: models.GetLinkedItemsArgs) -> List[Dict[str, Any]]:
     """
@@ -1304,14 +1673,17 @@ def handle_get_linked_items(args: models.GetLinkedItemsArgs) -> List[Dict[str, A
             item_id=args.item_id,
             relationship_type_filter=args.relationship_type_filter,
             linked_item_type_filter=args.linked_item_type_filter,
-            limit=args.limit
+            limit=args.limit,
         )
-        return [link.model_dump(mode='json') for link in links_list]
+        return [link.model_dump(mode="json") for link in links_list]
     except DatabaseError as e:
         raise ContextPortalError(f"Database error retrieving context links: {e}")
     except Exception as e:
-        log.exception(f"Unexpected error in get_linked_items for workspace {args.workspace_id}")
+        log.exception(
+            f"Unexpected error in get_linked_items for workspace {args.workspace_id}"
+        )
         raise ContextPortalError(f"Unexpected error retrieving context links: {e}")
+
 
 def handle_get_item_history(args: models.GetItemHistoryArgs) -> List[Dict[str, Any]]:
     """
@@ -1327,19 +1699,26 @@ def handle_get_item_history(args: models.GetItemHistoryArgs) -> List[Dict[str, A
 
         serializable_history = []
         for entry in history_entries:
-            entry_copy = entry.copy() # Avoid modifying the original dict from db
+            entry_copy = entry.copy()  # Avoid modifying the original dict from db
             if isinstance(entry_copy.get("timestamp"), datetime):
                 entry_copy["timestamp"] = entry_copy["timestamp"].isoformat()
             serializable_history.append(entry_copy)
 
         return serializable_history
-    except ValueError as e: # From db function if item_type is somehow invalid post-Pydantic
-         raise ToolArgumentError(str(e))
+    except (
+        ValueError
+    ) as e:  # From db function if item_type is somehow invalid post-Pydantic
+        raise ToolArgumentError(str(e))
     except DatabaseError as e:
-        raise ContextPortalError(f"Database error retrieving item history for {args.item_type}: {e}")
+        raise ContextPortalError(
+            f"Database error retrieving item history for {args.item_type}: {e}"
+        )
     except Exception as e:
-        log.exception(f"Unexpected error in get_item_history for workspace {args.workspace_id}, item_type {args.item_type}")
+        log.exception(
+            f"Unexpected error in get_item_history for workspace {args.workspace_id}, item_type {args.item_type}"
+        )
         raise ContextPortalError(f"Unexpected error retrieving item history: {e}")
+
 
 # --- Batch Logging Handler ---
 
@@ -1351,13 +1730,16 @@ _SINGLE_ITEM_HANDLERS_MAP = {
     # Add other loggable item types here if needed
 }
 
+
 def handle_batch_log_items(args: models.BatchLogItemsArgs) -> Dict[str, Any]:
     """
     Handles the 'batch_log_items' MCP tool.
     Logs multiple items of a specified type.
     """
     if args.item_type not in _SINGLE_ITEM_HANDLERS_MAP:
-        raise ToolArgumentError(f"Unsupported item_type for batch logging: {args.item_type}. Supported types: {list(_SINGLE_ITEM_HANDLERS_MAP.keys())}")
+        raise ToolArgumentError(
+            f"Unsupported item_type for batch logging: {args.item_type}. Supported types: {list(_SINGLE_ITEM_HANDLERS_MAP.keys())}"
+        )
 
     handler_func, pydantic_model = _SINGLE_ITEM_HANDLERS_MAP[args.item_type]
 
@@ -1375,26 +1757,44 @@ def handle_batch_log_items(args: models.BatchLogItemsArgs) -> Dict[str, Any]:
             results.append(result)
             success_count += 1
         except ValidationError as ve:
-            log.error(f"Validation error for item {i} in batch_log_items ({args.item_type}): {ve}")
+            log.error(
+                f"Validation error for item {i} in batch_log_items ({args.item_type}): {ve}"
+            )
             errors.append({"item_index": i, "error": str(ve), "data": item_data_dict})
             failure_count += 1
         except ContextPortalError as cpe:
-            log.error(f"ContextPortalError for item {i} in batch_log_items ({args.item_type}): {cpe}")
+            log.error(
+                f"ContextPortalError for item {i} in batch_log_items ({args.item_type}): {cpe}"
+            )
             errors.append({"item_index": i, "error": str(cpe), "data": item_data_dict})
             failure_count += 1
         except Exception as e:
-            log.exception(f"Unexpected error for item {i} in batch_log_items ({args.item_type})")
-            errors.append({"item_index": i, "error": f"Unexpected server error: {type(e).__name__}", "data": item_data_dict})
+            log.exception(
+                f"Unexpected error for item {i} in batch_log_items ({args.item_type})"
+            )
+            errors.append(
+                {
+                    "item_index": i,
+                    "error": f"Unexpected server error: {type(e).__name__}",
+                    "data": item_data_dict,
+                }
+            )
             failure_count += 1
 
     return {
-        "status": "partial_success" if success_count > 0 and failure_count > 0 else ("success" if failure_count == 0 else "failure"),
+        "status": (
+            "partial_success"
+            if success_count > 0 and failure_count > 0
+            else ("success" if failure_count == 0 else "failure")
+        ),
         "message": f"Batch log for '{args.item_type}': {success_count} succeeded, {failure_count} failed.",
         "successful_items": results,
-        "failed_items": errors
+        "failed_items": errors,
     }
 
+
 # --- Deletion Tool Handlers ---
+
 
 def handle_delete_decision_by_id(args: models.DeleteDecisionByIdArgs) -> Dict[str, Any]:
     """
@@ -1409,57 +1809,93 @@ def handle_delete_decision_by_id(args: models.DeleteDecisionByIdArgs) -> Dict[st
                 vector_store_service.delete_item_embedding(
                     workspace_id=args.workspace_id,
                     item_type="decision",
-                    item_id=str(args.decision_id)
+                    item_id=str(args.decision_id),
                 )
-                log.info(f"Successfully deleted embedding for decision ID {args.decision_id}")
-                return {"status": "success", "message": f"Decision ID {args.decision_id} and its embedding deleted successfully."}
+                log.info(
+                    f"Successfully deleted embedding for decision ID {args.decision_id}"
+                )
+                return {
+                    "status": "success",
+                    "message": f"Decision ID {args.decision_id} and its embedding deleted successfully.",
+                }
             except Exception as e_vec_del:
-                log.error(f"Failed to delete embedding for decision ID {args.decision_id} (DB record was deleted): {e_vec_del}", exc_info=True)
+                log.error(
+                    f"Failed to delete embedding for decision ID {args.decision_id} (DB record was deleted): {e_vec_del}",
+                    exc_info=True,
+                )
                 # Return success for DB deletion but acknowledge embedding deletion failure.
                 return {
                     "status": "partial_success",
-                    "message": f"Decision ID {args.decision_id} deleted from database, but failed to delete its embedding: {e_vec_del}"
+                    "message": f"Decision ID {args.decision_id} deleted from database, but failed to delete its embedding: {e_vec_del}",
                 }
         else:
             # This case means the ID was valid (e.g. integer) but not found in DB.
             # No need to attempt vector deletion if not found in DB.
-            return {"status": "success", "message": f"Decision ID {args.decision_id} not found in database."}
+            return {
+                "status": "success",
+                "message": f"Decision ID {args.decision_id} not found in database.",
+            }
     except DatabaseError as e:
-        raise ContextPortalError(f"Database error deleting decision ID {args.decision_id}: {e}")
+        raise ContextPortalError(
+            f"Database error deleting decision ID {args.decision_id}: {e}"
+        )
     except Exception as e:
-        log.exception(f"Unexpected error in delete_decision_by_id for workspace {args.workspace_id}, decision ID {args.decision_id}")
+        log.exception(
+            f"Unexpected error in delete_decision_by_id for workspace {args.workspace_id}, decision ID {args.decision_id}"
+        )
         raise ContextPortalError(f"Unexpected error deleting decision: {e}")
 
-def handle_delete_system_pattern_by_id(args: models.DeleteSystemPatternByIdArgs) -> Dict[str, Any]:
+
+def handle_delete_system_pattern_by_id(
+    args: models.DeleteSystemPatternByIdArgs,
+) -> Dict[str, Any]:
     """
     Handles the 'delete_system_pattern_by_id' MCP tool.
     Deletes a system pattern by its ID.
     """
     try:
-        deleted_from_db = db.delete_system_pattern_by_id(args.workspace_id, args.pattern_id)
+        deleted_from_db = db.delete_system_pattern_by_id(
+            args.workspace_id, args.pattern_id
+        )
 
         if deleted_from_db:
             try:
                 vector_store_service.delete_item_embedding(
                     workspace_id=args.workspace_id,
                     item_type="system_pattern",
-                    item_id=str(args.pattern_id)
+                    item_id=str(args.pattern_id),
                 )
-                log.info(f"Successfully deleted embedding for system pattern ID {args.pattern_id}")
-                return {"status": "success", "message": f"System pattern ID {args.pattern_id} and its embedding deleted successfully."}
+                log.info(
+                    f"Successfully deleted embedding for system pattern ID {args.pattern_id}"
+                )
+                return {
+                    "status": "success",
+                    "message": f"System pattern ID {args.pattern_id} and its embedding deleted successfully.",
+                }
             except Exception as e_vec_del:
-                log.error(f"Failed to delete embedding for system pattern ID {args.pattern_id} (DB record was deleted): {e_vec_del}", exc_info=True)
+                log.error(
+                    f"Failed to delete embedding for system pattern ID {args.pattern_id} (DB record was deleted): {e_vec_del}",
+                    exc_info=True,
+                )
                 return {
                     "status": "partial_success",
-                    "message": f"System pattern ID {args.pattern_id} deleted from database, but failed to delete its embedding: {e_vec_del}"
+                    "message": f"System pattern ID {args.pattern_id} deleted from database, but failed to delete its embedding: {e_vec_del}",
                 }
         else:
-            return {"status": "success", "message": f"System pattern ID {args.pattern_id} not found in database."}
+            return {
+                "status": "success",
+                "message": f"System pattern ID {args.pattern_id} not found in database.",
+            }
     except DatabaseError as e:
-        raise ContextPortalError(f"Database error deleting system pattern ID {args.pattern_id}: {e}")
+        raise ContextPortalError(
+            f"Database error deleting system pattern ID {args.pattern_id}: {e}"
+        )
     except Exception as e:
-        log.exception(f"Unexpected error in delete_system_pattern_by_id for workspace {args.workspace_id}, pattern ID {args.pattern_id}")
+        log.exception(
+            f"Unexpected error in delete_system_pattern_by_id for workspace {args.workspace_id}, pattern ID {args.pattern_id}"
+        )
         raise ContextPortalError(f"Unexpected error deleting system pattern: {e}")
+
 
 # --- Obsolete MCP Dispatcher Logic ---
 # The following (TOOL_DESCRIPTIONS, handle_list_tools, TOOL_HANDLERS, dispatch_tool)
@@ -1468,6 +1904,7 @@ def handle_delete_system_pattern_by_id(args: models.DeleteSystemPatternByIdArgs)
 
 
 # --- Governance Tool Handlers (Feature 1) ---
+
 
 def handle_create_scope(args: gov_models.CreateScopeArgs) -> Dict[str, Any]:
     """Creates a new context scope (team or individual)."""
@@ -1479,7 +1916,7 @@ def handle_create_scope(args: gov_models.CreateScopeArgs) -> Dict[str, Any]:
             created_by=args.created_by,
         )
         result = gov_db_ops.create_scope(args.workspace_id, scope)
-        return {"status": "success", "scope": result.model_dump(mode='json')}
+        return {"status": "success", "scope": result.model_dump(mode="json")}
     except DatabaseError as e:
         raise ContextPortalError(f"Database error creating scope: {e}")
     except Exception as e:
@@ -1491,7 +1928,7 @@ def handle_get_scopes(args: gov_models.GetScopesArgs) -> List[Dict[str, Any]]:
     """Gets all context scopes, optionally filtered by type."""
     try:
         scopes = gov_db_ops.get_scopes(args.workspace_id, scope_type=args.scope_type)
-        return [s.model_dump(mode='json') for s in scopes]
+        return [s.model_dump(mode="json") for s in scopes]
     except DatabaseError as e:
         raise ContextPortalError(f"Database error getting scopes: {e}")
     except Exception as e:
@@ -1499,7 +1936,9 @@ def handle_get_scopes(args: gov_models.GetScopesArgs) -> List[Dict[str, Any]]:
         raise ContextPortalError(f"Unexpected error getting scopes: {e}")
 
 
-def handle_log_governance_rule(args: gov_models.LogGovernanceRuleArgs) -> Dict[str, Any]:
+def handle_log_governance_rule(
+    args: gov_models.LogGovernanceRuleArgs,
+) -> Dict[str, Any]:
     """Logs a new governance rule."""
     try:
         rule = gov_models.GovernanceRule(
@@ -1510,7 +1949,7 @@ def handle_log_governance_rule(args: gov_models.LogGovernanceRuleArgs) -> Dict[s
             description=args.description,
         )
         result = gov_db_ops.log_governance_rule(args.workspace_id, rule)
-        return {"status": "success", "rule": result.model_dump(mode='json')}
+        return {"status": "success", "rule": result.model_dump(mode="json")}
     except DatabaseError as e:
         raise ContextPortalError(f"Database error logging governance rule: {e}")
     except Exception as e:
@@ -1518,7 +1957,9 @@ def handle_log_governance_rule(args: gov_models.LogGovernanceRuleArgs) -> Dict[s
         raise ContextPortalError(f"Unexpected error logging governance rule: {e}")
 
 
-def handle_get_governance_rules(args: gov_models.GetGovernanceRulesArgs) -> List[Dict[str, Any]]:
+def handle_get_governance_rules(
+    args: gov_models.GetGovernanceRulesArgs,
+) -> List[Dict[str, Any]]:
     """Gets governance rules for a scope, optionally filtered by entity type."""
     try:
         rules = gov_db_ops.get_governance_rules(
@@ -1526,7 +1967,7 @@ def handle_get_governance_rules(args: gov_models.GetGovernanceRulesArgs) -> List
             scope_id=args.scope_id,
             entity_type=args.entity_type,
         )
-        return [r.model_dump(mode='json') for r in rules]
+        return [r.model_dump(mode="json") for r in rules]
     except DatabaseError as e:
         raise ContextPortalError(f"Database error getting governance rules: {e}")
     except Exception as e:
@@ -1538,7 +1979,9 @@ def handle_check_compliance(args: gov_models.CheckComplianceArgs) -> Dict[str, A
     """Manually checks an item against team governance rules."""
     try:
         # 1. Get the item's scope_id
-        scope_id = gov_db_ops.get_item_scope_id(args.workspace_id, args.item_type, args.item_id)
+        scope_id = gov_db_ops.get_item_scope_id(
+            args.workspace_id, args.item_type, args.item_id
+        )
 
         if scope_id is None:
             return {
@@ -1546,23 +1989,23 @@ def handle_check_compliance(args: gov_models.CheckComplianceArgs) -> Dict[str, A
                 "result": gov_models.ConflictCheckResult(
                     has_conflict=False,
                     action="allow",
-                    warnings=["Item has no scope assigned; governance check skipped."]
-                ).model_dump(mode='json')
+                    warnings=["Item has no scope assigned; governance check skipped."],
+                ).model_dump(mode="json"),
             }
 
         # 2. Build item_data from the entity's raw row
         #    We need to query the item's data for the conflict detector
         table_map = {
-            'decision': 'decisions',
-            'system_pattern': 'system_patterns',
-            'progress_entry': 'progress_entries',
-            'custom_data': 'custom_data',
+            "decision": "decisions",
+            "system_pattern": "system_patterns",
+            "progress_entry": "progress_entries",
+            "custom_data": "custom_data",
         }
         table = table_map.get(args.item_type)
         if not table:
             return {
                 "status": "error",
-                "error": f"Unsupported item_type for compliance check: {args.item_type}"
+                "error": f"Unsupported item_type for compliance check: {args.item_type}",
             }
 
         conn = db.get_db_connection(args.workspace_id)
@@ -1574,16 +2017,16 @@ def handle_check_compliance(args: gov_models.CheckComplianceArgs) -> Dict[str, A
         if not row:
             return {
                 "status": "error",
-                "error": f"{args.item_type} with id {args.item_id} not found."
+                "error": f"{args.item_type} with id {args.item_id} not found.",
             }
 
         item_data = dict(row)
         # Parse tags if stored as JSON string
-        if 'tags' in item_data and isinstance(item_data['tags'], str):
+        if "tags" in item_data and isinstance(item_data["tags"], str):
             try:
-                item_data['tags'] = json.loads(item_data['tags'])
+                item_data["tags"] = json.loads(item_data["tags"])
             except (json.JSONDecodeError, TypeError):
-                item_data['tags'] = []
+                item_data["tags"] = []
 
         # 3. Run conflict detection
         check_result = conflict_detector.check_conflicts(
@@ -1593,10 +2036,7 @@ def handle_check_compliance(args: gov_models.CheckComplianceArgs) -> Dict[str, A
             scope_id=scope_id,
         )
 
-        return {
-            "status": "success",
-            "result": check_result.model_dump(mode='json')
-        }
+        return {"status": "success", "result": check_result.model_dump(mode="json")}
     except DatabaseError as e:
         raise ContextPortalError(f"Database error checking compliance: {e}")
     except Exception as e:
@@ -1604,7 +2044,9 @@ def handle_check_compliance(args: gov_models.CheckComplianceArgs) -> Dict[str, A
         raise ContextPortalError(f"Unexpected error checking compliance: {e}")
 
 
-def handle_get_scope_amendments(args: gov_models.GetScopeAmendmentsArgs) -> List[Dict[str, Any]]:
+def handle_get_scope_amendments(
+    args: gov_models.GetScopeAmendmentsArgs,
+) -> List[Dict[str, Any]]:
     """Gets scope amendments with optional filters."""
     try:
         amendments = gov_db_ops.get_scope_amendments(
@@ -1612,7 +2054,7 @@ def handle_get_scope_amendments(args: gov_models.GetScopeAmendmentsArgs) -> List
             status=args.status,
             scope_id=args.scope_id,
         )
-        return [a.model_dump(mode='json') for a in amendments]
+        return [a.model_dump(mode="json") for a in amendments]
     except DatabaseError as e:
         raise ContextPortalError(f"Database error getting scope amendments: {e}")
     except Exception as e:
@@ -1632,12 +2074,12 @@ def handle_review_amendment(args: gov_models.ReviewAmendmentArgs) -> Dict[str, A
         if updated:
             return {
                 "status": "success",
-                "message": f"Amendment {args.amendment_id} updated to '{args.status}' by {args.reviewed_by}."
+                "message": f"Amendment {args.amendment_id} updated to '{args.status}' by {args.reviewed_by}.",
             }
         else:
             return {
                 "status": "success",
-                "message": f"Amendment {args.amendment_id} not found."
+                "message": f"Amendment {args.amendment_id} not found.",
             }
     except DatabaseError as e:
         raise ContextPortalError(f"Database error reviewing amendment: {e}")
@@ -1646,7 +2088,9 @@ def handle_review_amendment(args: gov_models.ReviewAmendmentArgs) -> Dict[str, A
         raise ContextPortalError(f"Unexpected error reviewing amendment: {e}")
 
 
-def handle_get_effective_context(args: gov_models.GetEffectiveContextArgs) -> Dict[str, Any]:
+def handle_get_effective_context(
+    args: gov_models.GetEffectiveContextArgs,
+) -> Dict[str, Any]:
     """Gets merged team + individual context for a developer scope.
 
     Retrieves the individual scope, finds its parent team scope,
@@ -1659,10 +2103,10 @@ def handle_get_effective_context(args: gov_models.GetEffectiveContextArgs) -> Di
         if not individual_scope:
             return {"status": "error", "error": f"Scope {args.scope_id} not found."}
 
-        if individual_scope.scope_type != 'individual':
+        if individual_scope.scope_type != "individual":
             return {
                 "status": "error",
-                "error": f"Scope {args.scope_id} is not an individual scope (type: {individual_scope.scope_type})."
+                "error": f"Scope {args.scope_id} is not an individual scope (type: {individual_scope.scope_type}).",
             }
 
         team_scope_id = individual_scope.parent_scope_id
@@ -1674,8 +2118,8 @@ def handle_get_effective_context(args: gov_models.GetEffectiveContextArgs) -> Di
         cursor = conn.cursor()
 
         effective = {
-            "individual_scope": individual_scope.model_dump(mode='json'),
-            "team_scope": team_scope.model_dump(mode='json') if team_scope else None,
+            "individual_scope": individual_scope.model_dump(mode="json"),
+            "team_scope": team_scope.model_dump(mode="json") if team_scope else None,
             "decisions": [],
             "system_patterns": [],
             "custom_data": [],
@@ -1688,32 +2132,32 @@ def handle_get_effective_context(args: gov_models.GetEffectiveContextArgs) -> Di
 
         # 2. Get team-scope items (listed first for precedence)
         if team_scope_id:
-            team_decisions = _get_items_for_scope('decisions', team_scope_id)
-            team_patterns = _get_items_for_scope('system_patterns', team_scope_id)
-            team_custom = _get_items_for_scope('custom_data', team_scope_id)
+            team_decisions = _get_items_for_scope("decisions", team_scope_id)
+            team_patterns = _get_items_for_scope("system_patterns", team_scope_id)
+            team_custom = _get_items_for_scope("custom_data", team_scope_id)
             for item in team_decisions:
-                item['_source_scope'] = 'team'
+                item["_source_scope"] = "team"
             for item in team_patterns:
-                item['_source_scope'] = 'team'
+                item["_source_scope"] = "team"
             for item in team_custom:
-                item['_source_scope'] = 'team'
-            effective['decisions'].extend(team_decisions)
-            effective['system_patterns'].extend(team_patterns)
-            effective['custom_data'].extend(team_custom)
+                item["_source_scope"] = "team"
+            effective["decisions"].extend(team_decisions)
+            effective["system_patterns"].extend(team_patterns)
+            effective["custom_data"].extend(team_custom)
 
         # 3. Get individual-scope items (appended after team items)
-        ind_decisions = _get_items_for_scope('decisions', args.scope_id)
-        ind_patterns = _get_items_for_scope('system_patterns', args.scope_id)
-        ind_custom = _get_items_for_scope('custom_data', args.scope_id)
+        ind_decisions = _get_items_for_scope("decisions", args.scope_id)
+        ind_patterns = _get_items_for_scope("system_patterns", args.scope_id)
+        ind_custom = _get_items_for_scope("custom_data", args.scope_id)
         for item in ind_decisions:
-            item['_source_scope'] = 'individual'
+            item["_source_scope"] = "individual"
         for item in ind_patterns:
-            item['_source_scope'] = 'individual'
+            item["_source_scope"] = "individual"
         for item in ind_custom:
-            item['_source_scope'] = 'individual'
-        effective['decisions'].extend(ind_decisions)
-        effective['system_patterns'].extend(ind_patterns)
-        effective['custom_data'].extend(ind_custom)
+            item["_source_scope"] = "individual"
+        effective["decisions"].extend(ind_decisions)
+        effective["system_patterns"].extend(ind_patterns)
+        effective["custom_data"].extend(ind_custom)
 
         cursor.close()
 
@@ -1727,6 +2171,7 @@ def handle_get_effective_context(args: gov_models.GetEffectiveContextArgs) -> Di
 
 # --- Code Bindings Tool Handlers (Feature 2) ---
 
+
 def handle_bind_code_to_item(args: binding_models.BindCodeToItemArgs) -> Dict[str, Any]:
     """Creates a code binding between a Engrams entity and file patterns."""
     try:
@@ -1739,7 +2184,7 @@ def handle_bind_code_to_item(args: binding_models.BindCodeToItemArgs) -> Dict[st
             confidence=args.confidence,
         )
         result = binding_db_ops.create_code_binding(args.workspace_id, binding)
-        return {"status": "success", "binding": result.model_dump(mode='json')}
+        return {"status": "success", "binding": result.model_dump(mode="json")}
     except DatabaseError as e:
         raise ContextPortalError(f"Database error creating code binding: {e}")
     except Exception as e:
@@ -1747,13 +2192,15 @@ def handle_bind_code_to_item(args: binding_models.BindCodeToItemArgs) -> Dict[st
         raise ContextPortalError(f"Unexpected error creating code binding: {e}")
 
 
-def handle_get_bindings_for_item(args: binding_models.GetBindingsForItemArgs) -> List[Dict[str, Any]]:
+def handle_get_bindings_for_item(
+    args: binding_models.GetBindingsForItemArgs,
+) -> List[Dict[str, Any]]:
     """Gets all code bindings for a Engrams entity."""
     try:
         bindings = binding_db_ops.get_bindings_for_item(
             args.workspace_id, args.item_type, args.item_id
         )
-        return [b.model_dump(mode='json') for b in bindings]
+        return [b.model_dump(mode="json") for b in bindings]
     except DatabaseError as e:
         raise ContextPortalError(f"Database error getting bindings: {e}")
     except Exception as e:
@@ -1761,12 +2208,15 @@ def handle_get_bindings_for_item(args: binding_models.GetBindingsForItemArgs) ->
         raise ContextPortalError(f"Unexpected error getting bindings: {e}")
 
 
-def handle_get_context_for_files(args: binding_models.GetContextForFilesArgs) -> Dict[str, Any]:
+def handle_get_context_for_files(
+    args: binding_models.GetContextForFilesArgs,
+) -> Dict[str, Any]:
     """Get all Engrams entities bound to the given file paths."""
     try:
         matched_bindings = binding_db_ops.get_bindings_matching_files(
-            args.workspace_id, args.file_paths,
-            binding_type_filter=args.binding_type_filter
+            args.workspace_id,
+            args.file_paths,
+            binding_type_filter=args.binding_type_filter,
         )
 
         # Deduplicate and group by entity type
@@ -1820,27 +2270,35 @@ def handle_verify_bindings(args: binding_models.VerifyBindingsArgs) -> Dict[str,
                 notes=notes,
             )
             binding_db_ops.log_binding_verification(args.workspace_id, verif)
-            results.append({
-                "binding_id": binding.id,
-                "file_pattern": binding.file_pattern,
-                "status": status,
-                "files_matched": files_matched,
-                "notes": notes,
-            })
+            results.append(
+                {
+                    "binding_id": binding.id,
+                    "file_pattern": binding.file_pattern,
+                    "status": status,
+                    "files_matched": files_matched,
+                    "notes": notes,
+                }
+            )
 
-        return {"status": "success", "verifications": results, "total_checked": len(results)}
+        return {
+            "status": "success",
+            "verifications": results,
+            "total_checked": len(results),
+        }
     except Exception as e:
         log.error("Error verifying bindings: %s", e, exc_info=True)
         return {"status": "error", "error": str(e)}
 
 
-def handle_get_stale_bindings(args: binding_models.GetStaleBindingsArgs) -> List[Dict[str, Any]]:
+def handle_get_stale_bindings(
+    args: binding_models.GetStaleBindingsArgs,
+) -> List[Dict[str, Any]]:
     """Gets bindings that haven't been verified recently or failed verification."""
     try:
         bindings = binding_db_ops.get_stale_bindings(
             args.workspace_id, days_stale=args.days_stale
         )
-        return [b.model_dump(mode='json') for b in bindings]
+        return [b.model_dump(mode="json") for b in bindings]
     except DatabaseError as e:
         raise ContextPortalError(f"Database error getting stale bindings: {e}")
     except Exception as e:
@@ -1867,14 +2325,22 @@ def handle_suggest_bindings(args: binding_models.SuggestBindingsArgs) -> Dict[st
         raise ContextPortalError(f"Unexpected error suggesting bindings: {e}")
 
 
-def handle_unbind_code_from_item(args: binding_models.UnbindCodeFromItemArgs) -> Dict[str, Any]:
+def handle_unbind_code_from_item(
+    args: binding_models.UnbindCodeFromItemArgs,
+) -> Dict[str, Any]:
     """Removes a code binding by its ID."""
     try:
         deleted = binding_db_ops.delete_code_binding(args.workspace_id, args.binding_id)
         if deleted:
-            return {"status": "success", "message": f"Binding {args.binding_id} deleted."}
+            return {
+                "status": "success",
+                "message": f"Binding {args.binding_id} deleted.",
+            }
         else:
-            return {"status": "success", "message": f"Binding {args.binding_id} not found."}
+            return {
+                "status": "success",
+                "message": f"Binding {args.binding_id} not found.",
+            }
     except DatabaseError as e:
         raise ContextPortalError(f"Database error deleting binding: {e}")
     except Exception as e:
@@ -1884,6 +2350,7 @@ def handle_unbind_code_from_item(args: binding_models.UnbindCodeFromItemArgs) ->
 
 # --- Context Budgeting Tool Handlers (Feature 3) ---
 
+
 def _gather_all_entities(workspace_id: str) -> List[Dict[str, Any]]:
     """Gather all Engrams entities from the workspace as tagged dicts."""
     candidates: List[Dict[str, Any]] = []
@@ -1892,7 +2359,7 @@ def _gather_all_entities(workspace_id: str) -> List[Dict[str, Any]]:
     try:
         decisions = db.get_decisions(workspace_id, limit=500)
         for d in decisions:
-            entity = d.model_dump(mode='json') if hasattr(d, 'model_dump') else dict(d)
+            entity = d.model_dump(mode="json") if hasattr(d, "model_dump") else dict(d)
             entity["_type"] = "decision"
             candidates.append(entity)
     except Exception as e:
@@ -1902,7 +2369,7 @@ def _gather_all_entities(workspace_id: str) -> List[Dict[str, Any]]:
     try:
         patterns = db.get_system_patterns(workspace_id)
         for p in patterns:
-            entity = p.model_dump(mode='json') if hasattr(p, 'model_dump') else dict(p)
+            entity = p.model_dump(mode="json") if hasattr(p, "model_dump") else dict(p)
             entity["_type"] = "system_pattern"
             candidates.append(entity)
     except Exception as e:
@@ -1912,7 +2379,9 @@ def _gather_all_entities(workspace_id: str) -> List[Dict[str, Any]]:
     try:
         progress = db.get_progress(workspace_id, limit=500)
         for pr in progress:
-            entity = pr.model_dump(mode='json') if hasattr(pr, 'model_dump') else dict(pr)
+            entity = (
+                pr.model_dump(mode="json") if hasattr(pr, "model_dump") else dict(pr)
+            )
             entity["_type"] = "progress"
             candidates.append(entity)
     except Exception as e:
@@ -1922,7 +2391,7 @@ def _gather_all_entities(workspace_id: str) -> List[Dict[str, Any]]:
     try:
         custom = db.get_custom_data(workspace_id)
         for c in custom:
-            entity = c.model_dump(mode='json') if hasattr(c, 'model_dump') else dict(c)
+            entity = c.model_dump(mode="json") if hasattr(c, "model_dump") else dict(c)
             entity["_type"] = "custom_data"
             candidates.append(entity)
     except Exception as e:
@@ -1931,16 +2400,16 @@ def _gather_all_entities(workspace_id: str) -> List[Dict[str, Any]]:
     return candidates
 
 
-def _compute_link_counts(workspace_id: str, candidates: List[Dict[str, Any]]) -> Dict[str, int]:
+def _compute_link_counts(
+    workspace_id: str, candidates: List[Dict[str, Any]]
+) -> Dict[str, int]:
     """Pre-compute link counts for all candidate entities."""
     link_counts: Dict[str, int] = {}
     for entity in candidates:
         key = f"{entity['_type']}:{entity.get('id', 0)}"
         try:
             links = db.get_context_links(
-                workspace_id,
-                item_type=entity["_type"],
-                item_id=entity.get("id")
+                workspace_id, item_type=entity["_type"], item_id=entity.get("id")
             )
             link_counts[key] = len(links)
         except Exception:
@@ -1948,7 +2417,9 @@ def _compute_link_counts(workspace_id: str, candidates: List[Dict[str, Any]]) ->
     return link_counts
 
 
-def handle_get_relevant_context(args: budget_models.GetRelevantContextArgs) -> Dict[str, Any]:
+def handle_get_relevant_context(
+    args: budget_models.GetRelevantContextArgs,
+) -> Dict[str, Any]:
     """Get budget-optimized relevant context for a task."""
     try:
         # 1. Gather all entities
@@ -1993,7 +2464,9 @@ def handle_get_relevant_context(args: budget_models.GetRelevantContextArgs) -> D
         return {"status": "error", "error": str(e)}
 
 
-def handle_estimate_context_size(args: budget_models.EstimateContextSizeArgs) -> Dict[str, Any]:
+def handle_estimate_context_size(
+    args: budget_models.EstimateContextSizeArgs,
+) -> Dict[str, Any]:
     """Preview context size and recommended budgets."""
     try:
         # 1. Gather entities
@@ -2014,27 +2487,39 @@ def handle_estimate_context_size(args: budget_models.EstimateContextSizeArgs) ->
         return {"status": "error", "error": str(e)}
 
 
-def handle_get_context_budget_config(args: budget_models.GetContextBudgetConfigArgs) -> Dict[str, Any]:
+def handle_get_context_budget_config(
+    args: budget_models.GetContextBudgetConfigArgs,
+) -> Dict[str, Any]:
     """Get current scoring weights configuration."""
     try:
         # Try to load from custom data
-        custom = db.get_custom_data(args.workspace_id, category="_engrams_config", key="budget_weights")
+        custom = db.get_custom_data(
+            args.workspace_id, category="_engrams_config", key="budget_weights"
+        )
         if custom:
             stored = custom[0]
-            value = stored.value if hasattr(stored, 'value') else stored.get('value', '{}')
+            value = (
+                stored.value if hasattr(stored, "value") else stored.get("value", "{}")
+            )
             if isinstance(value, str):
                 weights = json.loads(value)
             else:
                 weights = value
             return {"status": "success", "weights": weights, "source": "custom"}
         else:
-            return {"status": "success", "weights": dict(DEFAULT_WEIGHTS), "source": "default"}
+            return {
+                "status": "success",
+                "weights": dict(DEFAULT_WEIGHTS),
+                "source": "default",
+            }
     except Exception as e:
         log.error("Error getting budget config: %s", e, exc_info=True)
         return {"status": "error", "error": str(e)}
 
 
-def handle_update_context_budget_config(args: budget_models.UpdateContextBudgetConfigArgs) -> Dict[str, Any]:
+def handle_update_context_budget_config(
+    args: budget_models.UpdateContextBudgetConfigArgs,
+) -> Dict[str, Any]:
     """Update scoring weights configuration."""
     try:
         # Merge with defaults
@@ -2054,6 +2539,7 @@ def handle_update_context_budget_config(args: budget_models.UpdateContextBudgetC
 
 
 # --- Project Onboarding Tool Handlers (Feature 4) ---
+
 
 def handle_get_project_briefing(
     args: onboarding_models.GetProjectBriefingArgs,

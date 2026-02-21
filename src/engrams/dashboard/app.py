@@ -339,9 +339,7 @@ def create_app(
 
 def main():
     """CLI entry point for ``conport-dashboard``."""
-    parser = argparse.ArgumentParser(
-        description="Engrams Project Knowledge Dashboard"
-    )
+    parser = argparse.ArgumentParser(description="Engrams Project Knowledge Dashboard")
     parser.add_argument(
         "--workspace",
         "-w",
@@ -399,9 +397,7 @@ def main():
     db_path = os.path.join(workspace, "engrams", "context.db")
     if not os.path.exists(db_path):
         print(f"Error: Engrams database not found at {db_path}")
-        print(
-            f"Make sure '{workspace}' is a workspace with Engrams initialized."
-        )
+        print(f"Make sure '{workspace}' is a workspace with Engrams initialized.")
         sys.exit(1)
 
     if args.host != "127.0.0.1":

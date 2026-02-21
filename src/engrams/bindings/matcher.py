@@ -31,15 +31,15 @@ def match_file_against_pattern(file_path: str, pattern: str) -> bool:
         True if the file path matches the pattern.
     """
     # Normalize separators
-    norm_file = file_path.replace('\\', '/')
-    norm_pattern = pattern.replace('\\', '/')
+    norm_file = file_path.replace("\\", "/")
+    norm_pattern = pattern.replace("\\", "/")
 
     # Exact match
     if norm_file == norm_pattern:
         return True
 
     # fnmatch doesn't handle ** properly, so we handle it manually
-    if '**' in norm_pattern:
+    if "**" in norm_pattern:
         # Convert ** glob to regex
         regex = _glob_to_regex(norm_pattern)
         return bool(re.match(regex, norm_file))
@@ -47,10 +47,7 @@ def match_file_against_pattern(file_path: str, pattern: str) -> bool:
         return fnmatch.fnmatch(norm_file, norm_pattern)
 
 
-def match_files_in_workspace(
-    workspace_path: str,
-    pattern: str
-) -> List[str]:
+def match_files_in_workspace(workspace_path: str, pattern: str) -> List[str]:
     """
     Expand a glob pattern against the actual workspace filesystem.
 
@@ -91,7 +88,7 @@ def check_symbol_in_file(file_path: str, symbol_pattern: str) -> bool:
         True if the symbol is found in the file as a standalone symbol.
     """
     try:
-        with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+        with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
             content = f.read()
         # Use word boundary regex with negative lookbehind/lookahead
         # to exclude matches that are immediately adjacent to quotes
@@ -103,9 +100,7 @@ def check_symbol_in_file(file_path: str, symbol_pattern: str) -> bool:
 
 
 def verify_binding_pattern(
-    workspace_path: str,
-    file_pattern: str,
-    symbol_pattern: Optional[str] = None
+    workspace_path: str, file_pattern: str, symbol_pattern: Optional[str] = None
 ) -> Tuple[str, int, Optional[str]]:
     """
     Verify a binding's file and symbol patterns against the workspace.
@@ -123,7 +118,7 @@ def verify_binding_pattern(
     files_count = len(matched_files)
 
     if files_count == 0:
-        return ('pattern_empty', 0, f"No files matched pattern '{file_pattern}'")
+        return ("pattern_empty", 0, f"No files matched pattern '{file_pattern}'")
 
     if symbol_pattern:
         workspace = Path(workspace_path)
@@ -136,26 +131,26 @@ def verify_binding_pattern(
 
         if not symbol_found:
             return (
-                'symbol_not_found',
+                "symbol_not_found",
                 files_count,
-                f"Pattern matched {files_count} file(s) but symbol '{symbol_pattern}' not found"
+                f"Pattern matched {files_count} file(s) but symbol '{symbol_pattern}' not found",
             )
 
-    return ('valid', files_count, f"Pattern matched {files_count} file(s)")
+    return ("valid", files_count, f"Pattern matched {files_count} file(s)")
 
 
 def _glob_to_regex(pattern: str) -> str:
     """Convert a glob pattern with ** to a regex."""
-    parts = pattern.split('**')
+    parts = pattern.split("**")
     regex_parts = []
     for i, part in enumerate(parts):
         # Escape the non-glob parts
         escaped = re.escape(part)
         # Restore single * (which was escaped to \*)
-        escaped = escaped.replace(r'\*', '[^/]*')
+        escaped = escaped.replace(r"\*", "[^/]*")
         # Restore ? (which was escaped to \?)
-        escaped = escaped.replace(r'\?', '[^/]')
+        escaped = escaped.replace(r"\?", "[^/]")
         regex_parts.append(escaped)
     # Join with .* (any path segments)
-    regex = '.*'.join(regex_parts)
-    return f'^{regex}$'
+    regex = ".*".join(regex_parts)
+    return f"^{regex}$"

@@ -1,6 +1,7 @@
 """Pydantic models for the onboarding feature (Feature 4)."""
 
 from typing import ClassVar, List, Optional, Set
+
 from pydantic import Field, model_validator
 
 from ..db.models import BaseArgs, IntCoercionMixin

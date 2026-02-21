@@ -8,8 +8,8 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
-from .scorer import ScoredEntity
 from .estimator import estimate_tokens
+from .scorer import ScoredEntity
 
 log = logging.getLogger(__name__)
 
@@ -80,9 +80,7 @@ def select_context(
     for candidate in sorted_candidates:
         key = f"{candidate.entity_type}:{candidate.entity_id}"
         if key in must_include_keys and key not in selected_keys:
-            token_cost = estimate_tokens(
-                candidate.entity, format=format_preference
-            )
+            token_cost = estimate_tokens(candidate.entity, format=format_preference)
             # Must-include items are added even if they blow the budget
             result.selected.append(
                 {
@@ -91,8 +89,7 @@ def select_context(
                     "entity": candidate.entity,
                     "total_score": round(candidate.total_score, 4),
                     "score_breakdown": {
-                        k: round(v, 4)
-                        for k, v in candidate.score_breakdown.items()
+                        k: round(v, 4) for k, v in candidate.score_breakdown.items()
                     },
                     "token_cost": token_cost,
                     "format": format_preference,
@@ -122,8 +119,7 @@ def select_context(
                     "entity": candidate.entity,
                     "total_score": round(candidate.total_score, 4),
                     "score_breakdown": {
-                        k: round(v, 4)
-                        for k, v in candidate.score_breakdown.items()
+                        k: round(v, 4) for k, v in candidate.score_breakdown.items()
                     },
                     "token_cost": token_cost,
                     "format": used_format,

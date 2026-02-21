@@ -41,8 +41,12 @@ class ScoredEntity:
     """An entity with its computed relevance score and breakdown."""
 
     __slots__ = (
-        "entity", "entity_type", "entity_id", "total_score",
-        "score_breakdown", "token_estimate",
+        "entity",
+        "entity_type",
+        "entity_id",
+        "total_score",
+        "score_breakdown",
+        "token_estimate",
     )
 
     def __init__(
@@ -67,7 +71,9 @@ class ScoredEntity:
             "entity_id": self.entity_id,
             "entity": self.entity,
             "total_score": round(self.total_score, 4),
-            "score_breakdown": {k: round(v, 4) for k, v in self.score_breakdown.items()},
+            "score_breakdown": {
+                k: round(v, 4) for k, v in self.score_breakdown.items()
+            },
             "token_estimate": self.token_estimate,
         }
 
@@ -150,12 +156,8 @@ def score_entities(
         )
 
         # 4. Lifecycle status
-        status = (
-            entity.get("lifecycle_status") or entity.get("status") or "active"
-        )
-        breakdown["lifecycle_status"] = LIFECYCLE_SCORES.get(
-            status.lower(), 0.5
-        )
+        status = entity.get("lifecycle_status") or entity.get("status") or "active"
+        breakdown["lifecycle_status"] = LIFECYCLE_SCORES.get(status.lower(), 0.5)
 
         # 5. Scope priority
         visibility = entity.get("visibility", "workspace")
@@ -167,16 +169,13 @@ def score_entities(
         # 7. Explicit priority
         priority = entity.get("priority")
         if isinstance(priority, (int, float)):
-            breakdown["explicit_priority"] = min(
-                max(float(priority) / 10.0, 0.0), 1.0
-            )
+            breakdown["explicit_priority"] = min(max(float(priority) / 10.0, 0.0), 1.0)
         else:
             breakdown["explicit_priority"] = 0.5
 
         # Compute weighted total
         total = sum(
-            weights.get(factor, 0.0) * score
-            for factor, score in breakdown.items()
+            weights.get(factor, 0.0) * score for factor, score in breakdown.items()
         )
         total = min(max(total, 0.0), 1.0)
 

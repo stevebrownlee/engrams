@@ -117,9 +117,7 @@ class OllamaBridge:
                 f"Ollama returned status {response.status_code}",
             )
         except ImportError:
-            return {
-                "error": "httpx not installed. Install with: pip install httpx"
-            }
+            return {"error": "httpx not installed. Install with: pip install httpx"}
         except Exception as exc:
             return self._fallback_response(message, context_items, str(exc))
 
@@ -133,9 +131,7 @@ class OllamaBridge:
 
         # Try global FTS search first
         try:
-            fts_results = self.db_reader.global_search(
-                query, limit=self.context_limit
-            )
+            fts_results = self.db_reader.global_search(query, limit=self.context_limit)
             results.extend(fts_results)
         except Exception:
             pass
@@ -146,10 +142,7 @@ class OllamaBridge:
                 decisions = self.db_reader.get_decisions(
                     limit=self.context_limit - len(results)
                 )
-                existing = {
-                    (r.get("type"), r.get("id"))
-                    for r in results
-                }
+                existing = {(r.get("type"), r.get("id")) for r in results}
                 for d in decisions:
                     if ("decision", d.get("id")) not in existing:
                         results.append(
@@ -165,9 +158,7 @@ class OllamaBridge:
 
         return results[: self.context_limit]
 
-    def _build_prompt(
-        self, question: str, context_items: List[Dict[str, Any]]
-    ) -> str:
+    def _build_prompt(self, question: str, context_items: List[Dict[str, Any]]) -> str:
         """Build a prompt with Engrams context for a small local model."""
         context_text = ""
         for item in context_items:

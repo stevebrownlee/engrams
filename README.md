@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="./static/engram.sh.png" style="height:150px;" />
+<img src="https://raw.githubusercontent.com/stevebrownlee/engrams/refs/heads/main/static/engram.sh.png" style="height:150px;" />
 
 # Engrams
 
@@ -21,21 +21,65 @@ A governance-aware, context-intelligent development platform built on the Model 
 
 ## What is Engrams?
 
-Engrams is an **intelligent project memory system** that helps AI assistants deeply understand your software projects. Instead of relying on simple text files or scattered documentation, Engrams provides a structured, queryable knowledge graph that captures:
+Engrams is an **intelligent project memory system** that helps AI assistants deeply understand your software projects. Instead of relying on simple text files or scattered documentation, Engrams provides a structured, queryable knowledge graph.
 
-- **Decisions**: Why you chose PostgreSQL over MongoDB, why you're using microservices
-- **Progress**: Current tasks, blockers, what's in flight
-- **Patterns**: Architectural patterns, coding conventions, system designs
-- **Context**: Project goals, current focus, team agreements
-- **Custom Data**: Glossaries, specifications, any structured project knowledge
+### Stored Knowledge
 
-**Key Benefits:**
-- **Smarter AI Agents**: Give your AI assistant deep project understanding
-- **Fast Retrieval**: Semantic search finds relevant context instantly
-- **Knowledge Graph**: See how decisions, patterns, and code relate
-- **Team Governance**: Enforce team standards while allowing individual flexibility
-- **Token Efficient**: Smart budgeting returns only relevant context within token limits
-- **Codebase-Aware**: Link decisions to actual code files for spatial context
+| Type | Description |
+|------|-------------|
+| **Decisions** | Why you chose PostgreSQL over MongoDB, why you're using microservices |
+| **Progress** | Current tasks, blockers, what's in flight |
+| **Patterns** | Architectural patterns, coding conventions, system designs |
+| **Context** | Project goals, current focus, team agreements |
+| **Custom Data** | Glossaries, specifications, any structured project knowledge |
+
+---
+
+## Setup
+
+### MCP Server Configuration
+
+Engrams runs as a Model Context Protocol (MCP) server. Configure it in your MCP client's settings file (typically `mcp.json` or in your IDE's MCP configuration). The easiest way to use Engrams is via `uvx`, which automatically manages the Python environment:
+
+```json
+{
+  "mcpServers": {
+    "engrams": {
+      "command": "uvx",
+      "args": [
+        "--from",
+        "engrams",
+        "engrams",
+        "--mode",
+        "stdio",
+        "--log-level",
+        "INFO"
+      ]
+    }
+  }
+}
+```
+
+#### Configuration Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--mode` | Communication mode: `stdio` or `http` | `stdio` |
+| `--log-level` | Logging verbosity: `DEBUG`, `INFO`, `WARNING`, `ERROR` | `INFO` |
+| `--workspace_id` | Explicit workspace path (optional - auto-detected if omitted) | Auto-detected |
+| `--port` | Port for HTTP mode | `8000` |
+
+**Note:** Engrams automatically detects your workspace using project indicators (`.git`, `package.json`, `pyproject.toml`, etc.), so you typically don't need to specify `--workspace_id`.
+
+#### IDE-Specific Setup
+
+Add the MCP configuration to your IDE's settings:
+
+- **Roo Code**: Settings → MCP Servers
+- **Cline**: `.cline/cline_mcp_config.json`
+- **Windsurf**: Cascade settings
+- **Cursor**: Settings → MCP Servers
+- **Claude Desktop**: `~/.config/Claude/claude_desktop_config.json` (macOS/Linux) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows)
 
 ---
 
@@ -47,33 +91,28 @@ Store your project knowledge in a structured SQLite database instead of scattere
 
 **Purpose**: Provide reliable, queryable storage for all project context with one database per workspace.
 
-**Usage Example**:
-```python
-# Update product context (high-level project info)
-update_product_context(
-    workspace_id="/path/to/project",
-    content={
-        "name": "TaskMaster API",
-        "purpose": "RESTful API for task management",
-        "architecture": "Microservices with event sourcing",
-        "tech_stack": ["Python", "FastAPI", "PostgreSQL", "Redis"]
-    }
-)
+**How to use it:**
 
-# Log a decision
-log_decision(
-    workspace_id="/path/to/project",
-    summary="Use PostgreSQL for primary database",
-    rationale="Need ACID guarantees, complex queries, and mature ecosystem",
-    tags=["database", "architecture"]
-)
+```
+You: "Log this decision: We're using PostgreSQL for the primary database
+     because we need ACID guarantees and complex query support"
 
-# Track progress
-log_progress(
-    workspace_id="/path/to/project",
-    description="Implement user authentication",
-    status="IN_PROGRESS"
-)
+AI: Decision logged to Engrams:
+    Decision #23: Use PostgreSQL for primary database
+    Rationale: ACID guarantees, complex queries, mature ecosystem
+    Tags: database, architecture
+```
+
+**Later, when working on related features:**
+
+```
+You: "I'm implementing the user data persistence layer.
+     What decisions should guide this?"
+
+AI: Found relevant decision:
+    Decision #23: PostgreSQL is our primary database
+
+    I'll implement using SQLAlchemy with PostgreSQL...
 ```
 
 ---
@@ -84,216 +123,185 @@ Vector embeddings enable semantic search - find relevant context by meaning, not
 
 **Purpose**: Enable Retrieval Augmented Generation (RAG) so AI agents can access precise, contextually relevant information.
 
-**Usage Example**:
-```python
-# Semantic search across decisions
-search_decisions_fts(
-    workspace_id="/path/to/project",
-    query_term="database performance optimization"
-)
-# Returns decisions about caching, indexing, query optimization
+**How to use it:**
 
-# Search custom data (specs, glossary, etc)
-search_custom_data_value_fts(
-    workspace_id="/path/to/project",
-    query_term="authentication flow",
-    category_filter="technical_specs"
-)
+```
+You: "How should I handle caching for better performance?"
+
+AI: Searching for relevant decisions...
+
+    Found:
+    • Decision #8: Use Redis for session caching
+    • Decision #15: Cache invalidation strategy (TTL-based)
+    • Decision #22: Database query optimization with indexes
+
+    Based on these decisions, I recommend implementing Redis
+    for session caching with a 24-hour TTL...
 ```
 
-**What you get**: ChromaDB-powered vector storage that understands semantic similarity, not just exact matches.
+**What you get**: Your AI finds relevant context by understanding meaning, not just exact keyword matches. Ask about "performance optimization" and it finds decisions about caching, indexing, and query optimization.
 
 ---
 
-### Team Governance (Feature 1)
+### Team Governance
 
 Two-layer hierarchy (team/individual) with conflict detection and amendment workflows.
 
 **Purpose**: Enforce team standards while allowing individual developers flexibility. Prevent individual decisions from contradicting team-level architectural mandates.
 
-**Usage Example**:
-```python
-# Create team and individual scopes
-create_scope(
-    workspace_id="/path/to/project",
-    scope_type="team",
-    scope_name="Core Architecture",
-    created_by="tech_lead"
-)
+**How to use it:**
 
-create_scope(
-    workspace_id="/path/to/project",
-    scope_type="individual",
-    scope_name="alice_dev",
-    parent_scope_id=1,
-    created_by="alice"
-)
+```
+You: "I want to use MongoDB for the analytics module"
 
-# Set a team-level governance rule
-log_governance_rule(
-    workspace_id="/path/to/project",
-    scope_id=1,
-    rule_type="hard_block",
-    entity_type="decision",
-    rule_definition={"tags": ["database"], "keywords": ["MongoDB"]},
-    description="Team has standardized on PostgreSQL - no MongoDB"
-)
+AI: ⚠️ Governance Conflict Detected
 
-# When Alice tries to log a MongoDB decision, it gets blocked
-log_decision(
-    workspace_id="/path/to/project",
-    scope_id=2,  # Alice's individual scope
-    summary="Use MongoDB for analytics data",
-    tags=["database"]
-)
-# Returns: ConflictError - "Conflicts with Team Decision #5"
+    Your proposal conflicts with Team Decision #5:
+    "Standardize on PostgreSQL for all data storage"
+    Scope: Core Architecture (Team-level)
+
+    This is a hard block. Would you like to propose an amendment?
 ```
 
-**What you get**: Automatic conflict detection, amendment proposals, compliance tracking, and governance dashboards.
+**When you need an exception:**
+
+```
+You: "Propose an amendment to allow InfluxDB for time-series metrics"
+
+AI: Amendment proposal created:
+    Amendment #2 to Decision #5
+    Proposal: Allow InfluxDB for time-series metrics data
+    Rationale: PostgreSQL isn't optimized for high-volume time-series
+    Status: Pending team review
+
+    Your tech lead will be notified.
+```
 
 ---
 
-### Codebase Bindings (Feature 2)
+### Codebase Bindings
 
 Link Engrams entities to actual code files using glob patterns.
 
 **Purpose**: Bridge the gap between "what we decided" and "where it lives in code". Give AI agents spatial awareness of the codebase.
 
-**Usage Example**:
-```python
-# Bind a decision to the files it governs
-bind_code_to_item(
-    workspace_id="/path/to/project",
-    item_type="decision",
-    item_id=14,
-    file_pattern="src/auth/**/*.py",
-    binding_type="governed_by"
-)
+**How to use it:**
 
-# Bind a pattern to its implementation
-bind_code_to_item(
-    workspace_id="/path/to/project",
-    item_type="system_pattern",
-    item_id=3,
-    file_pattern="src/api/middleware/rate_limiter.py",
-    symbol_pattern="RateLimiter",
-    binding_type="implements"
-)
+```
+You: "Bind the rate limiting decision to the middleware implementation
+     in src/api/middleware/rate_limiter.py"
 
-# Get all relevant context for files you're editing
-get_context_for_files(
-    workspace_id="/path/to/project",
-    file_paths=["src/auth/login.py", "src/auth/session.py"]
-)
-# Returns: All decisions, patterns, and governance rules bound to those files
+AI: Binding created:
+    Decision #14 (Rate limiting) → src/api/middleware/rate_limiter.py
+    Relationship: implements
 ```
 
-**What you get**: Code-aware context retrieval, binding verification, automatic staleness detection.
+**When working on related code:**
+
+```
+You: "I'm adding a new API endpoint. What patterns should I follow?"
+
+AI: Checking code context for src/api/endpoints/...
+
+    Found Decision #14: Rate limiting (1000 req/min)
+    Implementation: src/api/middleware/rate_limiter.py
+
+    I'll apply the rate limiting middleware to your new endpoint...
+```
 
 ---
 
-### Context Budgeting (Feature 3)
+### Context Budgeting
 
 Intelligent token-aware context selection with relevance scoring.
 
 **Purpose**: Fit the most valuable context into your AI's token budget. No more dumping everything and hoping - get precisely ranked, budget-constrained results.
 
-**Usage Example**:
-```python
-# Get the most relevant context for a task, within budget
-get_relevant_context(
-    workspace_id="/path/to/project",
-    task_description="Implement rate limiting for the API",
-    token_budget=4000,
-    profile="task_focused",  # Prioritizes semantic similarity
-    file_paths=["src/api/middleware/"]
-)
+**How to use it:**
 
-# Returns:
-# - Top-scored decisions about rate limiting, API design
-# - Relevant system patterns
-# - Code bindings for those files
-# - All within 4000 tokens
-# - Excluded items listed with scores (so you know what didn't fit)
-
-# Preview context size before retrieval
-estimate_context_size(
-    workspace_id="/path/to/project",
-    task_description="Add OAuth2 support"
-)
-# Returns: "147 relevant entities, ~12,500 tokens total"
-# Recommends: "Use budget 3000 (minimal), 6000 (standard), or 12000 (comprehensive)"
 ```
+You: "I need to implement rate limiting for the API.
+     Give me the most relevant context within 4000 tokens"
 
-**Scoring factors**:
-- Semantic similarity to task
-- Recency (newer items score higher)
-- Reference frequency (graph centrality)
-- Lifecycle status (active > superseded)
-- Scope priority (team > individual)
-- Code proximity (bound to files you're editing)
+AI: Retrieving relevant context (4000 token budget)...
 
-**What you get**: Configurable scoring profiles, transparent relevance scores, budget optimization, format selection (compact/standard/verbose).
+    Top-scored items:
+    ✓ Decision #14: API rate limiting requirements (1000 req/min)
+    ✓ Pattern #8: Redis-based token bucket implementation
+    ✓ Code binding: src/api/middleware/rate_limiter.py
+    ✓ Related decision: Caching strategy with Redis
+
+    Not included (lower relevance):
+    ✗ Decision #22: Database indexing
+    ✗ Pattern #3: Authentication flow
+
+    I'll implement rate limiting using the token bucket pattern...
+```
 
 ---
 
-### Project Onboarding (Feature 4)
+### Project Onboarding
 
 Progressive briefing system for getting up to speed on any project.
 
 **Purpose**: Generate structured, progressive briefings instead of raw data dumps. Perfect for new team members, returning to a project after time away, or starting a fresh AI session.
 
-**Usage Example**:
-```python
-# Executive briefing (500 tokens) - for quick status check
-get_project_briefing(
-    workspace_id="/path/to/project",
-    level="executive"
-)
-# Returns: Project purpose, current status, key risks
+**How to use it:**
 
-# Overview briefing (2000 tokens) - for developers day 1
-get_project_briefing(
-    workspace_id="/path/to/project",
-    level="overview"
-)
-# Returns: Architecture, key decisions, active work, team conventions
+```
+You: "Give me a project briefing"
 
-# Detailed briefing (5000 tokens) - ready to contribute
-get_project_briefing(
-    workspace_id="/path/to/project",
-    level="detailed"
-)
-# Returns: All active decisions with rationale, patterns with implementation,
-#          task hierarchy, glossary, code bindings
+AI: PROJECT BRIEFING: TaskMaster API
 
-# Comprehensive briefing - full knowledge export
-get_project_briefing(
-    workspace_id="/path/to/project",
-    level="comprehensive",
-    token_budget=20000
-)
-# Returns: Complete knowledge graph with all relationships
+    Purpose: RESTful API for task management with team collaboration
 
-# Drill into a specific section
-get_section_detail(
-    workspace_id="/path/to/project",
-    section_id="key_decisions",
-    token_budget=3000
-)
+    Key Decisions:
+    • PostgreSQL for primary database (ACID guarantees)
+    • JWT tokens for stateless authentication
+    • Redis for session caching
+    • Microservices architecture with event sourcing
+
+    Current Status:
+    • User authentication: Complete
+    • Task CRUD: In progress
+    • Real-time notifications: Planned
+
+    Tech Stack: Python, FastAPI, PostgreSQL, Redis, Docker
 ```
 
-**What you get**: Structured briefings with staleness indicators, entity counts, data coverage reports, and drill-down capability.
+**For deeper context:**
+
+```
+You: "Tell me more about the authentication system"
+
+AI: AUTHENTICATION SYSTEM DETAILS
+
+    Decision #7: Use JWT tokens for stateless auth
+    Rationale: Scales better than sessions, works with microservices
+
+    Pattern #3: Token validation middleware
+    Implementation: src/auth/middleware.py
+
+    Related decisions:
+    • Decision #12: Token refresh strategy (7-day expiry)
+    • Decision #18: CORS policy for token endpoints
+
+    Code locations:
+    • src/auth/login.py - Token generation
+    • src/auth/middleware.py - Token validation
+    • src/auth/session.py - Session management
+```
 
 ---
 
-### Knowledge Dashboard (Feature 5)
+### Knowledge Dashboard
 
 Browser-based visual explorer with optional local LLM chat.
 
 **Purpose**: Explore your project knowledge visually without needing an AI agent or burning API tokens. Perfect for browsing decisions, visualizing the knowledge graph, and conversational exploration via local Ollama.
 
-**Usage Example**:
+**How to use it:**
+
 ```bash
 # Start the dashboard (read-only, localhost only)
 engrams-dashboard --workspace /path/to/project
@@ -318,7 +326,7 @@ engrams-dashboard
 - **Task Tracker**: Hierarchical progress view with status filtering
 - **Knowledge Graph**: Interactive D3.js visualization showing all entity relationships
 - **Custom Data Browser**: Category-based navigation with JSON pretty-printing
-- **Governance Dashboard**: Scope hierarchy, active rules, compliance overview (if Feature 1 active)
+- **Governance Dashboard**: Scope hierarchy, active rules, compliance overview
 - **Ollama Chat Panel**: Ask questions about your project using local LLM (optional)
 
 **Security**: Binds to `127.0.0.1` (localhost only) by default. Read-only access - cannot modify data.
@@ -331,36 +339,42 @@ Explicitly link entities to build a queryable relationship network.
 
 **Purpose**: Capture how decisions relate to patterns, how tasks track decisions, how features depend on each other.
 
-**Usage Example**:
-```python
-# Link a decision to the pattern that implements it
-link_engrams_items(
-    workspace_id="/path/to/project",
-    source_item_type="decision",
-    source_item_id=14,
-    target_item_type="system_pattern",
-    target_item_id=3,
-    relationship_type="implements",
-    description="Rate limiting pattern implements the API protection decision"
-)
+**How to use it:**
 
-# Link a task to the decision it tracks
-link_engrams_items(
-    workspace_id="/path/to/project",
-    source_item_type="progress_entry",
-    source_item_id=42,
-    target_item_type="decision",
-    target_item_id=14,
-    relationship_type="tracks"
-)
+```
+You: "Link the rate limiting pattern to Decision #14.
+     The pattern implements the decision"
 
-# Get all items linked to a decision
-get_linked_items(
-    workspace_id="/path/to/project",
-    item_type="decision",
-    item_id=14
-)
-# Returns: Patterns that implement it, tasks tracking it, related decisions
+AI: Relationship created:
+    Pattern #8 (Rate limiting) implements Decision #14 (API protection)
+
+    Now when you review Decision #14, you'll see which patterns
+    implement it. When you work on the rate limiting pattern,
+    you'll see the decision it addresses.
+```
+
+**Exploring relationships:**
+
+```
+You: "Show me everything related to the authentication decision"
+
+AI: Linked items for Decision #7 (JWT authentication):
+
+    Implements:
+    • Pattern #3: Token validation middleware
+    • Pattern #5: Token refresh strategy
+
+    Tracks:
+    • Progress #12: Implement JWT endpoints
+    • Progress #18: Add token refresh logic
+
+    Related Decisions:
+    • Decision #12: Token expiry (7 days)
+    • Decision #18: CORS policy
+
+    Code Bindings:
+    • src/auth/login.py
+    • src/auth/middleware.py
 ```
 
 **Common relationship types**: `implements`, `related_to`, `tracks`, `blocks`, `clarifies`, `depends_on`, `supersedes`, `resolves`
@@ -373,37 +387,58 @@ Efficient bulk operations and markdown export for version control.
 
 **Purpose**: Log multiple items in one call, export for backup/sharing, import from version-controlled markdown.
 
-**Usage Example**:
-```python
-# Log multiple decisions at once
-batch_log_items(
-    workspace_id="/path/to/project",
-    item_type="decision",
-    items=[
-        {
-            "summary": "Use FastAPI for REST API",
-            "rationale": "Modern, fast, excellent typing support",
-            "tags": ["framework", "api"]
-        },
-        {
-            "summary": "Use Pydantic for validation",
-            "rationale": "Built into FastAPI, strong type safety",
-            "tags": ["validation", "types"]
-        }
-    ]
-)
+**How to use it:**
 
-# Export everything to markdown
-export_engrams_to_markdown(
-    workspace_id="/path/to/project",
-    output_path="./docs/engrams_export"
-)
+```
+You: "Log these tech stack decisions all at once:
+     - FastAPI for REST API
+     - Pydantic for validation
+     - SQLAlchemy for ORM
+     - Alembic for migrations
+     - pytest for testing"
 
-# Import from markdown (e.g., after cloning repo)
-import_markdown_to_engrams(
-    workspace_id="/path/to/project",
-    input_path="./docs/engrams_export"
-)
+AI: Logged 5 decisions:
+    ✓ Decision #24: Use FastAPI for REST API
+    ✓ Decision #25: Use Pydantic for validation
+    ✓ Decision #26: Use SQLAlchemy for ORM
+    ✓ Decision #27: Use Alembic for migrations
+    ✓ Decision #28: Use pytest for testing
+
+    All tagged with "tech_stack" for easy retrieval.
+```
+
+**Export for version control:**
+
+```
+You: "Export all project knowledge to markdown"
+
+AI: Exporting Engrams database to markdown...
+
+    Created ./docs/engrams_export/ with:
+    • decisions.md (28 decisions)
+    • patterns.md (8 patterns)
+    • progress.md (15 tasks)
+    • glossary.md (12 terms)
+    • relationships.md (all links)
+
+    You can commit this to version control.
+```
+
+**Import after cloning:**
+
+```
+You: "Import the project knowledge from markdown"
+
+AI: Importing from ./docs/engrams_export/...
+
+    Imported:
+    ✓ 28 decisions
+    ✓ 8 patterns
+    ✓ 15 progress items
+    ✓ 12 glossary terms
+    ✓ All relationships
+
+    Your project memory is fully restored.
 ```
 
 ---
@@ -509,18 +544,20 @@ On first initialization, your AI agent will offer to import this into Product Co
 ```
 You: Initialize according to custom instructions
 
-AI: [CONPORT_ACTIVE] Engrams initialized. Found projectBrief.md - imported to Product Context.
+AI: [ENGRAMS_ACTIVE] Engrams initialized. Found projectBrief.md - imported to Product Context.
     What would you like to work on?
 
 You: Add JWT authentication to the API
 
 AI: I'll help with that. Let me retrieve relevant context...
-    [Uses get_context_for_files for src/auth/**]
-    [Finds Decision #7: "Use JWT tokens for stateless auth"]
-    [Finds Pattern #3: "Token validation middleware"]
 
-    Based on existing decisions and patterns, I'll implement JWT auth following
-    the established middleware pattern...
+    Found Decision #7: "Use JWT tokens for stateless auth"
+    Found Pattern #3: "Token validation middleware"
+
+    Based on existing decisions and patterns, I'll implement JWT auth
+    following the established middleware pattern...
+
+    [Implementation follows]
 ```
 
 ---
@@ -536,19 +573,13 @@ Engrams can automatically detect your project root - no hardcoded paths needed.
 4. **Environment variables**: `VSCODE_WORKSPACE_FOLDER`, `ENGRAMS_WORKSPACE`
 5. **Fallback**: Current working directory (with warning)
 
-**Diagnostic tool**:
-```python
-get_workspace_detection_info(workspace_id="unused")
-# Returns: detected path, method used, indicators found
-```
-
 See [`UNIVERSAL_WORKSPACE_DETECTION.md`](UNIVERSAL_WORKSPACE_DETECTION.md) for full details.
 
 ---
 
 ## Available MCP Tools
 
-All tools require `workspace_id` argument (string). Integer parameters accept numbers or digit strings.
+Your AI assistant uses these tools automatically. You don't need to call them directly.
 
 ### Core Context
 - `get_product_context`, `update_product_context` - Project goals, features, architecture

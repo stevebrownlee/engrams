@@ -1,22 +1,22 @@
 """Database interaction logic using sqlite3."""
 
-import sqlite3
 import json
-import os
-from pathlib import Path
-from typing import List, Optional, Dict, Any
-from datetime import datetime, timedelta, timezone
-
-from alembic.config import Config
-from alembic import command
 import logging
+import os
+import sqlite3
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+from alembic import command
+from alembic.config import Config
 
 from ..core.config import get_database_path
-from ..core.exceptions import DatabaseError, ConfigurationError
-from . import models # Import models from the same directory
-import shutil # For copying directories
+from ..core.exceptions import ConfigurationError, DatabaseError
+from . import models  # Import models from the same directory
 
-log = logging.getLogger(__name__) # Get a logger for this module
+log = logging.getLogger(__name__)  # Get a logger for this module
+
 
 # --- SQLite datetime adapters/converters (UTC) ---
 def _adapt_datetime(dt: datetime) -> str:
@@ -25,6 +25,7 @@ def _adapt_datetime(dt: datetime) -> str:
     else:
         dt = dt.astimezone(timezone.utc)
     return dt.isoformat(timespec="seconds")
+
 
 def _convert_datetime(b: bytes) -> datetime:
     s = b.decode()
@@ -36,6 +37,7 @@ def _convert_datetime(b: bytes) -> datetime:
     if dt.tzinfo is None:
         return dt.replace(tzinfo=timezone.utc)
     return dt.astimezone(timezone.utc)
+
 
 sqlite3.register_adapter(datetime, _adapt_datetime)
 sqlite3.register_converter("DATETIME", _convert_datetime)
@@ -509,6 +511,7 @@ def downgrade() -> None:
 
 _connections: Dict[str, sqlite3.Connection] = {}
 
+
 def get_db_connection(workspace_id: str) -> sqlite3.Connection:
     """
     Gets or creates a database connection for the given workspace.
@@ -529,17 +532,28 @@ def get_db_connection(workspace_id: str) -> sqlite3.Connection:
 
     # 4. Establish and cache the database connection.
     try:
-        conn = sqlite3.connect(db_path, detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES)
-        conn.row_factory = sqlite3.Row # Access columns by name
+        conn = sqlite3.connect(
+            db_path, detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
+        )
+        conn.row_factory = sqlite3.Row  # Access columns by name
         _connections[workspace_id] = conn
-        log.info(f"Successfully initialized and connected to database for workspace: {workspace_id}")
+        log.info(
+            f"Successfully initialized and connected to database for workspace: {workspace_id}"
+        )
         return conn
     except ConfigurationError as e:
         log.error(f"Configuration error during DB connection for {workspace_id}: {e}")
-        raise DatabaseError(f"Configuration error getting DB path for {workspace_id}: {e}")
+        raise DatabaseError(
+            f"Configuration error getting DB path for {workspace_id}: {e}"
+        )
     except sqlite3.Error as e:
-        log.error(f"SQLite error during DB connection for {workspace_id} at {db_path}: {e}")
-        raise DatabaseError(f"Failed to connect to database for {workspace_id} at {db_path}: {e}")
+        log.error(
+            f"SQLite error during DB connection for {workspace_id} at {db_path}: {e}"
+        )
+        raise DatabaseError(
+            f"Failed to connect to database for {workspace_id} at {db_path}: {e}"
+        )
+
 
 def close_db_connection(workspace_id: str):
     """Closes the database connection for the given workspace, if open."""
@@ -547,12 +561,15 @@ def close_db_connection(workspace_id: str):
         _connections[workspace_id].close()
         del _connections[workspace_id]
 
+
 def close_all_connections():
     """Closes all active database connections."""
     for workspace_id in list(_connections.keys()):
         close_db_connection(workspace_id)
 
+
 # --- Alembic Migration Integration ---
+
 
 def ensure_alembic_files_exist(workspace_id: str):
     """
@@ -562,9 +579,10 @@ def ensure_alembic_files_exist(workspace_id: str):
     # The actual directory where context.db resides and where Alembic files should be
     # Get the database path to determine where Alembic files should be located
     from ..core.config import get_database_path
+
     db_path = get_database_path(workspace_id)
     engrams_db_dir = db_path.parent
-    engrams_db_dir.mkdir(exist_ok=True, parents=True) # Ensure this directory exists
+    engrams_db_dir.mkdir(exist_ok=True, parents=True)  # Ensure this directory exists
 
     alembic_ini_path = engrams_db_dir / "alembic.ini"
     alembic_dir_path = engrams_db_dir / "alembic"
@@ -573,7 +591,7 @@ def ensure_alembic_files_exist(workspace_id: str):
     if not alembic_ini_path.exists():
         log.info(f"Alembic.ini not found. Creating at {alembic_ini_path}")
         try:
-            with open(alembic_ini_path, 'w') as f:
+            with open(alembic_ini_path, "w") as f:
                 f.write(ALEMBIC_INI_CONTENT)
         except IOError as e:
             log.error(f"Failed to write alembic.ini at {alembic_ini_path}: {e}")
@@ -586,7 +604,7 @@ def ensure_alembic_files_exist(workspace_id: str):
         try:
             # ensure parent directory exists
             os.makedirs(alembic_dir_path, exist_ok=True)
-            with open(alembic_env_py_path, 'w') as f:
+            with open(alembic_env_py_path, "w") as f:
                 f.write(ENV_PY_CONTENT)
         except IOError as e:
             log.error(f"Failed to write env.py at {alembic_env_py_path}: {e}")
@@ -599,7 +617,7 @@ def ensure_alembic_files_exist(workspace_id: str):
         log.info(f"Initial schema not found. Creating at {initial_schema_path}")
         try:
             os.makedirs(alembic_versions_path, exist_ok=True)
-            with open(initial_schema_path, 'w') as f:
+            with open(initial_schema_path, "w") as f:
                 f.write(INITIAL_SCHEMA_CONTENT)
         except OSError as e:
             log.error(f"Failed to create initial schema at {initial_schema_path}: {e}")
@@ -608,14 +626,19 @@ def ensure_alembic_files_exist(workspace_id: str):
     # Check for governance & bindings migration
     gov_bindings_path = alembic_versions_path / "2026_02_20_governance_and_bindings.py"
     if not gov_bindings_path.exists():
-        log.info(f"Governance/bindings migration not found. Creating at {gov_bindings_path}")
+        log.info(
+            f"Governance/bindings migration not found. Creating at {gov_bindings_path}"
+        )
         try:
             os.makedirs(alembic_versions_path, exist_ok=True)
-            with open(gov_bindings_path, 'w') as f:
+            with open(gov_bindings_path, "w") as f:
                 f.write(GOVERNANCE_BINDINGS_SCHEMA_CONTENT)
         except OSError as e:
-            log.error(f"Failed to create governance/bindings migration at {gov_bindings_path}: {e}")
+            log.error(
+                f"Failed to create governance/bindings migration at {gov_bindings_path}: {e}"
+            )
             raise DatabaseError(f"Could not create governance/bindings migration: {e}")
+
 
 def run_migrations(db_path: Path):
     """
@@ -632,8 +655,12 @@ def run_migrations(db_path: Path):
 
     # Initialize Alembic Config with the path to alembic.ini
     log.debug(f"Alembic: Current working directory (os.getcwd()): {os.getcwd()}")
-    log.debug(f"Alembic: Initializing Config with alembic_ini_path = {alembic_ini_path.resolve()}")
-    log.debug(f"Alembic: Setting script_location to alembic_scripts_path = {alembic_scripts_path.resolve()}")
+    log.debug(
+        f"Alembic: Initializing Config with alembic_ini_path = {alembic_ini_path.resolve()}"
+    )
+    log.debug(
+        f"Alembic: Setting script_location to alembic_scripts_path = {alembic_scripts_path.resolve()}"
+    )
     alembic_cfg = Config(str(alembic_ini_path))
 
     # Explicitly set the script location as a main option.
@@ -649,17 +676,29 @@ def run_migrations(db_path: Path):
     # is only used for script_location and sqlalchemy.url.
     # Alembic's command.upgrade will handle its own logging if not explicitly configured.
 
-    log.debug(f"Alembic Config: script_location = {alembic_cfg.get_main_option('script_location')}")
-    log.debug(f"Alembic Config: sqlalchemy.url = {alembic_cfg.get_main_option('sqlalchemy.url')}")
+    log.debug(
+        f"Alembic Config: script_location = {alembic_cfg.get_main_option('script_location')}"
+    )
+    log.debug(
+        f"Alembic Config: sqlalchemy.url = {alembic_cfg.get_main_option('sqlalchemy.url')}"
+    )
 
     # Add explicit path existence check
-    resolved_script_path = Path(alembic_cfg.get_main_option('script_location'))
-    log.debug(f"Alembic: Resolved script path for existence check: {resolved_script_path}")
+    resolved_script_path = Path(alembic_cfg.get_main_option("script_location"))
+    log.debug(
+        f"Alembic: Resolved script path for existence check: {resolved_script_path}"
+    )
     if not resolved_script_path.exists():
-        log.error(f"Alembic: CRITICAL - Script directory {resolved_script_path} does NOT exist according to Python!")
-        raise DatabaseError(f"Alembic scripts directory not found: {resolved_script_path}")
+        log.error(
+            f"Alembic: CRITICAL - Script directory {resolved_script_path} does NOT exist according to Python!"
+        )
+        raise DatabaseError(
+            f"Alembic scripts directory not found: {resolved_script_path}"
+        )
     else:
-        log.info(f"Alembic: Script directory {resolved_script_path} confirmed to exist by Python.")
+        log.info(
+            f"Alembic: Script directory {resolved_script_path} confirmed to exist by Python."
+        )
 
     log.info(f"Running Alembic migrations for database: {db_path}")
     try:
@@ -670,8 +709,8 @@ def run_migrations(db_path: Path):
         raise DatabaseError(f"Database migration failed: {e}")
 
 
-
 # --- Helper functions for history ---
+
 
 def _get_latest_context_version(cursor: sqlite3.Cursor, table_name: str) -> int:
     """Retrieves the latest version number from a history table."""
@@ -682,14 +721,15 @@ def _get_latest_context_version(cursor: sqlite3.Cursor, table_name: str) -> int:
     except sqlite3.Error as e:
         # Log this error appropriately in a real application
         print(f"Error getting latest version from {table_name}: {e}")
-        return 0 # Default to 0 if error or no versions found
+        return 0  # Default to 0 if error or no versions found
+
 
 def _add_context_history_entry(
     cursor: sqlite3.Cursor,
     history_table_name: str,
     version: int,
     content_dict: Dict[str, Any],
-    change_source: Optional[str]
+    change_source: Optional[str],
 ) -> None:
     """Adds an entry to the specified context history table."""
     content_json = json.dumps(content_dict)
@@ -700,7 +740,7 @@ def _add_context_history_entry(
             INSERT INTO {history_table_name} (timestamp, version, content, change_source)
             VALUES (?, ?, ?, ?)
             """,
-            (timestamp, version, content_json, change_source)
+            (timestamp, version, content_json, change_source),
         )
     except sqlite3.Error as e:
         # This error should be handled by the calling function's rollback
@@ -709,17 +749,18 @@ def _add_context_history_entry(
 
 # --- CRUD Operations ---
 
+
 def get_product_context(workspace_id: str) -> models.ProductContext:
     """Retrieves the product context."""
     conn = get_db_connection(workspace_id)
-    cursor = None # Initialize cursor for finally block
+    cursor = None  # Initialize cursor for finally block
     try:
         cursor = conn.cursor()
         cursor.execute("SELECT id, content FROM product_context WHERE id = 1")
         row = cursor.fetchone()
         if row:
-            content_dict = json.loads(row['content'])
-            return models.ProductContext(id=row['id'], content=content_dict)
+            content_dict = json.loads(row["content"])
+            return models.ProductContext(id=row["id"], content=content_dict)
         else:
             # Should not happen if initialized correctly, but handle defensively
             raise DatabaseError("Product context row not found.")
@@ -729,18 +770,23 @@ def get_product_context(workspace_id: str) -> models.ProductContext:
         if cursor:
             cursor.close()
 
-def update_product_context(workspace_id: str, update_args: models.UpdateContextArgs) -> None:
+
+def update_product_context(
+    workspace_id: str, update_args: models.UpdateContextArgs
+) -> None:
     """Updates the product context using either full content or a patch."""
     conn = get_db_connection(workspace_id)
-    cursor = None # Initialize cursor for finally block
+    cursor = None  # Initialize cursor for finally block
     try:
         cursor = conn.cursor()
         # Fetch current content to log to history
         cursor.execute("SELECT content FROM product_context WHERE id = 1")
         current_row = cursor.fetchone()
         if not current_row:
-            raise DatabaseError("Product context row not found for updating (cannot log history).")
-        current_content_dict = json.loads(current_row['content'])
+            raise DatabaseError(
+                "Product context row not found for updating (cannot log history)."
+            )
+        current_content_dict = json.loads(current_row["content"])
 
         # Determine new content
         new_final_content = {}
@@ -752,7 +798,9 @@ def update_product_context(workspace_id: str, update_args: models.UpdateContextA
             # Iterate over patch_content to handle __DELETE__ sentinel
             for key, value in update_args.patch_content.items():
                 if value == "__DELETE__":
-                    new_final_content.pop(key, None)  # Remove key, do nothing if key not found
+                    new_final_content.pop(
+                        key, None
+                    )  # Remove key, do nothing if key not found
                 else:
                     new_final_content[key] = value
         else:
@@ -766,17 +814,24 @@ def update_product_context(workspace_id: str, update_args: models.UpdateContextA
             cursor,
             "product_context_history",
             new_version,
-            current_content_dict, # Log the content *before* the update
-            "update_product_context" # Basic change source
+            current_content_dict,  # Log the content *before* the update
+            "update_product_context",  # Basic change source
         )
 
         # Update the main product_context table
         new_content_json = json.dumps(new_final_content)
-        cursor.execute("UPDATE product_context SET content = ? WHERE id = 1", (new_content_json,))
+        cursor.execute(
+            "UPDATE product_context SET content = ? WHERE id = 1", (new_content_json,)
+        )
 
         conn.commit()
         # No need to check rowcount here as history is logged regardless of content identity
-    except (sqlite3.Error, TypeError, json.JSONDecodeError, DatabaseError) as e: # Added DatabaseError
+    except (
+        sqlite3.Error,
+        TypeError,
+        json.JSONDecodeError,
+        DatabaseError,
+    ) as e:  # Added DatabaseError
         conn.rollback()
         raise DatabaseError(f"Failed to update product_context: {e}")
     finally:
@@ -787,14 +842,14 @@ def update_product_context(workspace_id: str, update_args: models.UpdateContextA
 def get_active_context(workspace_id: str) -> models.ActiveContext:
     """Retrieves the active context."""
     conn = get_db_connection(workspace_id)
-    cursor = None # Initialize cursor for finally block
+    cursor = None  # Initialize cursor for finally block
     try:
         cursor = conn.cursor()
         cursor.execute("SELECT id, content FROM active_context WHERE id = 1")
         row = cursor.fetchone()
         if row:
-            content_dict = json.loads(row['content'])
-            return models.ActiveContext(id=row['id'], content=content_dict)
+            content_dict = json.loads(row["content"])
+            return models.ActiveContext(id=row["id"], content=content_dict)
         else:
             raise DatabaseError("Active context row not found.")
     except (sqlite3.Error, json.JSONDecodeError) as e:
@@ -803,18 +858,23 @@ def get_active_context(workspace_id: str) -> models.ActiveContext:
         if cursor:
             cursor.close()
 
-def update_active_context(workspace_id: str, update_args: models.UpdateContextArgs) -> None:
+
+def update_active_context(
+    workspace_id: str, update_args: models.UpdateContextArgs
+) -> None:
     """Updates the active context using either full content or a patch."""
     conn = get_db_connection(workspace_id)
-    cursor = None # Initialize cursor for finally block
+    cursor = None  # Initialize cursor for finally block
     try:
         cursor = conn.cursor()
         # Fetch current content to log to history
         cursor.execute("SELECT content FROM active_context WHERE id = 1")
         current_row = cursor.fetchone()
         if not current_row:
-            raise DatabaseError("Active context row not found for updating (cannot log history).")
-        current_content_dict = json.loads(current_row['content'])
+            raise DatabaseError(
+                "Active context row not found for updating (cannot log history)."
+            )
+        current_content_dict = json.loads(current_row["content"])
 
         # Determine new content
         new_final_content = {}
@@ -825,7 +885,9 @@ def update_active_context(workspace_id: str, update_args: models.UpdateContextAr
             # Iterate over patch_content to handle __DELETE__ sentinel
             for key, value in update_args.patch_content.items():
                 if value == "__DELETE__":
-                    new_final_content.pop(key, None)  # Remove key, do nothing if key not found
+                    new_final_content.pop(
+                        key, None
+                    )  # Remove key, do nothing if key not found
                 else:
                     new_final_content[key] = value
         else:
@@ -839,39 +901,49 @@ def update_active_context(workspace_id: str, update_args: models.UpdateContextAr
             cursor,
             "active_context_history",
             new_version,
-            current_content_dict, # Log the content *before* the update
-            "update_active_context" # Basic change source
+            current_content_dict,  # Log the content *before* the update
+            "update_active_context",  # Basic change source
         )
 
         # Update the main active_context table
         new_content_json = json.dumps(new_final_content)
-        cursor.execute("UPDATE active_context SET content = ? WHERE id = 1", (new_content_json,))
+        cursor.execute(
+            "UPDATE active_context SET content = ? WHERE id = 1", (new_content_json,)
+        )
 
         conn.commit()
-    except (sqlite3.Error, TypeError, json.JSONDecodeError, DatabaseError) as e: # Added DatabaseError
+    except (
+        sqlite3.Error,
+        TypeError,
+        json.JSONDecodeError,
+        DatabaseError,
+    ) as e:  # Added DatabaseError
         conn.rollback()
         raise DatabaseError(f"Failed to update active context: {e}")
     finally:
         if cursor:
             cursor.close()
 
+
 # --- Add more CRUD functions for other models (ActiveContext, Decision, etc.) ---
 # Example: log_decision
 def log_decision(workspace_id: str, decision_data: models.Decision) -> models.Decision:
     """Logs a new decision."""
     conn = get_db_connection(workspace_id)
-    cursor = None # Initialize cursor for finally block
+    cursor = None  # Initialize cursor for finally block
     sql = """
         INSERT INTO decisions (timestamp, summary, rationale, implementation_details, tags)
         VALUES (?, ?, ?, ?, ?)
     """
-    tags_json = json.dumps(decision_data.tags) if decision_data.tags is not None else None
+    tags_json = (
+        json.dumps(decision_data.tags) if decision_data.tags is not None else None
+    )
     params = (
         decision_data.timestamp,
         decision_data.summary,
         decision_data.rationale,
         decision_data.implementation_details,
-        tags_json
+        tags_json,
     )
     try:
         cursor = conn.cursor()
@@ -888,15 +960,16 @@ def log_decision(workspace_id: str, decision_data: models.Decision) -> models.De
         if cursor:
             cursor.close()
 
+
 def get_decisions(
     workspace_id: str,
     limit: Optional[int] = None,
     tags_filter_include_all: Optional[List[str]] = None,
-    tags_filter_include_any: Optional[List[str]] = None
+    tags_filter_include_any: Optional[List[str]] = None,
 ) -> List[models.Decision]:
     """Retrieves decisions, optionally limited, and filtered by tags."""
     conn = get_db_connection(workspace_id)
-    cursor = None # Initialize cursor for finally block
+    cursor = None  # Initialize cursor for finally block
 
     base_sql = "SELECT id, timestamp, summary, rationale, implementation_details, tags FROM decisions"
     conditions = []
@@ -909,11 +982,11 @@ def get_decisions(
         # For simplicity here, we'll filter in Python after fetching.
         # This means 'limit' will apply before this specific tag filter.
         # A true SQL solution would be more complex, e.g., using json_tree or json_each and subqueries.
-        pass # Will be handled post-query
+        pass  # Will be handled post-query
 
     if tags_filter_include_any:
         # Similar to above, this is easier to handle post-query for now.
-        pass # Will be handled post-query
+        pass  # Will be handled post-query
 
     # ORDER BY must come before LIMIT
     order_by_clause = " ORDER BY timestamp DESC"
@@ -926,7 +999,7 @@ def get_decisions(
     # Construct the SQL query
     # Since tag filtering will be done in Python for now, conditions list remains empty for SQL
     sql = base_sql
-    if conditions: # This block will not be hit with current Python-based tag filtering
+    if conditions:  # This block will not be hit with current Python-based tag filtering
         sql += " WHERE " + " AND ".join(conditions)
 
     sql += order_by_clause + limit_clause
@@ -939,37 +1012,45 @@ def get_decisions(
         rows = cursor.fetchall()
         decisions = [
             models.Decision(
-                id=row['id'],
-                timestamp=row['timestamp'],
-                summary=row['summary'],
-                rationale=row['rationale'],
-                implementation_details=row['implementation_details'],
-                tags=json.loads(row['tags']) if row['tags'] else None
-            ) for row in rows
+                id=row["id"],
+                timestamp=row["timestamp"],
+                summary=row["summary"],
+                rationale=row["rationale"],
+                implementation_details=row["implementation_details"],
+                tags=json.loads(row["tags"]) if row["tags"] else None,
+            )
+            for row in rows
         ]
 
         # Python-based filtering for tags
         if tags_filter_include_all:
             decisions = [
-                d for d in decisions if d.tags and all(tag in d.tags for tag in tags_filter_include_all)
+                d
+                for d in decisions
+                if d.tags and all(tag in d.tags for tag in tags_filter_include_all)
             ]
 
         if tags_filter_include_any:
             decisions = [
-                d for d in decisions if d.tags and any(tag in d.tags for tag in tags_filter_include_any)
+                d
+                for d in decisions
+                if d.tags and any(tag in d.tags for tag in tags_filter_include_any)
             ]
 
         return decisions
-    except (sqlite3.Error, json.JSONDecodeError) as e: # Added JSONDecodeError
+    except (sqlite3.Error, json.JSONDecodeError) as e:  # Added JSONDecodeError
         raise DatabaseError(f"Failed to retrieve decisions: {e}")
     finally:
         if cursor:
             cursor.close()
 
-def search_decisions_fts(workspace_id: str, query_term: str, limit: Optional[int] = 10) -> List[models.Decision]:
+
+def search_decisions_fts(
+    workspace_id: str, query_term: str, limit: Optional[int] = 10
+) -> List[models.Decision]:
     """Searches decisions using FTS5 for the given query term."""
     conn = get_db_connection(workspace_id)
-    cursor = None # Initialize cursor for finally block
+    cursor = None  # Initialize cursor for finally block
     # The MATCH operator is used for FTS queries.
     # We join back to the original 'decisions' table to get all columns.
     # 'rank' is an FTS5 auxiliary function that indicates relevance.
@@ -991,25 +1072,29 @@ def search_decisions_fts(workspace_id: str, query_term: str, limit: Optional[int
         rows = cursor.fetchall()
         decisions_found = [
             models.Decision(
-                id=row['id'],
-                timestamp=row['timestamp'],
-                summary=row['summary'],
-                rationale=row['rationale'],
-                implementation_details=row['implementation_details'],
-                tags=json.loads(row['tags']) if row['tags'] else None
-            ) for row in rows
+                id=row["id"],
+                timestamp=row["timestamp"],
+                summary=row["summary"],
+                rationale=row["rationale"],
+                implementation_details=row["implementation_details"],
+                tags=json.loads(row["tags"]) if row["tags"] else None,
+            )
+            for row in rows
         ]
         return decisions_found
     except sqlite3.Error as e:
-        raise DatabaseError(f"Failed FTS search on decisions for term '{query_term}': {e}")
+        raise DatabaseError(
+            f"Failed FTS search on decisions for term '{query_term}': {e}"
+        )
     finally:
         if cursor:
             cursor.close()
 
+
 def delete_decision_by_id(workspace_id: str, decision_id: int) -> bool:
     """Deletes a decision by its ID. Returns True if deleted, False otherwise."""
     conn = get_db_connection(workspace_id)
-    cursor = None # Initialize cursor for finally block
+    cursor = None  # Initialize cursor for finally block
     sql = "DELETE FROM decisions WHERE id = ?"
     try:
         cursor = conn.cursor()
@@ -1024,10 +1109,13 @@ def delete_decision_by_id(workspace_id: str, decision_id: int) -> bool:
         if cursor:
             cursor.close()
 
-def log_progress(workspace_id: str, progress_data: models.ProgressEntry) -> models.ProgressEntry:
+
+def log_progress(
+    workspace_id: str, progress_data: models.ProgressEntry
+) -> models.ProgressEntry:
     """Logs a new progress entry."""
     conn = get_db_connection(workspace_id)
-    cursor = None # Initialize cursor for finally block
+    cursor = None  # Initialize cursor for finally block
     sql = """
         INSERT INTO progress_entries (timestamp, status, description, parent_id)
         VALUES (?, ?, ?, ?)
@@ -1036,7 +1124,7 @@ def log_progress(workspace_id: str, progress_data: models.ProgressEntry) -> mode
         progress_data.timestamp,
         progress_data.status,
         progress_data.description,
-        progress_data.parent_id
+        progress_data.parent_id,
     )
     try:
         cursor = conn.cursor()
@@ -1052,15 +1140,17 @@ def log_progress(workspace_id: str, progress_data: models.ProgressEntry) -> mode
     finally:
         if cursor:
             cursor.close()
+
+
 def get_progress(
     workspace_id: str,
     status_filter: Optional[str] = None,
     parent_id_filter: Optional[int] = None,
-    limit: Optional[int] = None
+    limit: Optional[int] = None,
 ) -> List[models.ProgressEntry]:
     """Retrieves progress entries, optionally filtered and limited."""
     conn = get_db_connection(workspace_id)
-    cursor = None # Initialize cursor for finally block
+    cursor = None  # Initialize cursor for finally block
     sql = "SELECT id, timestamp, status, description, parent_id FROM progress_entries"
     conditions = []
     params_list = []
@@ -1068,7 +1158,9 @@ def get_progress(
     if status_filter:
         conditions.append("status = ?")
         params_list.append(status_filter)
-    if parent_id_filter is not None: # Check for None explicitly as 0 could be a valid parent_id
+    if (
+        parent_id_filter is not None
+    ):  # Check for None explicitly as 0 could be a valid parent_id
         conditions.append("parent_id = ?")
         params_list.append(parent_id_filter)
     # Add more filters if needed (e.g., date range)
@@ -1076,7 +1168,7 @@ def get_progress(
     if conditions:
         sql += " WHERE " + " AND ".join(conditions)
 
-    sql += " ORDER BY timestamp DESC" # Default order: newest first
+    sql += " ORDER BY timestamp DESC"  # Default order: newest first
 
     if limit is not None and limit > 0:
         sql += " LIMIT ?"
@@ -1090,12 +1182,13 @@ def get_progress(
         rows = cursor.fetchall()
         progress_entries = [
             models.ProgressEntry(
-                id=row['id'],
-                timestamp=row['timestamp'],
-                status=row['status'],
-                description=row['description'],
-                parent_id=row['parent_id']
-            ) for row in rows
+                id=row["id"],
+                timestamp=row["timestamp"],
+                status=row["status"],
+                description=row["description"],
+                parent_id=row["parent_id"],
+            )
+            for row in rows
         ]
         # progress_entries.reverse() # Optional: uncomment to return oldest first
         return progress_entries
@@ -1105,13 +1198,16 @@ def get_progress(
         if cursor:
             cursor.close()
 
-def update_progress_entry(workspace_id: str, update_args: models.UpdateProgressArgs) -> bool:
+
+def update_progress_entry(
+    workspace_id: str, update_args: models.UpdateProgressArgs
+) -> bool:
     """
     Updates an existing progress entry by its ID.
     Returns True if the entry was found and updated, False otherwise.
     """
     conn = get_db_connection(workspace_id)
-    cursor = None # Initialize cursor for finally block
+    cursor = None  # Initialize cursor for finally block
 
     sql = "UPDATE progress_entries SET"
     updates = []
@@ -1129,13 +1225,15 @@ def update_progress_entry(workspace_id: str, update_args: models.UpdateProgressA
     # If parent_id is NOT provided in args (remains default None), do not include in update.
     # The Pydantic model check_at_least_one_field ensures at least one field is provided,
     # so we don't need to worry about an empty updates list here.
-    if 'parent_id' in update_args.model_fields_set: # Check if parent_id was explicitly set in the input args
-         updates.append("parent_id = ?")
-         params_list.append(update_args.parent_id) # SQLite handles Python None as NULL
+    if (
+        "parent_id" in update_args.model_fields_set
+    ):  # Check if parent_id was explicitly set in the input args
+        updates.append("parent_id = ?")
+        params_list.append(update_args.parent_id)  # SQLite handles Python None as NULL
 
     if not updates:
-         # This case should be prevented by Pydantic model validation, but as a safeguard
-         raise ValueError("No fields provided for update.")
+        # This case should be prevented by Pydantic model validation, but as a safeguard
+        raise ValueError("No fields provided for update.")
 
     sql += " " + ", ".join(updates) + " WHERE id = ?"
     params_list.append(update_args.progress_id)
@@ -1145,13 +1243,16 @@ def update_progress_entry(workspace_id: str, update_args: models.UpdateProgressA
         cursor = conn.cursor()
         cursor.execute(sql, params)
         conn.commit()
-        return cursor.rowcount > 0 # Return True if one row was updated
+        return cursor.rowcount > 0  # Return True if one row was updated
     except sqlite3.Error as e:
         conn.rollback()
-        raise DatabaseError(f"Failed to update progress entry with ID {update_args.progress_id}: {e}")
+        raise DatabaseError(
+            f"Failed to update progress entry with ID {update_args.progress_id}: {e}"
+        )
     finally:
         if cursor:
             cursor.close()
+
 
 def delete_progress_entry_by_id(workspace_id: str, progress_id: int) -> bool:
     """
@@ -1160,23 +1261,29 @@ def delete_progress_entry_by_id(workspace_id: str, progress_id: int) -> bool:
     Returns True if deleted, False otherwise.
     """
     conn = get_db_connection(workspace_id)
-    cursor = None # Initialize cursor for finally block
+    cursor = None  # Initialize cursor for finally block
     sql = "DELETE FROM progress_entries WHERE id = ?"
     try:
         cursor = conn.cursor()
         cursor.execute(sql, (progress_id,))
         conn.commit()
-        return cursor.rowcount > 0 # Return True if one row was deleted
+        return cursor.rowcount > 0  # Return True if one row was deleted
     except sqlite3.Error as e:
         conn.rollback()
-        raise DatabaseError(f"Failed to delete progress entry with ID {progress_id}: {e}")
+        raise DatabaseError(
+            f"Failed to delete progress entry with ID {progress_id}: {e}"
+        )
     finally:
         if cursor:
             cursor.close()
-def log_system_pattern(workspace_id: str, pattern_data: models.SystemPattern) -> models.SystemPattern:
+
+
+def log_system_pattern(
+    workspace_id: str, pattern_data: models.SystemPattern
+) -> models.SystemPattern:
     """Logs or updates a system pattern. Uses INSERT OR REPLACE based on unique name."""
     conn = get_db_connection(workspace_id)
-    cursor = None # Initialize cursor for finally block
+    cursor = None  # Initialize cursor for finally block
     # Use INSERT OR REPLACE to handle unique constraint on 'name'
     # This will overwrite the description and tags if the name already exists.
     sql = """
@@ -1188,7 +1295,7 @@ def log_system_pattern(workspace_id: str, pattern_data: models.SystemPattern) ->
         pattern_data.timestamp,
         pattern_data.name,
         pattern_data.description,
-        tags_json
+        tags_json,
     )
     try:
         cursor = conn.cursor()
@@ -1199,11 +1306,13 @@ def log_system_pattern(workspace_id: str, pattern_data: models.SystemPattern) ->
         # If returning the model with ID is critical, add a SELECT query here.
         conn.commit()
         # Query back to get the ID (optional, adds overhead)
-        cursor.execute("SELECT id FROM system_patterns WHERE name = ?", (pattern_data.name,))
+        cursor.execute(
+            "SELECT id FROM system_patterns WHERE name = ?", (pattern_data.name,)
+        )
         row = cursor.fetchone()
         if row:
-            pattern_data.id = row['id']
-        return pattern_data # Return original data, possibly updated with ID
+            pattern_data.id = row["id"]
+        return pattern_data  # Return original data, possibly updated with ID
     except sqlite3.Error as e:
         conn.rollback()
         raise DatabaseError(f"Failed to log system pattern '{pattern_data.name}': {e}")
@@ -1211,15 +1320,16 @@ def log_system_pattern(workspace_id: str, pattern_data: models.SystemPattern) ->
         if cursor:
             cursor.close()
 
+
 def get_system_patterns(
     workspace_id: str,
     tags_filter_include_all: Optional[List[str]] = None,
-    tags_filter_include_any: Optional[List[str]] = None
+    tags_filter_include_any: Optional[List[str]] = None,
     # limit: Optional[int] = None, # Add if pagination is desired
 ) -> List[models.SystemPattern]:
     """Retrieves system patterns, optionally filtered by tags."""
     conn = get_db_connection(workspace_id)
-    cursor = None # Initialize cursor for finally block
+    cursor = None  # Initialize cursor for finally block
 
     base_sql = "SELECT id, timestamp, name, description, tags FROM system_patterns"
     order_by_clause = " ORDER BY name ASC"
@@ -1229,45 +1339,51 @@ def get_system_patterns(
     #     limit_clause = " LIMIT ?"
     #     params_list.append(limit)
 
-    sql = base_sql + order_by_clause # + limit_clause
+    sql = base_sql + order_by_clause  # + limit_clause
     # params_tuple = tuple(params_list)
 
     try:
         cursor = conn.cursor()
-        cursor.execute(sql) #, params_tuple)
+        cursor.execute(sql)  # , params_tuple)
         rows = cursor.fetchall()
         patterns = [
             models.SystemPattern(
-                id=row['id'],
-                timestamp=row['timestamp'],
-                name=row['name'],
-                description=row['description'],
-                tags=json.loads(row['tags']) if row['tags'] else None
-            ) for row in rows
+                id=row["id"],
+                timestamp=row["timestamp"],
+                name=row["name"],
+                description=row["description"],
+                tags=json.loads(row["tags"]) if row["tags"] else None,
+            )
+            for row in rows
         ]
 
         # Python-based filtering for tags
         if tags_filter_include_all:
             patterns = [
-                p for p in patterns if p.tags and all(tag in p.tags for tag in tags_filter_include_all)
+                p
+                for p in patterns
+                if p.tags and all(tag in p.tags for tag in tags_filter_include_all)
             ]
 
         if tags_filter_include_any:
             patterns = [
-                p for p in patterns if p.tags and any(tag in p.tags for tag in tags_filter_include_any)
+                p
+                for p in patterns
+                if p.tags and any(tag in p.tags for tag in tags_filter_include_any)
             ]
 
         return patterns
-    except (sqlite3.Error, json.JSONDecodeError) as e: # Added JSONDecodeError
+    except (sqlite3.Error, json.JSONDecodeError) as e:  # Added JSONDecodeError
         raise DatabaseError(f"Failed to retrieve system patterns: {e}")
     finally:
         if cursor:
             cursor.close()
 
+
 def delete_system_pattern_by_id(workspace_id: str, pattern_id: int) -> bool:
     """Deletes a system pattern by its ID. Returns True if deleted, False otherwise."""
     conn = get_db_connection(workspace_id)
-    cursor = None # Initialize cursor for finally block
+    cursor = None  # Initialize cursor for finally block
     sql = "DELETE FROM system_patterns WHERE id = ?"
     # Note: System patterns do not currently have an FTS table, so no trigger concerns here.
     try:
@@ -1277,15 +1393,18 @@ def delete_system_pattern_by_id(workspace_id: str, pattern_id: int) -> bool:
         return cursor.rowcount > 0
     except sqlite3.Error as e:
         conn.rollback()
-        raise DatabaseError(f"Failed to delete system pattern with ID {pattern_id}: {e}")
+        raise DatabaseError(
+            f"Failed to delete system pattern with ID {pattern_id}: {e}"
+        )
     finally:
         if cursor:
             cursor.close()
 
+
 def log_custom_data(workspace_id: str, data: models.CustomData) -> models.CustomData:
     """Logs or updates a custom data entry. Uses INSERT OR REPLACE based on unique (category, key)."""
     conn = get_db_connection(workspace_id)
-    cursor = None # Initialize cursor for finally block
+    cursor = None  # Initialize cursor for finally block
     sql = """
         INSERT OR REPLACE INTO custom_data (timestamp, category, key, value)
         VALUES (?, ?, ?, ?)
@@ -1294,38 +1413,37 @@ def log_custom_data(workspace_id: str, data: models.CustomData) -> models.Custom
         cursor = conn.cursor()
         # Ensure value is serialized to JSON string
         value_json = json.dumps(data.value)
-        params = (
-            data.timestamp,
-            data.category,
-            data.key,
-            value_json
-        )
+        params = (data.timestamp, data.category, data.key, value_json)
         cursor.execute(sql, params)
         conn.commit()
         # Query back to get ID if needed (similar to log_system_pattern)
-        cursor.execute("SELECT id FROM custom_data WHERE category = ? AND key = ?", (data.category, data.key))
+        cursor.execute(
+            "SELECT id FROM custom_data WHERE category = ? AND key = ?",
+            (data.category, data.key),
+        )
         row = cursor.fetchone()
         if row:
-            data.id = row['id']
+            data.id = row["id"]
         return data
-    except (sqlite3.Error, TypeError) as e: # TypeError for json.dumps
+    except (sqlite3.Error, TypeError) as e:  # TypeError for json.dumps
         conn.rollback()
-        raise DatabaseError(f"Failed to log custom data for '{data.category}/{data.key}': {e}")
+        raise DatabaseError(
+            f"Failed to log custom data for '{data.category}/{data.key}': {e}"
+        )
     finally:
         if cursor:
             cursor.close()
 
+
 def get_custom_data(
-    workspace_id: str,
-    category: Optional[str] = None,
-    key: Optional[str] = None
+    workspace_id: str, category: Optional[str] = None, key: Optional[str] = None
 ) -> List[models.CustomData]:
     """Retrieves custom data entries, optionally filtered by category and/or key."""
     if key and not category:
         raise ValueError("Cannot filter by key without specifying a category.")
 
     conn = get_db_connection(workspace_id)
-    cursor = None # Initialize cursor for finally block
+    cursor = None  # Initialize cursor for finally block
     sql = "SELECT id, timestamp, category, key, value FROM custom_data"
     conditions = []
     params_list = []
@@ -1333,14 +1451,14 @@ def get_custom_data(
     if category:
         conditions.append("category = ?")
         params_list.append(category)
-    if key: # We already ensured category is present if key is
+    if key:  # We already ensured category is present if key is
         conditions.append("key = ?")
         params_list.append(key)
 
     if conditions:
         sql += " WHERE " + " AND ".join(conditions)
 
-    sql += " ORDER BY category ASC, key ASC" # Consistent ordering
+    sql += " ORDER BY category ASC, key ASC"  # Consistent ordering
     params = tuple(params_list)
 
     try:
@@ -1351,20 +1469,22 @@ def get_custom_data(
         for row in rows:
             try:
                 # Deserialize value from JSON string
-                value_data = json.loads(row['value'])
+                value_data = json.loads(row["value"])
                 custom_data_list.append(
                     models.CustomData(
-                        id=row['id'],
-                        timestamp=row['timestamp'],
-                        category=row['category'],
-                        key=row['key'],
-                        value=value_data
+                        id=row["id"],
+                        timestamp=row["timestamp"],
+                        category=row["category"],
+                        key=row["key"],
+                        value=value_data,
                     )
                 )
             except json.JSONDecodeError as e:
                 # Log or handle error for specific row if JSON is invalid
-                print(f"Warning: Failed to decode JSON for custom_data id={row['id']}: {e}") # Replace with proper logging
-                continue # Skip this row
+                print(
+                    f"Warning: Failed to decode JSON for custom_data id={row['id']}: {e}"
+                )  # Replace with proper logging
+                continue  # Skip this row
         return custom_data_list
     except sqlite3.Error as e:
         raise DatabaseError(f"Failed to retrieve custom data: {e}")
@@ -1372,17 +1492,18 @@ def get_custom_data(
         if cursor:
             cursor.close()
 
+
 def delete_custom_data(workspace_id: str, category: str, key: str) -> bool:
     """Deletes a specific custom data entry by category and key. Returns True if deleted, False otherwise."""
     conn = get_db_connection(workspace_id)
-    cursor = None # Initialize cursor for finally block
+    cursor = None  # Initialize cursor for finally block
     sql = "DELETE FROM custom_data WHERE category = ? AND key = ?"
     params = (category, key)
     try:
         cursor = conn.cursor()
         cursor.execute(sql, params)
         conn.commit()
-        return cursor.rowcount > 0 # Return True if one row was deleted
+        return cursor.rowcount > 0  # Return True if one row was deleted
     except sqlite3.Error as e:
         conn.rollback()
         raise DatabaseError(f"Failed to delete custom data for '{category}/{key}': {e}")
@@ -1390,10 +1511,13 @@ def delete_custom_data(workspace_id: str, category: str, key: str) -> bool:
         if cursor:
             cursor.close()
 
-def log_context_link(workspace_id: str, link_data: models.ContextLink) -> models.ContextLink:
+
+def log_context_link(
+    workspace_id: str, link_data: models.ContextLink
+) -> models.ContextLink:
     """Logs a new context link."""
     conn = get_db_connection(workspace_id)
-    cursor = None # Initialize cursor for finally block
+    cursor = None  # Initialize cursor for finally block
     sql = """
         INSERT INTO context_links (
             workspace_id, source_item_type, source_item_id,
@@ -1405,14 +1529,14 @@ def log_context_link(workspace_id: str, link_data: models.ContextLink) -> models
     # However, our Pydantic model ContextLink has default_factory=datetime.utcnow for timestamp
     # So, link_data.timestamp will always be populated.
     params = (
-        workspace_id, # Storing workspace_id explicitly in the table
+        workspace_id,  # Storing workspace_id explicitly in the table
         link_data.source_item_type,
-        str(link_data.source_item_id), # Ensure IDs are stored as text
+        str(link_data.source_item_id),  # Ensure IDs are stored as text
         link_data.target_item_type,
-        str(link_data.target_item_id), # Ensure IDs are stored as text
+        str(link_data.target_item_id),  # Ensure IDs are stored as text
         link_data.relationship_type,
         link_data.description,
-        link_data.timestamp # Pydantic model ensures this is set
+        link_data.timestamp,  # Pydantic model ensures this is set
     )
     try:
         cursor = conn.cursor()
@@ -1430,20 +1554,21 @@ def log_context_link(workspace_id: str, link_data: models.ContextLink) -> models
         if cursor:
             cursor.close()
 
+
 def get_context_links(
     workspace_id: str,
     item_type: str,
     item_id: str,
     relationship_type_filter: Optional[str] = None,
     linked_item_type_filter: Optional[str] = None,
-    limit: Optional[int] = None
+    limit: Optional[int] = None,
 ) -> List[models.ContextLink]:
     """
     Retrieves links for a given item, with optional filters.
     Finds links where the given item is EITHER the source OR the target.
     """
     conn = get_db_connection(workspace_id)
-    cursor = None # Initialize cursor for finally block
+    cursor = None  # Initialize cursor for finally block
 
     # Ensure item_id is treated as string for consistent querying with TEXT columns
     str_item_id = str(item_id)
@@ -1473,15 +1598,23 @@ def get_context_links(
     if linked_item_type_filter:
         # This filter applies to the "other end" of the link
         conditions.append(
-            "((source_item_type = ? AND source_item_id = ? AND target_item_type = ?) OR " +
-            "(target_item_type = ? AND target_item_id = ? AND source_item_type = ?))"
+            "((source_item_type = ? AND source_item_id = ? AND target_item_type = ?) OR "
+            + "(target_item_type = ? AND target_item_id = ? AND source_item_type = ?))"
         )
-        params_list.extend([item_type, str_item_id, linked_item_type_filter,
-                            item_type, str_item_id, linked_item_type_filter])
+        params_list.extend(
+            [
+                item_type,
+                str_item_id,
+                linked_item_type_filter,
+                item_type,
+                str_item_id,
+                linked_item_type_filter,
+            ]
+        )
 
     if conditions:
         sql = base_sql + " WHERE " + " AND ".join(conditions)
-    else: # Should not happen due to main condition and workspace_id
+    else:  # Should not happen due to main condition and workspace_id
         sql = base_sql
 
     sql += " ORDER BY timestamp DESC"
@@ -1498,16 +1631,17 @@ def get_context_links(
         rows = cursor.fetchall()
         links = [
             models.ContextLink(
-                id=row['id'],
-                timestamp=row['timestamp'],
+                id=row["id"],
+                timestamp=row["timestamp"],
                 # workspace_id=row['workspace_id'], # Not part of ContextLink Pydantic model
-                source_item_type=row['source_item_type'],
-                source_item_id=row['source_item_id'],
-                target_item_type=row['target_item_type'],
-                target_item_id=row['target_item_id'],
-                relationship_type=row['relationship_type'],
-                description=row['description']
-            ) for row in rows
+                source_item_type=row["source_item_type"],
+                source_item_id=row["source_item_id"],
+                target_item_type=row["target_item_type"],
+                target_item_id=row["target_item_id"],
+                relationship_type=row["relationship_type"],
+                description=row["description"],
+            )
+            for row in rows
         ]
         return links
     except sqlite3.Error as e:
@@ -1516,10 +1650,13 @@ def get_context_links(
         if cursor:
             cursor.close()
 
-def search_project_glossary_fts(workspace_id: str, query_term: str, limit: Optional[int] = 10) -> List[models.CustomData]:
+
+def search_project_glossary_fts(
+    workspace_id: str, query_term: str, limit: Optional[int] = 10
+) -> List[models.CustomData]:
     """Searches ProjectGlossary entries in custom_data using FTS5."""
     conn = get_db_connection(workspace_id)
-    cursor = None # Initialize cursor for finally block
+    cursor = None  # Initialize cursor for finally block
     # Updated to use the new general custom_data_fts table structure
     sql = """
         SELECT cd.id, cd.category, cd.key, cd.value
@@ -1544,36 +1681,41 @@ def search_project_glossary_fts(workspace_id: str, query_term: str, limit: Optio
         glossary_entries = []
         for row in rows:
             try:
-                value_data = json.loads(row['value'])
+                value_data = json.loads(row["value"])
                 glossary_entries.append(
                     models.CustomData(
-                        id=row['id'],
-                        category=row['category'],
-                        key=row['key'],
-                        value=value_data
+                        id=row["id"],
+                        category=row["category"],
+                        key=row["key"],
+                        value=value_data,
                     )
                 )
             except json.JSONDecodeError as e:
                 # Log or handle error for specific row if JSON is invalid
-                print(f"Warning: Failed to decode JSON for glossary item id={row['id']}: {e}") # Replace with proper logging
-                continue # Skip this row
+                print(
+                    f"Warning: Failed to decode JSON for glossary item id={row['id']}: {e}"
+                )  # Replace with proper logging
+                continue  # Skip this row
         return glossary_entries
     except sqlite3.Error as e:
-        raise DatabaseError(f"Failed FTS search on ProjectGlossary for term '{query_term}': {e}")
+        raise DatabaseError(
+            f"Failed FTS search on ProjectGlossary for term '{query_term}': {e}"
+        )
     finally:
         if cursor:
             cursor.close()
+
 
 def search_custom_data_value_fts(
     workspace_id: str,
     query_term: str,
     category_filter: Optional[str] = None,
-    limit: Optional[int] = 10
+    limit: Optional[int] = 10,
 ) -> List[models.CustomData]:
     """Searches all custom_data entries using FTS5 on category, key, and value.
-       Optionally filters by category after FTS."""
+    Optionally filters by category after FTS."""
     conn = get_db_connection(workspace_id)
-    cursor = None # Initialize cursor for finally block
+    cursor = None  # Initialize cursor for finally block
 
     sql = """
         SELECT cd.id, cd.timestamp, cd.category, cd.key, cd.value
@@ -1584,7 +1726,7 @@ def search_custom_data_value_fts(
     params_list = [query_term]
 
     if category_filter:
-        sql += " AND fts.category = ?" # Filter by category on the FTS table
+        sql += " AND fts.category = ?"  # Filter by category on the FTS table
         params_list.append(category_filter)
 
     sql += " ORDER BY rank"
@@ -1601,33 +1743,37 @@ def search_custom_data_value_fts(
         for row in rows:
             try:
                 cursor = conn.cursor()
-                value_data = json.loads(row['value'])
+                value_data = json.loads(row["value"])
                 results.append(
                     models.CustomData(
-                        id=row['id'],
-                        timestamp=row['timestamp'],
-                        category=row['category'],
-                        key=row['key'],
-                        value=value_data
+                        id=row["id"],
+                        timestamp=row["timestamp"],
+                        category=row["category"],
+                        key=row["key"],
+                        value=value_data,
                     )
                 )
             except json.JSONDecodeError as e:
-                print(f"Warning: Failed to decode JSON for custom_data id={row['id']} (search_custom_data_value_fts): {e}")
+                print(
+                    f"Warning: Failed to decode JSON for custom_data id={row['id']} (search_custom_data_value_fts): {e}"
+                )
                 continue
         return results
     except sqlite3.Error as e:
-        raise DatabaseError(f"Failed FTS search on custom_data for term '{query_term}': {e}")
+        raise DatabaseError(
+            f"Failed FTS search on custom_data for term '{query_term}': {e}"
+        )
     finally:
         if cursor:
             cursor.close()
 
+
 def get_item_history(
-    workspace_id: str,
-    args: models.GetItemHistoryArgs
-) -> List[Dict[str, Any]]: # Returning list of dicts for now, could be Pydantic models
+    workspace_id: str, args: models.GetItemHistoryArgs
+) -> List[Dict[str, Any]]:  # Returning list of dicts for now, could be Pydantic models
     """Retrieves history for product_context or active_context."""
     conn = get_db_connection(workspace_id)
-    cursor = None # Initialize cursor for finally block
+    cursor = None  # Initialize cursor for finally block
 
     if args.item_type == "product_context":
         history_table_name = "product_context_history"
@@ -1660,7 +1806,9 @@ def get_item_history(
     if conditions:
         sql += " WHERE " + " AND ".join(conditions)
 
-    sql += " ORDER BY version DESC, timestamp DESC" # Most recent version/timestamp first
+    sql += (
+        " ORDER BY version DESC, timestamp DESC"  # Most recent version/timestamp first
+    )
 
     if args.limit is not None and args.limit > 0:
         sql += " LIMIT ?"
@@ -1674,14 +1822,16 @@ def get_item_history(
         rows = cursor.fetchall()
         history_entries = []
         for row in rows:
-            content_dict = json.loads(row['content'])
-            history_entries.append({
-                "id": row['id'],
-                "timestamp": row['timestamp'], # Already datetime object
-                "version": row['version'],
-                "content": content_dict,
-                "change_source": row['change_source']
-            })
+            content_dict = json.loads(row["content"])
+            history_entries.append(
+                {
+                    "id": row["id"],
+                    "timestamp": row["timestamp"],  # Already datetime object
+                    "version": row["version"],
+                    "content": content_dict,
+                    "change_source": row["change_source"],
+                }
+            )
             # Or if using Pydantic models:
             # history_entries.append(history_model(id=row['id'], timestamp=row['timestamp'], ...))
         return history_entries
@@ -1691,27 +1841,29 @@ def get_item_history(
         if cursor:
             cursor.close()
 
+
 # --- Recent Activity Summary ---
 
+
 def get_recent_activity_summary_data(
-workspace_id: str,
-hours_ago: Optional[int] = None,
-since_timestamp: Optional[datetime] = None,
-limit_per_type: int = 5
+    workspace_id: str,
+    hours_ago: Optional[int] = None,
+    since_timestamp: Optional[datetime] = None,
+    limit_per_type: int = 5,
 ) -> Dict[str, Any]:
     """
     Retrieves a summary of recent activity across various Engrams items.
     """
     conn = get_db_connection(workspace_id)
-    cursor = None # Initialize cursor for finally block
+    cursor = None  # Initialize cursor for finally block
     summary_results: Dict[str, Any] = {
         "recent_decisions": [],
         "recent_progress_entries": [],
         "recent_product_context_updates": [],
         "recent_active_context_updates": [],
         "recent_links_created": [],
-        "recent_system_patterns": [], # Added for System Patterns
-        "notes": []
+        "recent_system_patterns": [],  # Added for System Patterns
+        "notes": [],
     }
 
     now_utc = datetime.now(timezone.utc)
@@ -1722,7 +1874,7 @@ limit_per_type: int = 5
     elif hours_ago:
         start_datetime = now_utc - timedelta(hours=hours_ago)
     else:
-        start_datetime = now_utc - timedelta(hours=24) # Default to last 24 hours
+        start_datetime = now_utc - timedelta(hours=24)  # Default to last 24 hours
 
     summary_results["summary_period_start"] = start_datetime.isoformat()
 
@@ -1734,15 +1886,19 @@ limit_per_type: int = 5
             SELECT id, timestamp, summary, rationale, implementation_details, tags
             FROM decisions WHERE timestamp >= ? ORDER BY timestamp DESC LIMIT ?
             """,
-            (start_datetime, limit_per_type)
+            (start_datetime, limit_per_type),
         )
         rows = cursor.fetchall()
         summary_results["recent_decisions"] = [
             models.Decision(
-                id=row['id'], timestamp=row['timestamp'], summary=row['summary'],
-                rationale=row['rationale'], implementation_details=row['implementation_details'],
-                tags=json.loads(row['tags']) if row['tags'] else None
-            ).model_dump(mode='json') for row in rows
+                id=row["id"],
+                timestamp=row["timestamp"],
+                summary=row["summary"],
+                rationale=row["rationale"],
+                implementation_details=row["implementation_details"],
+                tags=json.loads(row["tags"]) if row["tags"] else None,
+            ).model_dump(mode="json")
+            for row in rows
         ]
 
         # Recent Progress Entries
@@ -1751,14 +1907,18 @@ limit_per_type: int = 5
             SELECT id, timestamp, status, description, parent_id
             FROM progress_entries WHERE timestamp >= ? ORDER BY timestamp DESC LIMIT ?
             """,
-            (start_datetime, limit_per_type)
+            (start_datetime, limit_per_type),
         )
         rows = cursor.fetchall()
         summary_results["recent_progress_entries"] = [
             models.ProgressEntry(
-                id=row['id'], timestamp=row['timestamp'], status=row['status'],
-                description=row['description'], parent_id=row['parent_id']
-            ).model_dump(mode='json') for row in rows
+                id=row["id"],
+                timestamp=row["timestamp"],
+                status=row["status"],
+                description=row["description"],
+                parent_id=row["parent_id"],
+            ).model_dump(mode="json")
+            for row in rows
         ]
 
         # Recent Product Context Updates (from history)
@@ -1767,14 +1927,18 @@ limit_per_type: int = 5
             SELECT id, timestamp, version, content, change_source
             FROM product_context_history WHERE timestamp >= ? ORDER BY timestamp DESC LIMIT ?
             """,
-            (start_datetime, limit_per_type)
+            (start_datetime, limit_per_type),
         )
         rows = cursor.fetchall()
         summary_results["recent_product_context_updates"] = [
             models.ProductContextHistory(
-                id=row['id'], timestamp=row['timestamp'], version=row['version'],
-                content=json.loads(row['content']), change_source=row['change_source']
-            ).model_dump(mode='json') for row in rows
+                id=row["id"],
+                timestamp=row["timestamp"],
+                version=row["version"],
+                content=json.loads(row["content"]),
+                change_source=row["change_source"],
+            ).model_dump(mode="json")
+            for row in rows
         ]
 
         # Recent Active Context Updates (from history)
@@ -1783,14 +1947,18 @@ limit_per_type: int = 5
             SELECT id, timestamp, version, content, change_source
             FROM active_context_history WHERE timestamp >= ? ORDER BY timestamp DESC LIMIT ?
             """,
-            (start_datetime, limit_per_type)
+            (start_datetime, limit_per_type),
         )
         rows = cursor.fetchall()
         summary_results["recent_active_context_updates"] = [
             models.ActiveContextHistory(
-                id=row['id'], timestamp=row['timestamp'], version=row['version'],
-                content=json.loads(row['content']), change_source=row['change_source']
-            ).model_dump(mode='json') for row in rows
+                id=row["id"],
+                timestamp=row["timestamp"],
+                version=row["version"],
+                content=json.loads(row["content"]),
+                change_source=row["change_source"],
+            ).model_dump(mode="json")
+            for row in rows
         ]
 
         # Recent Links Created
@@ -1799,16 +1967,21 @@ limit_per_type: int = 5
             SELECT id, timestamp, source_item_type, source_item_id, target_item_type, target_item_id, relationship_type, description
             FROM context_links WHERE timestamp >= ? ORDER BY timestamp DESC LIMIT ?
             """,
-            (start_datetime, limit_per_type)
+            (start_datetime, limit_per_type),
         )
         rows = cursor.fetchall()
         summary_results["recent_links_created"] = [
             models.ContextLink(
-                id=row['id'], timestamp=row['timestamp'], source_item_type=row['source_item_type'],
-                source_item_id=row['source_item_id'], target_item_type=row['target_item_type'],
-                target_item_id=row['target_item_id'], relationship_type=row['relationship_type'],
-                description=row['description']
-            ).model_dump(mode='json') for row in rows
+                id=row["id"],
+                timestamp=row["timestamp"],
+                source_item_type=row["source_item_type"],
+                source_item_id=row["source_item_id"],
+                target_item_type=row["target_item_type"],
+                target_item_id=row["target_item_id"],
+                relationship_type=row["relationship_type"],
+                description=row["description"],
+            ).model_dump(mode="json")
+            for row in rows
         ]
 
         # Recent System Patterns
@@ -1817,14 +1990,18 @@ limit_per_type: int = 5
             SELECT id, timestamp, name, description, tags
             FROM system_patterns WHERE timestamp >= ? ORDER BY timestamp DESC LIMIT ?
             """,
-            (start_datetime, limit_per_type)
+            (start_datetime, limit_per_type),
         )
         rows = cursor.fetchall()
         summary_results["recent_system_patterns"] = [
             models.SystemPattern(
-                id=row['id'], timestamp=row['timestamp'], name=row['name'],
-                description=row['description'], tags=json.loads(row['tags']) if row['tags'] else None
-            ).model_dump(mode='json') for row in rows
+                id=row["id"],
+                timestamp=row["timestamp"],
+                name=row["name"],
+                description=row["description"],
+                tags=json.loads(row["tags"]) if row["tags"] else None,
+            ).model_dump(mode="json")
+            for row in rows
         ]
 
         # Note about missing timestamps (removed as all now have timestamps)
@@ -1841,9 +2018,11 @@ limit_per_type: int = 5
         if cursor:
             cursor.close()
 
+
 # (All planned CRUD functions implemented)
 
 # --- Cleanup ---
 # Consider using a context manager or atexit to ensure connections are closed
 import atexit
+
 atexit.register(close_all_connections)

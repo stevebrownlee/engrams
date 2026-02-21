@@ -3,10 +3,11 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "engrams"
+name = "engrams-mcp"
 version = "1.0.0"
 authors = [
-    {name = "Scott McLeod", email = "contextportal@gmail.com"}
+    {name = "Scott McLeod", email = "contextportal@gmail.com"},
+    {name = "Steve Brownlee", email = "steve@stevebrownlee.com"},
 ]
 description = "A governance-aware, context-intelligent development platform built on MCP"
 readme = "README.md"
@@ -64,8 +65,8 @@ test = [
 
 [project.urls]
 "Homepage" = "https://engrams.sh"
-"Bug Reports" = "https://github.com/yourusername/engrams/issues"
-"Source" = "https://github.com/yourusername/engrams"
+"Bug Reports" = "https://github.com/stevebrownlee/engrams/issues"
+"Source" = "https://github.com/stevebrownlee/engrams"
 "Documentation" = "https://engrams.sh/docs"
 
 [project.scripts]
@@ -93,6 +94,9 @@ include-package-data = true
 [tool.uv]
 override-dependencies = [
   "mcp>=1.23.0"
+]
+required-environments = [
+  "sys_platform == 'darwin' and platform_machine == 'x86_64'"
 ]
 
 # Black configuration

@@ -15,7 +15,10 @@ log = logging.getLogger(__name__)
 
 # --- Context Scopes CRUD ---
 
-def create_scope(workspace_id: str, scope: gov_models.ContextScope) -> gov_models.ContextScope:
+
+def create_scope(
+    workspace_id: str, scope: gov_models.ContextScope
+) -> gov_models.ContextScope:
     """Creates a new context scope."""
     conn = get_db_connection(workspace_id)
     cursor = None
@@ -25,13 +28,16 @@ def create_scope(workspace_id: str, scope: gov_models.ContextScope) -> gov_model
     """
     try:
         cursor = conn.cursor()
-        cursor.execute(sql, (
-            scope.scope_type,
-            scope.scope_name,
-            scope.parent_scope_id,
-            scope.created_by,
-            scope.created_at
-        ))
+        cursor.execute(
+            sql,
+            (
+                scope.scope_type,
+                scope.scope_name,
+                scope.parent_scope_id,
+                scope.created_by,
+                scope.created_at,
+            ),
+        )
         scope.id = cursor.lastrowid
         conn.commit()
         return scope
@@ -43,7 +49,9 @@ def create_scope(workspace_id: str, scope: gov_models.ContextScope) -> gov_model
             cursor.close()
 
 
-def get_scopes(workspace_id: str, scope_type: Optional[str] = None) -> List[gov_models.ContextScope]:
+def get_scopes(
+    workspace_id: str, scope_type: Optional[str] = None
+) -> List[gov_models.ContextScope]:
     """Retrieves context scopes, optionally filtered by type."""
     conn = get_db_connection(workspace_id)
     cursor = None
@@ -62,13 +70,14 @@ def get_scopes(workspace_id: str, scope_type: Optional[str] = None) -> List[gov_
         rows = cursor.fetchall()
         return [
             gov_models.ContextScope(
-                id=row['id'],
-                scope_type=row['scope_type'],
-                scope_name=row['scope_name'],
-                parent_scope_id=row['parent_scope_id'],
-                created_by=row['created_by'],
-                created_at=row['created_at']
-            ) for row in rows
+                id=row["id"],
+                scope_type=row["scope_type"],
+                scope_name=row["scope_name"],
+                parent_scope_id=row["parent_scope_id"],
+                created_by=row["created_by"],
+                created_at=row["created_at"],
+            )
+            for row in rows
         ]
     except sqlite3.Error as e:
         raise DatabaseError(f"Failed to get scopes: {e}")
@@ -77,7 +86,9 @@ def get_scopes(workspace_id: str, scope_type: Optional[str] = None) -> List[gov_
             cursor.close()
 
 
-def get_scope_by_id(workspace_id: str, scope_id: int) -> Optional[gov_models.ContextScope]:
+def get_scope_by_id(
+    workspace_id: str, scope_id: int
+) -> Optional[gov_models.ContextScope]:
     """Retrieves a single scope by ID."""
     conn = get_db_connection(workspace_id)
     cursor = None
@@ -88,12 +99,12 @@ def get_scope_by_id(workspace_id: str, scope_id: int) -> Optional[gov_models.Con
         row = cursor.fetchone()
         if row:
             return gov_models.ContextScope(
-                id=row['id'],
-                scope_type=row['scope_type'],
-                scope_name=row['scope_name'],
-                parent_scope_id=row['parent_scope_id'],
-                created_by=row['created_by'],
-                created_at=row['created_at']
+                id=row["id"],
+                scope_type=row["scope_type"],
+                scope_name=row["scope_name"],
+                parent_scope_id=row["parent_scope_id"],
+                created_by=row["created_by"],
+                created_at=row["created_at"],
             )
         return None
     except sqlite3.Error as e:
@@ -105,7 +116,10 @@ def get_scope_by_id(workspace_id: str, scope_id: int) -> Optional[gov_models.Con
 
 # --- Governance Rules CRUD ---
 
-def log_governance_rule(workspace_id: str, rule: gov_models.GovernanceRule) -> gov_models.GovernanceRule:
+
+def log_governance_rule(
+    workspace_id: str, rule: gov_models.GovernanceRule
+) -> gov_models.GovernanceRule:
     """Creates a new governance rule."""
     conn = get_db_connection(workspace_id)
     cursor = None
@@ -116,16 +130,19 @@ def log_governance_rule(workspace_id: str, rule: gov_models.GovernanceRule) -> g
     """
     try:
         cursor = conn.cursor()
-        cursor.execute(sql, (
-            rule.scope_id,
-            rule.rule_type,
-            rule.entity_type,
-            json.dumps(rule.rule_definition),
-            rule.description,
-            1 if rule.is_active else 0,
-            rule.created_at,
-            rule.updated_at
-        ))
+        cursor.execute(
+            sql,
+            (
+                rule.scope_id,
+                rule.rule_type,
+                rule.entity_type,
+                json.dumps(rule.rule_definition),
+                rule.description,
+                1 if rule.is_active else 0,
+                rule.created_at,
+                rule.updated_at,
+            ),
+        )
         rule.id = cursor.lastrowid
         conn.commit()
         return rule
@@ -141,7 +158,7 @@ def get_governance_rules(
     workspace_id: str,
     scope_id: int,
     entity_type: Optional[str] = None,
-    active_only: bool = True
+    active_only: bool = True,
 ) -> List[gov_models.GovernanceRule]:
     """Retrieves governance rules for a scope."""
     conn = get_db_connection(workspace_id)
@@ -164,16 +181,17 @@ def get_governance_rules(
         rows = cursor.fetchall()
         return [
             gov_models.GovernanceRule(
-                id=row['id'],
-                scope_id=row['scope_id'],
-                rule_type=row['rule_type'],
-                entity_type=row['entity_type'],
-                rule_definition=json.loads(row['rule_definition']),
-                description=row['description'],
-                is_active=bool(row['is_active']),
-                created_at=row['created_at'],
-                updated_at=row['updated_at']
-            ) for row in rows
+                id=row["id"],
+                scope_id=row["scope_id"],
+                rule_type=row["rule_type"],
+                entity_type=row["entity_type"],
+                rule_definition=json.loads(row["rule_definition"]),
+                description=row["description"],
+                is_active=bool(row["is_active"]),
+                created_at=row["created_at"],
+                updated_at=row["updated_at"],
+            )
+            for row in rows
         ]
     except (sqlite3.Error, json.JSONDecodeError) as e:
         raise DatabaseError(f"Failed to get governance rules: {e}")
@@ -183,8 +201,7 @@ def get_governance_rules(
 
 
 def get_team_rules_for_entity_type(
-    workspace_id: str,
-    entity_type: str
+    workspace_id: str, entity_type: str
 ) -> List[gov_models.GovernanceRule]:
     """Retrieves all active team-scope governance rules for a given entity type."""
     conn = get_db_connection(workspace_id)
@@ -205,16 +222,17 @@ def get_team_rules_for_entity_type(
         rows = cursor.fetchall()
         return [
             gov_models.GovernanceRule(
-                id=row['id'],
-                scope_id=row['scope_id'],
-                rule_type=row['rule_type'],
-                entity_type=row['entity_type'],
-                rule_definition=json.loads(row['rule_definition']),
-                description=row['description'],
-                is_active=bool(row['is_active']),
-                created_at=row['created_at'],
-                updated_at=row['updated_at']
-            ) for row in rows
+                id=row["id"],
+                scope_id=row["scope_id"],
+                rule_type=row["rule_type"],
+                entity_type=row["entity_type"],
+                rule_definition=json.loads(row["rule_definition"]),
+                description=row["description"],
+                is_active=bool(row["is_active"]),
+                created_at=row["created_at"],
+                updated_at=row["updated_at"],
+            )
+            for row in rows
         ]
     except (sqlite3.Error, json.JSONDecodeError) as e:
         raise DatabaseError(f"Failed to get team rules: {e}")
@@ -225,7 +243,10 @@ def get_team_rules_for_entity_type(
 
 # --- Scope Amendments CRUD ---
 
-def create_scope_amendment(workspace_id: str, amendment: gov_models.ScopeAmendment) -> gov_models.ScopeAmendment:
+
+def create_scope_amendment(
+    workspace_id: str, amendment: gov_models.ScopeAmendment
+) -> gov_models.ScopeAmendment:
     """Creates a new scope amendment."""
     conn = get_db_connection(workspace_id)
     cursor = None
@@ -236,15 +257,18 @@ def create_scope_amendment(workspace_id: str, amendment: gov_models.ScopeAmendme
     """
     try:
         cursor = conn.cursor()
-        cursor.execute(sql, (
-            amendment.source_item_type,
-            amendment.source_item_id,
-            amendment.target_item_type,
-            amendment.target_item_id,
-            amendment.status,
-            amendment.rationale,
-            amendment.created_at
-        ))
+        cursor.execute(
+            sql,
+            (
+                amendment.source_item_type,
+                amendment.source_item_id,
+                amendment.target_item_type,
+                amendment.target_item_id,
+                amendment.status,
+                amendment.rationale,
+                amendment.created_at,
+            ),
+        )
         amendment.id = cursor.lastrowid
         conn.commit()
         return amendment
@@ -257,9 +281,7 @@ def create_scope_amendment(workspace_id: str, amendment: gov_models.ScopeAmendme
 
 
 def get_scope_amendments(
-    workspace_id: str,
-    status: Optional[str] = None,
-    scope_id: Optional[int] = None
+    workspace_id: str, status: Optional[str] = None, scope_id: Optional[int] = None
 ) -> List[gov_models.ScopeAmendment]:
     """Retrieves scope amendments with optional filters."""
     conn = get_db_connection(workspace_id)
@@ -286,17 +308,18 @@ def get_scope_amendments(
         rows = cursor.fetchall()
         return [
             gov_models.ScopeAmendment(
-                id=row['id'],
-                source_item_type=row['source_item_type'],
-                source_item_id=row['source_item_id'],
-                target_item_type=row['target_item_type'],
-                target_item_id=row['target_item_id'],
-                status=row['status'],
-                rationale=row['rationale'],
-                reviewed_by=row['reviewed_by'],
-                reviewed_at=row['reviewed_at'],
-                created_at=row['created_at']
-            ) for row in rows
+                id=row["id"],
+                source_item_type=row["source_item_type"],
+                source_item_id=row["source_item_id"],
+                target_item_type=row["target_item_type"],
+                target_item_id=row["target_item_id"],
+                status=row["status"],
+                rationale=row["rationale"],
+                reviewed_by=row["reviewed_by"],
+                reviewed_at=row["reviewed_at"],
+                created_at=row["created_at"],
+            )
+            for row in rows
         ]
     except sqlite3.Error as e:
         raise DatabaseError(f"Failed to get scope amendments: {e}")
@@ -306,10 +329,7 @@ def get_scope_amendments(
 
 
 def review_amendment(
-    workspace_id: str,
-    amendment_id: int,
-    status: str,
-    reviewed_by: str
+    workspace_id: str, amendment_id: int, status: str, reviewed_by: str
 ) -> bool:
     """Reviews (accepts or rejects) a scope amendment."""
     conn = get_db_connection(workspace_id)
@@ -321,12 +341,9 @@ def review_amendment(
     """
     try:
         cursor = conn.cursor()
-        cursor.execute(sql, (
-            status,
-            reviewed_by,
-            datetime.now(timezone.utc),
-            amendment_id
-        ))
+        cursor.execute(
+            sql, (status, reviewed_by, datetime.now(timezone.utc), amendment_id)
+        )
         conn.commit()
         return cursor.rowcount > 0
     except sqlite3.Error as e:
@@ -339,13 +356,14 @@ def review_amendment(
 
 # --- Governance Column Operations ---
 
+
 def get_item_scope_id(workspace_id: str, item_type: str, item_id: int) -> Optional[int]:
     """Gets the scope_id for an entity in its table."""
     table_map = {
-        'decision': 'decisions',
-        'system_pattern': 'system_patterns',
-        'progress_entry': 'progress_entries',
-        'custom_data': 'custom_data',
+        "decision": "decisions",
+        "system_pattern": "system_patterns",
+        "progress_entry": "progress_entries",
+        "custom_data": "custom_data",
     }
     table = table_map.get(item_type)
     if not table:
@@ -357,7 +375,7 @@ def get_item_scope_id(workspace_id: str, item_type: str, item_id: int) -> Option
         cursor = conn.cursor()
         cursor.execute(f"SELECT scope_id FROM {table} WHERE id = ?", (item_id,))
         row = cursor.fetchone()
-        return row['scope_id'] if row else None
+        return row["scope_id"] if row else None
     except sqlite3.Error:
         return None
     finally:
@@ -366,17 +384,14 @@ def get_item_scope_id(workspace_id: str, item_type: str, item_id: int) -> Option
 
 
 def update_item_override_status(
-    workspace_id: str,
-    item_type: str,
-    item_id: int,
-    override_status: str
+    workspace_id: str, item_type: str, item_id: int, override_status: str
 ) -> bool:
     """Updates the override_status for an entity."""
     table_map = {
-        'decision': 'decisions',
-        'system_pattern': 'system_patterns',
-        'progress_entry': 'progress_entries',
-        'custom_data': 'custom_data',
+        "decision": "decisions",
+        "system_pattern": "system_patterns",
+        "progress_entry": "progress_entries",
+        "custom_data": "custom_data",
     }
     table = table_map.get(item_type)
     if not table:
@@ -388,7 +403,7 @@ def update_item_override_status(
         cursor = conn.cursor()
         cursor.execute(
             f"UPDATE {table} SET override_status = ? WHERE id = ?",
-            (override_status, item_id)
+            (override_status, item_id),
         )
         conn.commit()
         return cursor.rowcount > 0
@@ -403,10 +418,10 @@ def update_item_override_status(
 def get_team_items_by_type(workspace_id: str, entity_type: str) -> List[Dict[str, Any]]:
     """Gets all team-scope items of a given type (for conflict detection)."""
     table_map = {
-        'decision': 'decisions',
-        'system_pattern': 'system_patterns',
-        'progress_entry': 'progress_entries',
-        'custom_data': 'custom_data',
+        "decision": "decisions",
+        "system_pattern": "system_patterns",
+        "progress_entry": "progress_entries",
+        "custom_data": "custom_data",
     }
     table = table_map.get(entity_type)
     if not table:

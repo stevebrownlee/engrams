@@ -1,6 +1,6 @@
+import logging
 import os
 import pathlib
-import logging
 from typing import Optional
 
 # Placeholder for application settings and configuration logic
@@ -20,12 +20,14 @@ def set_custom_db_path(path: Optional[str]):
     if path:
         log.info(f"Custom database path set to: {path}")
 
+
 def set_base_path(path: Optional[str]):
     """Set a base database path."""
     global _base_path
     _base_path = path
     if path:
         log.info(f"Base path set to: {path}")
+
 
 def set_db_filename(filename: str):
     """Set the database filename."""
@@ -51,7 +53,7 @@ def get_database_path(workspace_id: str) -> pathlib.Path:
     # Check if base database path is set
     if _base_path:
         base_path = pathlib.Path(_base_path).expanduser()
-        sanitized_workspace_id = workspace_id.replace('/', '_').replace('\\', '_')
+        sanitized_workspace_id = workspace_id.replace("/", "_").replace("\\", "_")
         db_dir = base_path / sanitized_workspace_id
         db_dir.mkdir(parents=True, exist_ok=True)
         db_path = db_dir / _db_filename
@@ -69,7 +71,7 @@ def get_database_path(workspace_id: str) -> pathlib.Path:
             return custom_path
         else:
             # Relative path - resolve relative to workspace
-            posix_workspace_id = workspace_id.replace('\\', '/')
+            posix_workspace_id = workspace_id.replace("\\", "/")
             workspace_path = pathlib.Path(posix_workspace_id)
             resolved_path = workspace_path / custom_path
             log.debug(f"Using custom relative database path: {resolved_path}")
@@ -82,7 +84,7 @@ def get_database_path(workspace_id: str) -> pathlib.Path:
     # Store DB in a .context_portal directory within the workspace
     # Ensure workspace_id uses POSIX separators for consistency within Docker
     # This is a defensive measure against potential path mangling
-    posix_workspace_id = workspace_id.replace('\\', '/')
+    posix_workspace_id = workspace_id.replace("\\", "/")
     log.debug(f"Normalized workspace_id to POSIX: {posix_workspace_id}")
 
     if not posix_workspace_id or not os.path.isdir(posix_workspace_id):
@@ -93,8 +95,7 @@ def get_database_path(workspace_id: str) -> pathlib.Path:
     db_dir = workspace_path / "engrams"
     log.debug(f"Constructed db_dir: {db_dir}")
     log.debug(f"Attempting mkdir for: {db_dir}")
-    db_dir.mkdir(exist_ok=True) # Ensure the directory exists
+    db_dir.mkdir(exist_ok=True)  # Ensure the directory exists
     db_path = db_dir / _db_filename
     log.debug(f"Constructed db_path: {db_path}")
     return db_path
-

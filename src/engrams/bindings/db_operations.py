@@ -8,13 +8,15 @@ from typing import List, Optional
 
 from ..core.exceptions import DatabaseError
 from ..db.database import get_db_connection
-from . import models as binding_models
 from . import matcher
+from . import models as binding_models
 
 log = logging.getLogger(__name__)
 
 
-def create_code_binding(workspace_id: str, binding: binding_models.CodeBinding) -> binding_models.CodeBinding:
+def create_code_binding(
+    workspace_id: str, binding: binding_models.CodeBinding
+) -> binding_models.CodeBinding:
     """Creates a new code binding."""
     conn = get_db_connection(workspace_id)
     cursor = None
@@ -25,17 +27,20 @@ def create_code_binding(workspace_id: str, binding: binding_models.CodeBinding) 
     """
     try:
         cursor = conn.cursor()
-        cursor.execute(sql, (
-            binding.item_type,
-            binding.item_id,
-            binding.file_pattern,
-            binding.symbol_pattern,
-            binding.binding_type,
-            binding.confidence,
-            binding.last_verified_at,
-            binding.created_at,
-            binding.updated_at
-        ))
+        cursor.execute(
+            sql,
+            (
+                binding.item_type,
+                binding.item_id,
+                binding.file_pattern,
+                binding.symbol_pattern,
+                binding.binding_type,
+                binding.confidence,
+                binding.last_verified_at,
+                binding.created_at,
+                binding.updated_at,
+            ),
+        )
         binding.id = cursor.lastrowid
         conn.commit()
         return binding
@@ -48,9 +53,7 @@ def create_code_binding(workspace_id: str, binding: binding_models.CodeBinding) 
 
 
 def get_bindings_for_item(
-    workspace_id: str,
-    item_type: str,
-    item_id: int
+    workspace_id: str, item_type: str, item_id: int
 ) -> List[binding_models.CodeBinding]:
     """Retrieves all code bindings for a Engrams entity."""
     conn = get_db_connection(workspace_id)
@@ -96,9 +99,7 @@ def get_all_bindings(workspace_id: str) -> List[binding_models.CodeBinding]:
 
 
 def get_bindings_matching_files(
-    workspace_id: str,
-    file_paths: List[str],
-    binding_type_filter: Optional[str] = None
+    workspace_id: str, file_paths: List[str], binding_type_filter: Optional[str] = None
 ) -> List[binding_models.CodeBinding]:
     """Get all bindings whose file_pattern matches any of the given file paths."""
     all_bindings = get_all_bindings(workspace_id)
@@ -115,7 +116,9 @@ def get_bindings_matching_files(
     return matched
 
 
-def get_stale_bindings(workspace_id: str, days_stale: int = 30) -> List[binding_models.CodeBinding]:
+def get_stale_bindings(
+    workspace_id: str, days_stale: int = 30
+) -> List[binding_models.CodeBinding]:
     """Return bindings that haven't been verified recently or never verified."""
     conn = get_db_connection(workspace_id)
     cursor = None
@@ -158,8 +161,7 @@ def delete_code_binding(workspace_id: str, binding_id: int) -> bool:
 
 
 def log_binding_verification(
-    workspace_id: str,
-    verification: binding_models.CodeBindingVerification
+    workspace_id: str, verification: binding_models.CodeBindingVerification
 ) -> binding_models.CodeBindingVerification:
     """Records a binding verification result."""
     conn = get_db_connection(workspace_id)
@@ -170,19 +172,26 @@ def log_binding_verification(
     """
     try:
         cursor = conn.cursor()
-        cursor.execute(sql, (
-            verification.binding_id,
-            verification.verification_status,
-            verification.files_matched,
-            verification.verified_at,
-            verification.notes
-        ))
+        cursor.execute(
+            sql,
+            (
+                verification.binding_id,
+                verification.verification_status,
+                verification.files_matched,
+                verification.verified_at,
+                verification.notes,
+            ),
+        )
         verification.id = cursor.lastrowid
 
         # Update last_verified_at on the binding
         cursor.execute(
             "UPDATE code_bindings SET last_verified_at = ?, updated_at = ? WHERE id = ?",
-            (verification.verified_at, datetime.now(timezone.utc), verification.binding_id)
+            (
+                verification.verified_at,
+                datetime.now(timezone.utc),
+                verification.binding_id,
+            ),
         )
 
         conn.commit()
@@ -198,10 +207,10 @@ def log_binding_verification(
 def get_entity_summary(workspace_id: str, item_type: str, item_id: int) -> str:
     """Get a brief summary text for a Engrams entity."""
     table_map = {
-        'decision': ('decisions', 'summary'),
-        'system_pattern': ('system_patterns', 'name'),
-        'progress_entry': ('progress_entries', 'description'),
-        'custom_data': ('custom_data', 'key'),
+        "decision": ("decisions", "summary"),
+        "system_pattern": ("system_patterns", "name"),
+        "progress_entry": ("progress_entries", "description"),
+        "custom_data": ("custom_data", "key"),
     }
     if item_type not in table_map:
         return f"{item_type} #{item_id}"
@@ -221,17 +230,19 @@ def get_entity_summary(workspace_id: str, item_type: str, item_id: int) -> str:
             cursor.close()
 
 
-def suggest_bindings_for_item(workspace_id: str, item_type: str, item_id: int) -> List[str]:
+def suggest_bindings_for_item(
+    workspace_id: str, item_type: str, item_id: int
+) -> List[str]:
     """
     Analyze item text content and suggest likely file patterns.
 
     Looks for references to paths, modules, or technologies in the item's text.
     """
     table_map = {
-        'decision': ('decisions', ['summary', 'rationale', 'implementation_details']),
-        'system_pattern': ('system_patterns', ['name', 'description']),
-        'progress_entry': ('progress_entries', ['description']),
-        'custom_data': ('custom_data', ['value']),
+        "decision": ("decisions", ["summary", "rationale", "implementation_details"]),
+        "system_pattern": ("system_patterns", ["name", "description"]),
+        "progress_entry": ("progress_entries", ["description"]),
+        "custom_data": ("custom_data", ["value"]),
     }
     if item_type not in table_map:
         return []
@@ -256,16 +267,18 @@ def suggest_bindings_for_item(workspace_id: str, item_type: str, item_id: int) -
             except (IndexError, KeyError):
                 pass
 
-        full_text = ' '.join(text_parts)
+        full_text = " ".join(text_parts)
 
         # Extract potential file patterns
         suggestions = []
 
         # Look for file path references (e.g., src/auth/login.py, lib/utils.js)
-        path_pattern = re.compile(r'(?:^|\s|[`"\'])([a-zA-Z0-9_./\\-]+\.[a-zA-Z]{1,10})(?:\s|[`"\']|$)')
+        path_pattern = re.compile(
+            r'(?:^|\s|[`"\'])([a-zA-Z0-9_./\\-]+\.[a-zA-Z]{1,10})(?:\s|[`"\']|$)'
+        )
         for match in path_pattern.finditer(full_text):
             path = match.group(1)
-            if '/' in path or '\\' in path:
+            if "/" in path or "\\" in path:
                 suggestions.append(path)
 
         # Look for directory references
@@ -287,14 +300,14 @@ def suggest_bindings_for_item(workspace_id: str, item_type: str, item_id: int) -
 def _row_to_binding(row: sqlite3.Row) -> binding_models.CodeBinding:
     """Convert a database row to a CodeBinding model."""
     return binding_models.CodeBinding(
-        id=row['id'],
-        item_type=row['item_type'],
-        item_id=row['item_id'],
-        file_pattern=row['file_pattern'],
-        symbol_pattern=row['symbol_pattern'],
-        binding_type=row['binding_type'],
-        confidence=row['confidence'],
-        last_verified_at=row['last_verified_at'],
-        created_at=row['created_at'],
-        updated_at=row['updated_at']
+        id=row["id"],
+        item_type=row["item_type"],
+        item_id=row["item_id"],
+        file_pattern=row["file_pattern"],
+        symbol_pattern=row["symbol_pattern"],
+        binding_type=row["binding_type"],
+        confidence=row["confidence"],
+        last_verified_at=row["last_verified_at"],
+        created_at=row["created_at"],
+        updated_at=row["updated_at"],
     )

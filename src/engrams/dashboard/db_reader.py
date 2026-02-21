@@ -43,9 +43,7 @@ class EngramsReader:
 
         # Product context
         try:
-            cursor.execute(
-                "SELECT content FROM product_context WHERE id = 1"
-            )
+            cursor.execute("SELECT content FROM product_context WHERE id = 1")
             row = cursor.fetchone()
             if row:
                 stats["product_context"] = {
@@ -87,9 +85,7 @@ class EngramsReader:
     def get_product_context(self) -> Dict[str, Any]:
         """Get the product context entry."""
         cursor = self.conn.cursor()
-        cursor.execute(
-            "SELECT content FROM product_context WHERE id = 1"
-        )
+        cursor.execute("SELECT content FROM product_context WHERE id = 1")
         row = cursor.fetchone()
         if row:
             return {
@@ -100,9 +96,7 @@ class EngramsReader:
     def get_active_context(self) -> Dict[str, Any]:
         """Get the active context entry."""
         cursor = self.conn.cursor()
-        cursor.execute(
-            "SELECT content FROM active_context WHERE id = 1"
-        )
+        cursor.execute("SELECT content FROM active_context WHERE id = 1")
         row = cursor.fetchone()
         if row:
             return {
@@ -237,9 +231,7 @@ class EngramsReader:
     def get_pattern_by_id(self, pattern_id: int) -> Optional[Dict]:
         """Get a single system pattern by ID with linked items and bindings."""
         cursor = self.conn.cursor()
-        cursor.execute(
-            "SELECT * FROM system_patterns WHERE id = ?", (pattern_id,)
-        )
+        cursor.execute("SELECT * FROM system_patterns WHERE id = ?", (pattern_id,))
         row = cursor.fetchone()
         if row:
             d = dict(row)
@@ -374,16 +366,12 @@ class EngramsReader:
     def get_categories(self) -> List[str]:
         """Get all custom data categories."""
         cursor = self.conn.cursor()
-        cursor.execute(
-            "SELECT DISTINCT category FROM custom_data ORDER BY category"
-        )
+        cursor.execute("SELECT DISTINCT category FROM custom_data ORDER BY category")
         return [row["category"] for row in cursor.fetchall()]
 
     # --- Knowledge Graph ---
 
-    def get_graph_data(
-        self, type_filter: Optional[List[str]] = None
-    ) -> Dict[str, Any]:
+    def get_graph_data(self, type_filter: Optional[List[str]] = None) -> Dict[str, Any]:
         """Build a knowledge graph structure for D3.js consumption.
 
         Returns:
@@ -506,9 +494,7 @@ class EngramsReader:
         if not self._table_exists("context_scopes"):
             return []
         cursor = self.conn.cursor()
-        cursor.execute(
-            "SELECT * FROM context_scopes ORDER BY scope_type, scope_name"
-        )
+        cursor.execute("SELECT * FROM context_scopes ORDER BY scope_type, scope_name")
         return [dict(row) for row in cursor.fetchall()]
 
     def get_governance_rules(self) -> List[Dict]:
@@ -534,9 +520,7 @@ class EngramsReader:
             return []
         cursor = self.conn.cursor()
         if status:
-            cursor.execute(
-                "SELECT * FROM scope_amendments WHERE status = ?", (status,)
-            )
+            cursor.execute("SELECT * FROM scope_amendments WHERE status = ?", (status,))
         else:
             cursor.execute("SELECT * FROM scope_amendments")
         return [dict(row) for row in cursor.fetchall()]
