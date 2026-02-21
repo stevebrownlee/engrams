@@ -9,10 +9,8 @@ SRC_PATH = os.path.join(REPO_ROOT, "src")
 if SRC_PATH not in sys.path:
     sys.path.insert(0, SRC_PATH)
 
-from context_portal_mcp.db.models import (
+from engrams.db.models import (
     GetDecisionsArgs,
-    SearchDecisionsArgs,
-    DeleteDecisionByIdArgs,
     LogProgressArgs,
     GetProgressArgs,
     UpdateProgressArgs,

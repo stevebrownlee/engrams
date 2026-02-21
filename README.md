@@ -1,336 +1,432 @@
 <div align="center">
 
-<br>
+<img src="./static/engram.sh.png" style="height:150px;" />
 
-# Context Portal MCP (ConPort)
+# Engrams
 
-## (It's a memory bank!)
-
-<br>
-
-<img src="assets/images/roo-logo.png" alt="Roo Code Logo" height="40"/>&nbsp;&nbsp;&nbsp;
-<img src="assets/images/cline.png" alt="CLine Logo" height="40"/>&nbsp;&nbsp;&nbsp;
-<img src="assets/images/windsurf.png" alt="Windsurf Cascade Logo" height="40"/>&nbsp;&nbsp;&nbsp;
-<img src="assets/images/cursor.png" alt="Cursor IDE Logo" height="40"/>
-
-<br>
-
-A database-backed Model Context Protocol (MCP) server for managing structured project context, designed to be used by AI assistants and developer tools within IDEs and other interfaces.
-
+## Enhanced Memory & Knowledge Platform
 </div>
 
-<br>
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 
-## What is Context Portal MCP server (ConPort)?
+A governance-aware, context-intelligent development platform built on the Model Context Protocol (MCP). Engrams transforms how AI agents understand and work with your projects by providing structured memory, intelligent context retrieval, and visual knowledge exploration.
 
-Context Portal (ConPort) is your project's **memory bank**. It's a tool that helps AI assistants understand your specific software project better by storing important information like decisions, tasks, and architectural patterns in a structured way. Think of it as building a project-specific knowledge base that the AI can easily access and use to give you more accurate and helpful responses.
+**Forked from** [GreatScottyMac/context-portal](https://github.com/GreatScottyMac/context-portal) v0.3.13
 
-**What it does:**
+[Features](#features) • [Installation](#installation) • [Quick Start](#quick-start) • [Documentation](#documentation)
 
-- Keeps track of project decisions, progress, and system designs.
-- Stores custom project data (like glossaries or specs).
-- Helps AI find relevant project information quickly (like a smart search).
-- Enables AI to use project context for better responses (RAG).
-- More efficient for managing, searching, and updating context compared to simple text file-based memory banks.
 
-ConPort provides a robust and structured way for AI assistants to store, retrieve, and manage various types of project context. It effectively builds a **project-specific knowledge graph**, capturing entities like decisions, progress, and architecture, along with their relationships. This structured knowledge base, enhanced by **vector embeddings** for semantic search, then serves as a powerful backend for **Retrieval Augmented Generation (RAG)**, enabling AI assistants to access precise, up-to-date information for more context-aware and accurate responses.
+---
 
-It replaces older file-based context management systems by offering a more reliable and queryable database backend (SQLite per workspace). ConPort is designed to be a generic context backend, compatible with various IDEs and client interfaces that support MCP.
+## What is Engrams?
 
-Key features include:
+Engrams is an **intelligent project memory system** that helps AI assistants deeply understand your software projects. Instead of relying on simple text files or scattered documentation, Engrams provides a structured, queryable knowledge graph that captures:
 
-- Structured context storage using SQLite (one DB per workspace, automatically created).
-- MCP server (`context_portal_mcp`) built with Python/FastAPI.
-- A comprehensive suite of defined MCP tools for interaction (see "Available ConPort Tools" below).
-- Multi-workspace support via `workspace_id`.
-- Primary deployment mode: STDIO for tight IDE integration.
-- Enables building a dynamic **project knowledge graph** with explicit relationships between context items.
-- Includes **vector data storage** and **semantic search** capabilities to power advanced RAG.
-- Serves as an ideal backend for **Retrieval Augmented Generation (RAG)**, providing AI with precise, queryable project memory.
-- Provides structured context that AI assistants can leverage for **prompt caching** with compatible LLM providers.
-- Manages database schema evolution using **Alembic migrations**, ensuring seamless updates and data integrity.
+- **Decisions**: Why you chose PostgreSQL over MongoDB, why you're using microservices
+- **Progress**: Current tasks, blockers, what's in flight
+- **Patterns**: Architectural patterns, coding conventions, system designs
+- **Context**: Project goals, current focus, team agreements
+- **Custom Data**: Glossaries, specifications, any structured project knowledge
 
-## Prerequisites
+**Key Benefits:**
+- **Smarter AI Agents**: Give your AI assistant deep project understanding
+- **Fast Retrieval**: Semantic search finds relevant context instantly
+- **Knowledge Graph**: See how decisions, patterns, and code relate
+- **Team Governance**: Enforce team standards while allowing individual flexibility
+- **Token Efficient**: Smart budgeting returns only relevant context within token limits
+- **Codebase-Aware**: Link decisions to actual code files for spatial context
 
-Before you begin, ensure you have the following installed:
+---
 
-- **Python:** Version 3.8 or higher is recommended.
-  - [Download Python](https://www.python.org/downloads/)
-  - Ensure Python is added to your system's PATH during installation (especially on Windows).
-- **uv:** (Highly Recommended) A fast Python environment and package manager. Using `uv` significantly simplifies virtual environment creation and dependency installation.
-  - [Install uv](https://github.com/astral-sh/uv#installation)
+## Features
 
-## Installation and Configuration (Recommended)
+### Structured Context Storage
 
-The recommended way to install and run ConPort is by using `uvx` to execute the package directly from PyPI. This method avoids the need to manually create and manage virtual environments.
+Store your project knowledge in a structured SQLite database instead of scattered markdown files.
 
-### `uvx` Configuration (Recommended for most IDEs)
+**Purpose**: Provide reliable, queryable storage for all project context with one database per workspace.
 
-In your MCP client settings (e.g., `mcp_settings.json`), use the following configuration:
-
-```json
-{
-  "mcpServers": {
-    "conport": {
-      "command": "uvx",
-      "args": [
-        "--from",
-        "context-portal-mcp",
-        "conport-mcp",
-        "--mode",
-        "stdio",
-        "--workspace_id",
-        "${workspaceFolder}",
-        "--log-file",
-        "./logs/conport.log",
-        "--log-level",
-        "INFO"
-      ]
+**Usage Example**:
+```python
+# Update product context (high-level project info)
+update_product_context(
+    workspace_id="/path/to/project",
+    content={
+        "name": "TaskMaster API",
+        "purpose": "RESTful API for task management",
+        "architecture": "Microservices with event sourcing",
+        "tech_stack": ["Python", "FastAPI", "PostgreSQL", "Redis"]
     }
-  }
-}
+)
+
+# Log a decision
+log_decision(
+    workspace_id="/path/to/project",
+    summary="Use PostgreSQL for primary database",
+    rationale="Need ACID guarantees, complex queries, and mature ecosystem",
+    tags=["database", "architecture"]
+)
+
+# Track progress
+log_progress(
+    workspace_id="/path/to/project",
+    description="Implement user authentication",
+    status="IN_PROGRESS"
+)
 ```
 
-- **`command`**: `uvx` handles the environment for you.
-- **`args`**: Contains the arguments to run the ConPort server.
-- `${workspaceFolder}`: This IDE variable is used to automatically provide the absolute path of the current project workspace.
-- `--log-file`: Optional: Path to a file where server logs will be written. If not provided, logs are directed to `stderr` (console). Useful for persistent logging and debugging server behavior.
-- `--log-level`: Optional: Sets the minimum logging level for the server. Valid choices are `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`. Defaults to `INFO`. Set to `DEBUG` for verbose output during development or troubleshooting.
+---
 
-> Important: Many IDEs do not expand `${workspaceFolder}` when launching MCP servers. Use one of these safe options:
-> 1) Provide an absolute path for `--workspace_id`.
-> 2) Omit `--workspace_id` at launch and rely on per-call `workspace_id` (recommended if your client provides it on every call).
+### Semantic Search & RAG
 
-Alternative configuration (no `--workspace_id` at launch):
+Vector embeddings enable semantic search - find relevant context by meaning, not just keywords.
 
-```json
-{
-  "mcpServers": {
-    "conport": {
-      "command": "uvx",
-      "args": [
-        "--from",
-        "context-portal-mcp",
-        "conport-mcp",
-        "--mode",
-        "stdio",
-        "--log-file",
-        "./logs/conport.log",
-        "--log-level",
-        "INFO"
-      ]
-    }
-  }
-}
+**Purpose**: Enable Retrieval Augmented Generation (RAG) so AI agents can access precise, contextually relevant information.
+
+**Usage Example**:
+```python
+# Semantic search across decisions
+search_decisions_fts(
+    workspace_id="/path/to/project",
+    query_term="database performance optimization"
+)
+# Returns decisions about caching, indexing, query optimization
+
+# Search custom data (specs, glossary, etc)
+search_custom_data_value_fts(
+    workspace_id="/path/to/project",
+    query_term="authentication flow",
+    category_filter="technical_specs"
+)
 ```
 
-If you omit `--workspace_id`, the server will skip pre-initialization and initialize the database on the first tool call using the `workspace_id` provided in that call.
+**What you get**: ChromaDB-powered vector storage that understands semantic similarity, not just exact matches.
 
-<br>
+---
 
-## Installation for Developers (from Git Repository)
+### Team Governance (Feature 1)
 
-The most appropriate way to develop and test ConPort is to run it in your IDE as an MCP server using the configuration above. This exercises STDIO mode and real client behavior.
+Two-layer hierarchy (team/individual) with conflict detection and amendment workflows.
 
-If you need to run against a local checkout and virtualenv, you can configure your MCP client to launch the dev server via `uv run` and your `.venv/bin/python`:
+**Purpose**: Enforce team standards while allowing individual developers flexibility. Prevent individual decisions from contradicting team-level architectural mandates.
 
-```json
-{
-  "mcpServers": {
-    "conport": {
-      "command": "uv",
-      "args": [
-        "run",
-        "--python",
-        ".venv/bin/python",
-        "--directory",
-        "<path to context-portal repo> ",
-        "conport-mcp",
-        "--mode",
-        "stdio",
-        "--log-file",
-        "./logs/conport-dev.log",
-        "--log-level",
-        "DEBUG"
-      ],
-      "disabled": false
-    }
-  }
-}
+**Usage Example**:
+```python
+# Create team and individual scopes
+create_scope(
+    workspace_id="/path/to/project",
+    scope_type="team",
+    scope_name="Core Architecture",
+    created_by="tech_lead"
+)
+
+create_scope(
+    workspace_id="/path/to/project",
+    scope_type="individual",
+    scope_name="alice_dev",
+    parent_scope_id=1,
+    created_by="alice"
+)
+
+# Set a team-level governance rule
+log_governance_rule(
+    workspace_id="/path/to/project",
+    scope_id=1,
+    rule_type="hard_block",
+    entity_type="decision",
+    rule_definition={"tags": ["database"], "keywords": ["MongoDB"]},
+    description="Team has standardized on PostgreSQL - no MongoDB"
+)
+
+# When Alice tries to log a MongoDB decision, it gets blocked
+log_decision(
+    workspace_id="/path/to/project",
+    scope_id=2,  # Alice's individual scope
+    summary="Use MongoDB for analytics data",
+    tags=["database"]
+)
+# Returns: ConflictError - "Conflicts with Team Decision #5"
 ```
 
-Notes:
-- Set `--directory` to your repo path; this uses your local checkout and venv interpreter.
-- Logs go to `./logs/conport-dev.log` with `DEBUG` verbosity.
+**What you get**: Automatic conflict detection, amendment proposals, compliance tracking, and governance dashboards.
 
+---
 
-### Local environment setup
+### Codebase Bindings (Feature 2)
 
-Set up for development or contribution via the Git repo.
+Link Engrams entities to actual code files using glob patterns.
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/GreatScottyMac/context-portal.git
-   cd context-portal
-   ```
+**Purpose**: Bridge the gap between "what we decided" and "where it lives in code". Give AI agents spatial awareness of the codebase.
 
-2. **Create a virtual environment**
-   ```bash
-   uv venv
-   ```
-   Activate it using your shell’s standard activation (e.g., `source .venv/bin/activate` on macOS/Linux).
+**Usage Example**:
+```python
+# Bind a decision to the files it governs
+bind_code_to_item(
+    workspace_id="/path/to/project",
+    item_type="decision",
+    item_id=14,
+    file_pattern="src/auth/**/*.py",
+    binding_type="governed_by"
+)
 
-3. **Install dependencies**
-   ```bash
-   uv pip install -r requirements.txt
-   ```
+# Bind a pattern to its implementation
+bind_code_to_item(
+    workspace_id="/path/to/project",
+    item_type="system_pattern",
+    item_id=3,
+    file_pattern="src/api/middleware/rate_limiter.py",
+    symbol_pattern="RateLimiter",
+    binding_type="implements"
+)
 
-4. **Run in your IDE (recommended)**
-   Configure your IDE’s MCP settings using the "uvx Configuration" or the dev `uv run` configuration shown above. This is the most representative test of ConPort in STDIO mode.
+# Get all relevant context for files you're editing
+get_context_for_files(
+    workspace_id="/path/to/project",
+    file_paths=["src/auth/login.py", "src/auth/session.py"]
+)
+# Returns: All decisions, patterns, and governance rules bound to those files
+```
 
-5. **Optional: CLI help**
-   ```bash
-   uv run python src/context_portal_mcp/main.py --help
-   ```
+**What you get**: Code-aware context retrieval, binding verification, automatic staleness detection.
 
-Notes:
-- For `--workspace_id` behavior and IDE path handling, see the guidance under the "uvx Configuration" section above. Many IDEs do not expand `${workspaceFolder}`.
+---
 
-<br>
+### Context Budgeting (Feature 3)
 
-For pre-upgrade cleanup, including clearing Python bytecode cache, please refer to the [v0.2.4_UPDATE_GUIDE.md](v0.2.4_UPDATE_GUIDE.md#1-pre-upgrade-cleanup).
+Intelligent token-aware context selection with relevance scoring.
 
-## Usage with LLM Agents (Custom Instructions)
+**Purpose**: Fit the most valuable context into your AI's token budget. No more dumping everything and hoping - get precisely ranked, budget-constrained results.
 
-ConPort's effectiveness with LLM agents is significantly enhanced by providing specific custom instructions or system prompts to the LLM. This repository includes tailored strategy files for different environments:
+**Usage Example**:
+```python
+# Get the most relevant context for a task, within budget
+get_relevant_context(
+    workspace_id="/path/to/project",
+    task_description="Implement rate limiting for the API",
+    token_budget=4000,
+    profile="task_focused",  # Prioritizes semantic similarity
+    file_paths=["src/api/middleware/"]
+)
 
-- **For Roo Code:**
+# Returns:
+# - Top-scored decisions about rate limiting, API design
+# - Relevant system patterns
+# - Code bindings for those files
+# - All within 4000 tokens
+# - Excluded items listed with scores (so you know what didn't fit)
 
-  - [`roo_code_conport_strategy`](https://github.com/GreatScottyMac/context-portal/blob/main/conport-custom-instructions/roo_code_conport_strategy): Contains detailed instructions for LLMs operating within the Roo Code VS Code extension, guiding them on how to use ConPort tools for context management.
+# Preview context size before retrieval
+estimate_context_size(
+    workspace_id="/path/to/project",
+    task_description="Add OAuth2 support"
+)
+# Returns: "147 relevant entities, ~12,500 tokens total"
+# Recommends: "Use budget 3000 (minimal), 6000 (standard), or 12000 (comprehensive)"
+```
 
-  <br>
+**Scoring factors**:
+- Semantic similarity to task
+- Recency (newer items score higher)
+- Reference frequency (graph centrality)
+- Lifecycle status (active > superseded)
+- Scope priority (team > individual)
+- Code proximity (bound to files you're editing)
 
-- **For CLine:**
+**What you get**: Configurable scoring profiles, transparent relevance scores, budget optimization, format selection (compact/standard/verbose).
 
-  - [`cline_conport_strategy`](https://github.com/GreatScottyMac/context-portal/blob/main/conport-custom-instructions/cline_conport_strategy): Contains detailed instructions for LLMs operating within the Cline VS Code extension, guiding them on how to use ConPort tools for context management.
+---
 
-  <br>
+### Project Onboarding (Feature 4)
 
-- **For Windsurf Cascade:**
+Progressive briefing system for getting up to speed on any project.
 
-  - [`cascade_conport_strategy`](https://github.com/GreatScottyMac/context-portal/blob/main/conport-custom-instructions/cascade_conport_strategy): Specific guidance for LLMs integrated with the Windsurf Cascade environment. _Important_: When initiating a session in Cascade, it is necessary to explicity tell the LLM:
+**Purpose**: Generate structured, progressive briefings instead of raw data dumps. Perfect for new team members, returning to a project after time away, or starting a fresh AI session.
 
-  ```
-  Initialize according to custom instructions
-  ```
+**Usage Example**:
+```python
+# Executive briefing (500 tokens) - for quick status check
+get_project_briefing(
+    workspace_id="/path/to/project",
+    level="executive"
+)
+# Returns: Project purpose, current status, key risks
 
-- **For General/Platform-Agnostic Use:**
+# Overview briefing (2000 tokens) - for developers day 1
+get_project_briefing(
+    workspace_id="/path/to/project",
+    level="overview"
+)
+# Returns: Architecture, key decisions, active work, team conventions
 
-  - [`generic_conport_strategy`](https://github.com/GreatScottyMac/context-portal/blob/main/conport-custom-instructions/generic_conport_strategy): Provides a platform-agnostic set of instructions for any MCP-capable LLM. It emphasizes using ConPort's `get_conport_schema` operation to dynamically discover the exact ConPort tool names and their parameters, guiding the LLM on _when_ and _why_ to perform conceptual interactions (like logging a decision or updating product context) rather than hardcoding specific tool invocation details.
+# Detailed briefing (5000 tokens) - ready to contribute
+get_project_briefing(
+    workspace_id="/path/to/project",
+    level="detailed"
+)
+# Returns: All active decisions with rationale, patterns with implementation,
+#          task hierarchy, glossary, code bindings
 
-  <br>
+# Comprehensive briefing - full knowledge export
+get_project_briefing(
+    workspace_id="/path/to/project",
+    level="comprehensive",
+    token_budget=20000
+)
+# Returns: Complete knowledge graph with all relationships
 
-**How to Use These Strategy Files:**
+# Drill into a specific section
+get_section_detail(
+    workspace_id="/path/to/project",
+    section_id="key_decisions",
+    token_budget=3000
+)
+```
 
-1.  Identify the strategy file relevant to your LLM agent's environment.
-2.  Copy the **entire content** of that file.
-3.  Paste it into your LLM's custom instructions or system prompt area. The method varies by LLM platform (IDE extension settings, web UI, API configuration).
+**What you get**: Structured briefings with staleness indicators, entity counts, data coverage reports, and drill-down capability.
 
-These instructions equip the LLM with the knowledge to:
+---
 
-- Initialize and load context from ConPort.
-- Update ConPort with new information (decisions, progress, etc.).
-- Manage custom data and relationships.
-- Understand the importance of `workspace_id`.
-  **Important Tip for Starting Sessions:**
-  To ensure the LLM agent correctly initializes and loads context, especially in interfaces that might not always strictly adhere to custom instructions on the first message, it's a good practice to start your interaction with a clear directive like:
-  `Initialize according to custom instructions.`
-  This can help prompt the agent to perform its ConPort initialization sequence as defined in its strategy file.
+### Knowledge Dashboard (Feature 5)
 
-### New Strategy Set: mem4sprint (What’s new)
+Browser-based visual explorer with optional local LLM chat.
 
-The repository includes a new strategy/documentation set focused on sprint planning and operational flows:
+**Purpose**: Explore your project knowledge visually without needing an AI agent or burning API tokens. Perfect for browsing decisions, visualizing the knowledge graph, and conversational exploration via local Ollama.
 
-- `conport-custom-instructions/mem4sprint.md` — concise guidance and patterns for using flat categories and valid FTS prefixes.
-- `conport-custom-instructions/mem4sprint.schema_and_templates.md` — meta schema, compact starters, FTS query rules, and minimal operational call recipes.
+**Usage Example**:
+```bash
+# Start the dashboard (read-only, localhost only)
+engrams-dashboard --workspace /path/to/project
 
-Key highlights:
-- Flat category model (e.g., `artifacts`, `rfc_doc`, `retrospective`, `ProjectGlossary`, `critical_settings`).
-- Valid FTS5 prefixes only: `category:`, `key:`, `value_text:` for custom data; `summary:`, `rationale:`, `implementation_details:`, `tags:` for decisions.
-- Handler-layer query normalization; database layer remains unchanged.
+# With Ollama chat enabled
+engrams-dashboard --workspace /path/to/project \
+                  --enable-chat \
+                  --ollama-model llama3.2
 
-Release note summary:
-- Added mem4sprint strategy/docs with flattened categories and explicit FTS rules.
-- Simplified examples and included minimal operational call recipes.
-- Documentation clarifies IDE workspace path handling for MCP.
+# Custom port
+engrams-dashboard --workspace /path/to/project --port 9000
 
-## Initial ConPort Usage in a Workspace
+# Auto-detect workspace
+cd /path/to/project
+engrams-dashboard
+```
 
-When you first start using ConPort in a new or existing project workspace, the ConPort database (`context_portal/context.db`) will be automatically created by the server if it doesn't exist. To help bootstrap the initial project context, especially the **Product Context**, consider the following:
+**What you see**:
+- **Overview Dashboard**: Project stats, activity timeline, staleness indicators
+- **Decision Explorer**: Filterable table with full-text search, tag navigation
+- **Pattern Library**: System patterns with linked decisions and code bindings
+- **Task Tracker**: Hierarchical progress view with status filtering
+- **Knowledge Graph**: Interactive D3.js visualization showing all entity relationships
+- **Custom Data Browser**: Category-based navigation with JSON pretty-printing
+- **Governance Dashboard**: Scope hierarchy, active rules, compliance overview (if Feature 1 active)
+- **Ollama Chat Panel**: Ask questions about your project using local LLM (optional)
 
-### Using a `projectBrief.md` File (Recommended)
+**Security**: Binds to `127.0.0.1` (localhost only) by default. Read-only access - cannot modify data.
 
-1.  **Create `projectBrief.md`:** In the root directory of your project workspace, create a file named `projectBrief.md`.
-2.  **Add Content:** Populate this file with a high-level overview of your project. This could include:
-    - The main goal or purpose of the project.
-    - Key features or components.
-    - Target audience or users.
-    - Overall architectural style or key technologies (if known).
-    - Any other foundational information that defines the project.
-3.  **Automatic Prompt for Import:** When an LLM agent using one of the provided ConPort custom instruction sets (e.g., `roo_code_conport_strategy`) initializes in the workspace, it is designed to:
-    - Check for the existence of `projectBrief.md`.
-    - If found, it will read the file and ask you if you'd like to import its content into the ConPort **Product Context**.
-    - If you agree, the content will be added to ConPort, providing an immediate baseline for the project's Product Context.
+---
 
-### Manual Initialization
+### Knowledge Graph & Relationships
 
-If `projectBrief.md` is not found, or if you choose not to import it:
+Explicitly link entities to build a queryable relationship network.
 
-- The LLM agent (guided by its custom instructions) will typically inform you that the ConPort Product Context appears uninitialized.
-- It may offer to help you define the Product Context manually, potentially by listing other files in your workspace to gather relevant information.
+**Purpose**: Capture how decisions relate to patterns, how tasks track decisions, how features depend on each other.
 
-By providing initial context, either through `projectBrief.md` or manual entry, you enable ConPort and the connected LLM agent to have a better foundational understanding of your project from the start.
+**Usage Example**:
+```python
+# Link a decision to the pattern that implements it
+link_engrams_items(
+    workspace_id="/path/to/project",
+    source_item_type="decision",
+    source_item_id=14,
+    target_item_type="system_pattern",
+    target_item_id=3,
+    relationship_type="implements",
+    description="Rate limiting pattern implements the API protection decision"
+)
 
-## Automatic Workspace Detection
+# Link a task to the decision it tracks
+link_engrams_items(
+    workspace_id="/path/to/project",
+    source_item_type="progress_entry",
+    source_item_id=42,
+    target_item_type="decision",
+    target_item_id=14,
+    relationship_type="tracks"
+)
 
-ConPort can automatically determine the correct `workspace_id` so you do not need to hardcode an absolute path in your MCP client configuration. This is especially useful for IDEs that fail to expand `${workspaceFolder}` when launching MCP servers.
+# Get all items linked to a decision
+get_linked_items(
+    workspace_id="/path/to/project",
+    item_type="decision",
+    item_id=14
+)
+# Returns: Patterns that implement it, tasks tracking it, related decisions
+```
 
-Detection is enabled by default and can be controlled via CLI flags:
+**Common relationship types**: `implements`, `related_to`, `tracks`, `blocks`, `clarifies`, `depends_on`, `supersedes`, `resolves`
 
-Flags:
-- `--auto-detect-workspace` (default: enabled) Turns on automatic detection.
-- `--no-auto-detect` Disables detection (explicit `--workspace_id` or per-tool `workspace_id` must then be provided).
-- `--workspace-search-start <path>` Optional starting directory for upward search (defaults to current working directory).
+---
 
-How it works (multi‑strategy):
-1. Strong Indicators (fast path): Looks for high-confidence project roots containing any of: `package.json`, `.git`, `pyproject.toml`, `Cargo.toml`, `go.mod`, `pom.xml`.
-2. Multiple General Indicators: If ≥2 general indicators (README, license, build files, etc.) exist in a directory, it is treated as a root.
-3. Existing ConPort Workspace: Presence of a `context_portal/` directory indicates a valid workspace.
-4. MCP Environment Context: Honors environment variables like `VSCODE_WORKSPACE_FOLDER` or `CONPORT_WORKSPACE` when set and valid.
-5. Fallback: If no indicators are found, uses the starting directory verbosely (with a warning).
+### Batch Operations & Export/Import
 
-Tooling:
-- `get_workspace_detection_info` (MCP tool) exposes a diagnostic dictionary showing:
-  - start_path
-  - detected_workspace
-  - detection_method (strong_indicators | multiple_indicators | existing_context_portal | fallback)
-  - indicators_found
-  - relevant environment variables
+Efficient bulk operations and markdown export for version control.
 
-Best Practices:
-- Keep detection enabled unless you operate multi-root scenarios where explicit isolation per call is required.
-- If an IDE passes the literal string `${workspaceFolder}`, ConPort will ignore it and auto-detect safely (logged at WARNING).
-- For debugging ambiguous roots (e.g., nested repos), run the detection info tool to confirm which directory was selected.
+**Purpose**: Log multiple items in one call, export for backup/sharing, import from version-controlled markdown.
 
-Example MCP launch (relying fully on auto-detect):
+**Usage Example**:
+```python
+# Log multiple decisions at once
+batch_log_items(
+    workspace_id="/path/to/project",
+    item_type="decision",
+    items=[
+        {
+            "summary": "Use FastAPI for REST API",
+            "rationale": "Modern, fast, excellent typing support",
+            "tags": ["framework", "api"]
+        },
+        {
+            "summary": "Use Pydantic for validation",
+            "rationale": "Built into FastAPI, strong type safety",
+            "tags": ["validation", "types"]
+        }
+    ]
+)
+
+# Export everything to markdown
+export_engrams_to_markdown(
+    workspace_id="/path/to/project",
+    output_path="./docs/engrams_export"
+)
+
+# Import from markdown (e.g., after cloning repo)
+import_markdown_to_engrams(
+    workspace_id="/path/to/project",
+    input_path="./docs/engrams_export"
+)
+```
+
+---
+
+## Installation
+
+### Prerequisites
+
+- **Python 3.8+** ([Download](https://www.python.org/downloads/))
+- **uv** (recommended) - Fast Python package manager ([Install](https://github.com/astral-sh/uv#installation))
+
+### Recommended: Using `uvx`
+
+The easiest way to use Engrams is via `uvx`, which handles environments automatically:
+
 ```json
 {
   "mcpServers": {
-    "conport": {
+    "engrams": {
       "command": "uvx",
       "args": [
-        "--from", "context-portal-mcp",
-        "conport-mcp",
+        "--from", "engrams",
+        "engrams",
         "--mode", "stdio",
         "--log-level", "INFO"
       ]
@@ -339,116 +435,241 @@ Example MCP launch (relying fully on auto-detect):
 }
 ```
 
-To disable detection explicitly (forcing provided IDs only):
-```json
-{
-  "mcpServers": {
-    "conport": {
-      "command": "uvx",
-      "args": [
-        "--from", "context-portal-mcp",
-        "conport-mcp",
-        "--mode", "stdio",
-        "--no-auto-detect",
-        "--workspace_id", "/absolute/path/to/project"
-      ]
-    }
-  }
-}
-```
+Add to your MCP client settings (e.g., Roo Code, Cline, Windsurf, Cursor).
 
-If you have a launcher that starts inside a deep subdirectory, provide a higher start path:
+**Note**: Most IDEs don't expand `${workspaceFolder}` for MCP servers. Engrams has automatic workspace detection, so you can omit `--workspace_id` at launch. The workspace is detected per-call using project indicators (.git, package.json, etc.).
+
+### Developer Installation
+
+For local development:
+
 ```bash
-conport-mcp --mode stdio --workspace-search-start ../../
+# Clone the repository
+git clone https://github.com/yourusername/engrams.git
+cd engrams
+
+# Create virtual environment
+uv venv
+
+# Install dependencies
+uv pip install -r requirements.txt
+
+# Run in your IDE using local checkout
+# See README "Installation for Developers" section for MCP config
 ```
 
-See `UNIVERSAL_WORKSPACE_DETECTION.md` for full rationale, edge cases, and troubleshooting.
+---
 
-## Available ConPort Tools
+## Quick Start
 
-The ConPort server exposes the following tools via MCP, allowing interaction with the underlying **project knowledge graph**. This includes tools for **semantic search** powered by **vector data storage**. These tools facilitate the **Retrieval** aspect crucial for **Augmented Generation (RAG)** by AI agents. All tools require a `workspace_id` argument (string, required) to specify the target project workspace.
+### 1. Configure Your MCP Client
 
-Note: For convenience, all integer-like parameters accept either numbers or digit-only strings (e.g., "10", " 3"). The server trims whitespace and coerces these to integers while preserving validation bounds (e.g., ge=1). Credit: @cipradu.
+Add Engrams to your MCP settings (see [Installation](#installation) section).
 
-- **Product Context Management:**
-  - `get_product_context`: Retrieves the overall project goals, features, and architecture.
-  - `update_product_context`: Updates the product context. Accepts full `content` (object) or `patch_content` (object) for partial updates (use `__DELETE__` as a value in patch to remove a key).
-- **Active Context Management:**
-  - `get_active_context`: Retrieves the current working focus, recent changes, and open issues.
-  - `update_active_context`: Updates the active context. Accepts full `content` (object) or `patch_content` (object) for partial updates (use `__DELETE__` as a value in patch to remove a key).
-- **Decision Logging:**
-  - `log_decision`: Logs an architectural or implementation decision.
-    - Args: `summary` (str, req), `rationale` (str, opt), `implementation_details` (str, opt), `tags` (list[str], opt).
-  - `get_decisions`: Retrieves logged decisions.
-    - Args: `limit` (int, opt), `tags_filter_include_all` (list[str], opt), `tags_filter_include_any` (list[str], opt).
-  - `search_decisions_fts`: Full-text search across decision fields (summary, rationale, details, tags).
-    - Args: `query_term` (str, req), `limit` (int, opt).
-  - `delete_decision_by_id`: Deletes a decision by its ID.
-    - Args: `decision_id` (int, req).
-- **Progress Tracking:**
-  - `log_progress`: Logs a progress entry or task status.
-    - Args: `status` (str, req), `description` (str, req), `parent_id` (int, opt), `linked_item_type` (str, opt), `linked_item_id` (str, opt).
-  - `get_progress`: Retrieves progress entries.
-    - Args: `status_filter` (str, opt), `parent_id_filter` (int, opt), `limit` (int, opt).
-  - `update_progress`: Updates an existing progress entry.
-    - Args: `progress_id` (int, req), `status` (str, opt), `description` (str, opt), `parent_id` (int, opt).
-  - `delete_progress_by_id`: Deletes a progress entry by its ID.
-    - Args: `progress_id` (int, req).
-- **System Pattern Management:**
-  - `log_system_pattern`: Logs or updates a system/coding pattern.
-    - Args: `name` (str, req), `description` (str, opt), `tags` (list[str], opt).
-  - `get_system_patterns`: Retrieves system patterns.
-    - Args: `tags_filter_include_all` (list[str], opt), `tags_filter_include_any` (list[str], opt).
-  - `delete_system_pattern_by_id`: Deletes a system pattern by its ID.
-    - Args: `pattern_id` (int, req).
-- **Custom Data Management:**
-  - `log_custom_data`: Stores/updates a custom key-value entry under a category. Value is JSON-serializable.
-    - Args: `category` (str, req), `key` (str, req), `value` (any, req).
-  - `get_custom_data`: Retrieves custom data.
-    - Args: `category` (str, opt), `key` (str, opt).
-  - `delete_custom_data`: Deletes a specific custom data entry.
-    - Args: `category` (str, req), `key` (str, req).
-  - `search_project_glossary_fts`: Full-text search within the 'ProjectGlossary' custom data category.
-    - Args: `query_term` (str, req), `limit` (int, opt).
-  - `search_custom_data_value_fts`: Full-text search across all custom data values, categories, and keys.
-    - Args: `query_term` (str, req), `category_filter` (str, opt), `limit` (int, opt).
-- **Context Linking:**
-  - `link_conport_items`: Creates a relationship link between two ConPort items, explicitly building out the **project knowledge graph**.
-    - Args: `source_item_type` (str, req), `source_item_id` (str, req), `target_item_type` (str, req), `target_item_id` (str, req), `relationship_type` (str, req), `description` (str, opt).
-  - `get_linked_items`: Retrieves items linked to a specific item.
-    - Args: `item_type` (str, req), `item_id` (str, req), `relationship_type_filter` (str, opt), `linked_item_type_filter` (str, opt), `limit` (int, opt).
-- **History & Meta Tools:**
-  - `get_item_history`: Retrieves version history for Product or Active Context.
-    - Args: `item_type` ("product_context" | "active_context", req), `version` (int, opt), `before_timestamp` (datetime, opt), `after_timestamp` (datetime, opt), `limit` (int, opt).
-  - `get_recent_activity_summary`: Provides a summary of recent ConPort activity.
-    - Args: `hours_ago` (int, opt), `since_timestamp` (datetime, opt), `limit_per_type` (int, opt, default: 5).
-  - `get_conport_schema`: Retrieves the schema of available ConPort tools and their arguments.
-- **Import/Export:**
-  - `export_conport_to_markdown`: Exports ConPort data to markdown files.
-    - Args: `output_path` (str, opt, default: "./conport_export/").
-  - `import_markdown_to_conport`: Imports data from markdown files into ConPort.
-    - Args: `input_path` (str, opt, default: "./conport_export/").
-- **Batch Operations:**
-  - `batch_log_items`: Logs multiple items of the same type (e.g., decisions, progress entries) in a single call.
-    - Args: `item_type` (str, req - e.g., "decision", "progress_entry"), `items` (list[dict], req - list of Pydantic model dicts for the item type).
+### 2. Add Custom Instructions
 
-## Further Reading
+Copy the appropriate strategy file for your IDE:
+- **Roo Code**: [`engrams-custom-instructions/roo_code_engrams_strategy`](engrams-custom-instructions/roo_code_engrams_strategy)
+- **Cline**: [`engrams-custom-instructions/cline_engrams_strategy`](engrams-custom-instructions/cline_engrams_strategy)
+- **Windsurf**: [`engrams-custom-instructions/cascade_engrams_strategy`](engrams-custom-instructions/cascade_engrams_strategy)
+- **Generic**: [`engrams-custom-instructions/generic_engrams_strategy`](engrams-custom-instructions/generic_engrams_strategy)
 
-For a more in-depth understanding of ConPort's design, architecture, and advanced usage patterns, please refer to:
+Paste the entire content into your IDE's custom instructions field.
 
-- [`conport_mcp_deep_dive.md`](https://github.com/GreatScottyMac/context-portal/blob/main/conport_mcp_deep_dive.md)
+### 3. Bootstrap Your Project (Optional but Recommended)
+
+Create [`projectBrief.md`](projectBrief.md) in your workspace root:
+
+```markdown
+# TaskMaster API
+
+## Purpose
+RESTful API for task management with team collaboration.
+
+## Key Features
+- User authentication (JWT)
+- Task CRUD with assignments
+- Real-time notifications
+- Team workspaces
+
+## Architecture
+- Microservices pattern
+- Event sourcing for task updates
+- PostgreSQL for persistence
+- Redis for caching
+
+## Tech Stack
+Python, FastAPI, PostgreSQL, Redis, Docker
+```
+
+On first initialization, your AI agent will offer to import this into Product Context.
+
+### 4. Start Using Engrams
+
+```
+You: Initialize according to custom instructions
+
+AI: [CONPORT_ACTIVE] Engrams initialized. Found projectBrief.md - imported to Product Context.
+    What would you like to work on?
+
+You: Add JWT authentication to the API
+
+AI: I'll help with that. Let me retrieve relevant context...
+    [Uses get_context_for_files for src/auth/**]
+    [Finds Decision #7: "Use JWT tokens for stateless auth"]
+    [Finds Pattern #3: "Token validation middleware"]
+
+    Based on existing decisions and patterns, I'll implement JWT auth following
+    the established middleware pattern...
+```
+
+---
+
+## Automatic Workspace Detection
+
+Engrams can automatically detect your project root - no hardcoded paths needed.
+
+**Detection strategy** (priority order):
+1. **Strong indicators**: `.git`, `package.json`, `pyproject.toml`, `Cargo.toml`, `go.mod`, `pom.xml`
+2. **Multiple general indicators**: ≥2 of (README, license, build configs)
+3. **Existing Engrams workspace**: `engrams/` directory present
+4. **Environment variables**: `VSCODE_WORKSPACE_FOLDER`, `ENGRAMS_WORKSPACE`
+5. **Fallback**: Current working directory (with warning)
+
+**Diagnostic tool**:
+```python
+get_workspace_detection_info(workspace_id="unused")
+# Returns: detected path, method used, indicators found
+```
+
+See [`UNIVERSAL_WORKSPACE_DETECTION.md`](UNIVERSAL_WORKSPACE_DETECTION.md) for full details.
+
+---
+
+## Available MCP Tools
+
+All tools require `workspace_id` argument (string). Integer parameters accept numbers or digit strings.
+
+### Core Context
+- `get_product_context`, `update_product_context` - Project goals, features, architecture
+- `get_active_context`, `update_active_context` - Current focus, recent changes
+
+### Decisions
+- `log_decision`, `get_decisions`, `search_decisions_fts`, `delete_decision_by_id`
+
+### Progress
+- `log_progress`, `get_progress`, `update_progress`, `delete_progress_by_id`
+
+### Patterns
+- `log_system_pattern`, `get_system_patterns`, `delete_system_pattern_by_id`
+
+### Custom Data
+- `log_custom_data`, `get_custom_data`, `delete_custom_data`
+- `search_custom_data_value_fts`, `search_project_glossary_fts`
+
+### Relationships
+- `link_engrams_items`, `get_linked_items`
+
+### Governance (Feature 1)
+- `create_scope`, `get_scopes`
+- `log_governance_rule`, `get_governance_rules`
+- `check_compliance`, `get_scope_amendments`, `review_amendment`
+- `get_effective_context`
+
+### Codebase Bindings (Feature 2)
+- `bind_code_to_item`, `get_bindings_for_item`, `get_context_for_files`
+- `verify_bindings`, `get_stale_bindings`, `suggest_bindings`, `unbind_code_from_item`
+
+### Context Budgeting (Feature 3)
+- `get_relevant_context`, `estimate_context_size`
+- `get_context_budget_config`, `update_context_budget_config`
+
+### Onboarding (Feature 4)
+- `get_project_briefing`, `get_briefing_staleness`, `get_section_detail`
+
+### Utilities
+- `get_item_history`, `get_recent_activity_summary`, `get_engrams_schema`
+- `export_engrams_to_markdown`, `import_markdown_to_engrams`
+- `batch_log_items`
+- `get_workspace_detection_info`
+
+See full parameter details in the original README or use `get_engrams_schema()`.
+
+---
+
+## Documentation
+
+- **[Deep Dive](engrams_deep_dive.md)** - Architecture and design details
+- **[Workspace Detection](UNIVERSAL_WORKSPACE_DETECTION.md)** - Auto-detection behavior
+- **[Update Guide](v0.2.4_UPDATE_GUIDE.md)** - Database migration instructions
+- **[Contributing](CONTRIBUTING.md)** - How to contribute
+- **[AGENTS.md](AGENTS.md)** - Implementation strategy for Features 1-5
+- **[Custom Instructions](engrams-custom-instructions/)** - IDE-specific strategies
+
+---
+
+## Architecture
+
+- **Language**: Python 3.8+
+- **Framework**: FastAPI (MCP server)
+- **Database**: SQLite (one per workspace)
+- **Vector Store**: ChromaDB (semantic search)
+- **Migrations**: Alembic (schema evolution)
+- **Protocol**: Model Context Protocol (STDIO or HTTP)
+
+```
+src/engrams/
+├── main.py                 # Entry point, CLI args
+├── server.py               # FastMCP server, tool registration
+├── db/                     # Database layer
+│   ├── database.py         # SQLite operations
+│   ├── models.py           # Pydantic models
+│   └── migrations/         # Alembic migrations
+├── handlers/               # MCP tool handlers
+├── governance/             # Feature 1: Team governance
+├── bindings/               # Feature 2: Codebase bindings
+├── budgeting/              # Feature 3: Context budgeting
+├── onboarding/             # Feature 4: Project briefings
+└── dashboard/              # Feature 5: Visual explorer
+```
+
+---
 
 ## Contributing
 
-Please see our [CONTRIBUTING.md](CONTRIBUTING.md) guide for details on how to contribute to the ConPort project.
+We welcome contributions! Please see [`CONTRIBUTING.md`](CONTRIBUTING.md) for:
+- Code of conduct
+- Development setup
+- Pull request process
+- Testing requirements
+
+---
+
 ## License
- This project is licensed under the [Apache-2.0 license](LICENSE).
-  
- 
+
+This project is licensed under the [Apache-2.0 License](LICENSE).
+
+---
+
 ## Acknowledgments
 
-- Special thanks to **@cipradu** for the valuable suggestion to implement integer-string coercion for numeric arguments, which improves the user experience when interacting with the MCP server from various clients.
+- Forked from [GreatScottyMac/context-portal](https://github.com/GreatScottyMac/context-portal) v0.3.13
+- Thanks to [@cipradu](https://github.com/cipradu) for integer-string coercion implementation
+- Built on the [Model Context Protocol](https://modelcontextprotocol.io/)
 
-## Database Migration & Update Guide
- 
-For detailed instructions on how to manage your `context.db` file, especially when updating ConPort across versions that include database schema changes, please refer to the dedicated [v0.2.4_UPDATE_GUIDE.md](v0.2.4_UPDATE_GUIDE.md). This guide provides steps for manual data migration (export/import) if needed, and troubleshooting tips.
+---
+
+## Support
+
+- **Issues**: [GitHub Issues](https://github.com/yourusername/engrams/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/yourusername/engrams/discussions)
+
+---
+
+<div align="center">
+
+**[⬆ Back to Top](#engrams)**
+
+Built with care for better AI-assisted development
+
+</div>

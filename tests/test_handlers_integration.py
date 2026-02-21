@@ -1,9 +1,8 @@
 import os
 import json
-import pytest
 
-from context_portal_mcp.db import models
-from context_portal_mcp.handlers import mcp_handlers as H
+from engrams.db import models
+from engrams.handlers import mcp_handlers as H
 
 
 def as_dict(obj):
@@ -59,7 +58,7 @@ def test_handlers_integration_smoke():
     assert "id" in prog_d and isinstance(prog_d["id"], int)
 
     # Link decision → progress
-    link = H.handle_link_conport_items(
+    link = H.handle_link_engrams_items(
         models.LinkConportItemsArgs(
             workspace_id=workspace_id,
             source_item_type="decision",
@@ -145,9 +144,9 @@ def test_handlers_integration_smoke():
         assert key in ras
 
     # Export
-    export = H.handle_export_conport_to_markdown(
+    export = H.handle_export_engrams_to_markdown(
         models.ExportConportToMarkdownArgs(workspace_id=workspace_id)
     )
     export_d = as_dict(export)
     assert export_d.get("status") == "success"
-    assert "conport_export" in export_d.get("message", "")
+    assert "engrams_export" in export_d.get("message", "")

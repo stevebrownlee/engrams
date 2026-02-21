@@ -1,4 +1,4 @@
-# Universal Workspace Detection (ConPort MCP)
+# Universal Workspace Detection (Engrams MCP)
 
 This document describes the universal workspace auto-detection system integrated in version 0.3.0 (`WorkspaceDetector` and `resolve_workspace_id`). It removes the need to hardcode `--workspace_id` for most MCP client launches, especially when IDE variables like `${workspaceFolder}` fail to expand.
 
@@ -8,7 +8,7 @@ This document describes the universal workspace auto-detection system integrated
 
 - Reduce configuration friction.
 - Support heterogeneous project types (Python, Node.js, Rust, Go, Java, PHP, Ruby, generic build systems).
-- Honor existing ConPort workspaces seamlessly.
+- Honor existing Engrams workspaces seamlessly.
 - Fail safe: never block startup due to an unexpanded placeholder path.
 - Provide diagnostics via an MCP tool (`get_workspace_detection_info`).
 
@@ -42,8 +42,8 @@ This document describes the universal workspace auto-detection system integrated
 2. **Multiple General Indicators**  
    If two or more of a broader set exist (e.g., `README.md`, `LICENSE`, `requirements.txt`, `CMakeLists.txt`, `Makefile`, `setup.py`, `.gitignore`) the directory is treated as a workspace.
 
-3. **Existing ConPort Workspace**  
-   A `context_portal/` directory (database or prior usage) signals a valid root.
+3. **Existing Engrams Workspace**  
+   A `engrams/` directory (database or prior usage) signals a valid root.
 
 4. **MCP / Environment Context**  
    Environment variables (if directories):
@@ -61,11 +61,11 @@ This document describes the universal workspace auto-detection system integrated
 ```json
 {
   "mcpServers": {
-    "conport": {
+    "engrams": {
       "command": "uvx",
       "args": [
         "--from", "context-portal-mcp",
-        "conport-mcp",
+        "engrams-mcp",
         "--mode", "stdio",
         "--log-level", "INFO"
       ]
@@ -78,11 +78,11 @@ This document describes the universal workspace auto-detection system integrated
 ```json
 {
   "mcpServers": {
-    "conport": {
+    "engrams": {
       "command": "uvx",
       "args": [
         "--from", "context-portal-mcp",
-        "conport-mcp",
+        "engrams-mcp",
         "--mode", "stdio",
         "--no-auto-detect",
         "--workspace_id", "/absolute/path/to/project"
@@ -94,7 +94,7 @@ This document describes the universal workspace auto-detection system integrated
 
 ### Custom Start Path (deep launch scenario)
 ```bash
-conport-mcp --mode stdio --workspace-search-start ../../
+engrams-mcp --mode stdio --workspace-search-start ../../
 ```
 
 ---
@@ -104,9 +104,9 @@ conport-mcp --mode stdio --workspace-search-start ../../
 Returns a diagnostic payload:
 - `start_path`
 - `detected_workspace`
-- `context_portal_path`
+- `engrams_path`
 - `detection_method`  
-  (`strong_indicators` | `multiple_indicators` | `existing_context_portal` | `fallback`)
+  (`strong_indicators` | `multiple_indicators` | `existing_engrams` | `fallback`)
 - `indicators_found`
 - `environment_variables` subset
 
@@ -153,7 +153,7 @@ Use this when:
 |------------------------|-----------------|
 | Hardcoded absolute `--workspace_id` | Remove if single-root and rely on auto-detect |
 | Multiple client configs per project | Consolidate to one config (unless isolation needed) |
-| Scripts wrapping launch with path injection | Simplify to `uvx --from context-portal-mcp conport-mcp --mode stdio` |
+| Scripts wrapping launch with path injection | Simplify to `uvx --from context-portal-mcp engrams-mcp --mode stdio` |
 
 No database changes required; behavior is runtime-only.
 
@@ -174,7 +174,7 @@ No database changes required; behavior is runtime-only.
 ## Future Enhancements (Planned / Considerations)
 
 - Configurable max depth via CLI.
-- Ignore-list / anchor-file override (e.g., `.conport-root`).
+- Ignore-list / anchor-file override (e.g., `.engrams-root`).
 - Multi-root resolution returning a set for advanced clients.
 - Persistent cache of last good detection (optional).
 

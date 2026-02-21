@@ -27,7 +27,7 @@ RUN pip install --no-cache-dir setuptools wheel \
     && pip install --no-cache-dir -r requirements.txt
 
 # Copy only the application code from src layout
-COPY src/context_portal_mcp/ ./src/context_portal_mcp/
+COPY src/engrams/ ./src/engrams/
 # Include LICENSE for compliance (optional - uncomment if needed)
 # COPY LICENSE ./
 
@@ -41,6 +41,6 @@ RUN mkdir -p /data/logs \
 # Switch to non-root user
 USER appuser
 
-# Command to run the ConPort server
-ENTRYPOINT ["python", "-m", "context_portal_mcp.main"]
-CMD ["--mode","stdio","--workspace_id","${workspaceFolder}","--log-file","./logs/conport.log","--log-level","INFO"]
+# Command to run the Engrams server
+ENTRYPOINT ["python", "-m", "engrams.main"]
+CMD ["--mode","stdio","--workspace_id","${workspaceFolder}","--log-file","./logs/engrams.log","--log-level","INFO"]

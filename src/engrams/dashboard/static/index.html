@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ConPort Dashboard</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body x-data="dashboard()" x-init="init()">
+    <!-- Top Navigation -->
+    <nav class="top-nav">
+        <div class="nav-brand">
+            <span class="brand-icon">🔍</span>
+            <span class="brand-text">ConPort Dashboard</span>
+        </div>
+        <div class="nav-links">
+            <a href="#" :class="{'active': view === 'overview'}" @click.prevent="switchView('overview')">Overview</a>
+            <a href="#" :class="{'active': view === 'decisions'}" @click.prevent="switchView('decisions')">Decisions</a>
+            <a href="#" :class="{'active': view === 'patterns'}" @click.prevent="switchView('patterns')">Patterns</a>
+            <a href="#" :class="{'active': view === 'progress'}" @click.prevent="switchView('progress')">Progress</a>
+            <a href="#" :class="{'active': view === 'custom-data'}" @click.prevent="switchView('custom-data')">Custom Data</a>
+            <a href="#" :class="{'active': view === 'graph'}" @click.prevent="switchView('graph')">Knowledge Graph</a>
+            <template x-if="features.governance">
+                <a href="#" :class="{'active': view === 'governance'}" @click.prevent="switchView('governance')">Governance</a>
+            </template>
+            <template x-if="chatStatus.enabled">
+                <a href="#" :class="{'active': view === 'chat'}" @click.prevent="switchView('chat')">💬 Chat</a>
+            </template>
+        </div>
+        <div class="nav-search">
+            <input type="text" placeholder="Search..." x-model="searchQuery" @keyup.enter="globalSearch()">
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="content">
+        <!-- Loading indicator -->
+        <div x-show="loading" class="loading-overlay">
+            <div class="spinner"></div>
+        </div>
+
+        <!-- Overview View -->
+        <div x-show="view === 'overview'" x-cloak>
+            <h1>Project Overview</h1>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number" x-text="stats.decisions_count || 0"></div>
+                    <div class="stat-label">Decisions</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" x-text="stats.system_patterns_count || 0"></div>
+                    <div class="stat-label">Patterns</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" x-text="stats.progress_entries_count || 0"></div>
+                    <div class="stat-label">Tasks</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" x-text="stats.custom_data_count || 0"></div>
+                    <div class="stat-label">Custom Data</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" x-text="stats.links_count || 0"></div>
+                    <div class="stat-label">Links</div>
+                </div>
+            </div>
+
+            <!-- Product Context -->
+            <div class="card" x-show="productContext.content">
+                <h2>Product Context</h2>
+                <pre class="json-display" x-text="JSON.stringify(productContext.content, null, 2)"></pre>
+                <small class="updated-at" x-text="'Updated: ' + (productContext.updated_at || 'never')"></small>
+            </div>
+
+            <!-- Active Context -->
+            <div class="card" x-show="activeContext.content">
+                <h2>Active Context</h2>
+                <pre class="json-display" x-text="JSON.stringify(activeContext.content, null, 2)"></pre>
+                <small class="updated-at" x-text="'Updated: ' + (activeContext.updated_at || 'never')"></small>
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="card">
+                <h2>Recent Activity</h2>
+                <div class="activity-list">
+                    <template x-for="item in recentActivity" :key="item.type + ':' + item.id">
+                        <div class="activity-item">
+                            <span class="badge" :class="'badge-' + item.type" x-text="item.type"></span>
+                            <span class="activity-label" x-text="item.label"></span>
+                            <span class="activity-time" x-text="formatDate(item.updated_at)"></span>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+
+        <!-- Decisions View -->
+        <div x-show="view === 'decisions'" x-cloak>
+            <h1>Decisions</h1>
+            <div class="toolbar">
+                <input type="text" placeholder="Search decisions..." x-model="decisionSearch" @keyup.enter="loadDecisions()">
+                <button @click="loadDecisions()">Search</button>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Summary</th>
+                            <th>Tags</th>
+                            <th>Updated</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template x-for="d in decisions" :key="d.id">
+                            <tr @click="showDecisionDetail(d.id)" class="clickable">
+                                <td x-text="d.id"></td>
+                                <td x-text="d.summary"></td>
+                                <td>
+                                    <template x-for="tag in (Array.isArray(d.tags) ? d.tags : [])" :key="tag">
+                                        <span class="tag" x-text="tag"></span>
+                                    </template>
+                                </td>
+                                <td x-text="formatDate(d.updated_at)"></td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+            <!-- Decision Detail Modal -->
+            <div x-show="detailModal" class="modal-overlay" @click.self="detailModal = false">
+                <div class="modal">
+                    <button class="modal-close" @click="detailModal = false">&times;</button>
+                    <h2 x-text="detailData.summary"></h2>
+                    <div class="detail-section">
+                        <h3>Rationale</h3>
+                        <p x-text="detailData.rationale || 'N/A'"></p>
+                    </div>
+                    <div class="detail-section" x-show="detailData.implementation_details">
+                        <h3>Implementation Details</h3>
+                        <p x-text="detailData.implementation_details"></p>
+                    </div>
+                    <div class="detail-section" x-show="detailData.tags && detailData.tags.length">
+                        <h3>Tags</h3>
+                        <template x-for="tag in (detailData.tags || [])" :key="tag">
+                            <span class="tag" x-text="tag"></span>
+                        </template>
+                    </div>
+                    <div class="detail-section" x-show="detailData.linked_items && detailData.linked_items.length">
+                        <h3>Linked Items</h3>
+                        <template x-for="link in (detailData.linked_items || [])" :key="link.id">
+                            <div class="link-item">
+                                <span class="badge" x-text="link.source_item_type + ' → ' + link.target_item_type"></span>
+                                <span x-text="link.relationship_type"></span>
+                            </div>
+                        </template>
+                    </div>
+                    <div class="detail-section" x-show="detailData.code_bindings && detailData.code_bindings.length">
+                        <h3>Code Bindings</h3>
+                        <template x-for="b in (detailData.code_bindings || [])" :key="b.id">
+                            <div class="binding-item">
+                                <code x-text="b.file_pattern"></code>
+                                <span class="badge badge-binding" x-text="b.binding_type"></span>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Patterns View -->
+        <div x-show="view === 'patterns'" x-cloak>
+            <h1>System Patterns</h1>
+            <div class="card-grid">
+                <template x-for="p in patterns" :key="p.id">
+                    <div class="card clickable" @click="showPatternDetail(p.id)">
+                        <h3 x-text="p.name"></h3>
+                        <p x-text="(p.description || '').substring(0, 200) + '...'"></p>
+                        <div>
+                            <template x-for="tag in (Array.isArray(p.tags) ? p.tags : [])" :key="tag">
+                                <span class="tag" x-text="tag"></span>
+                            </template>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <!-- Progress View -->
+        <div x-show="view === 'progress'" x-cloak>
+            <h1>Progress / Tasks</h1>
+            <div class="toolbar">
+                <select x-model="progressFilter" @change="loadProgress()">
+                    <option value="">All</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="todo">To Do</option>
+                    <option value="blocked">Blocked</option>
+                    <option value="done">Done</option>
+                </select>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr><th>ID</th><th>Description</th><th>Status</th><th>Updated</th></tr>
+                    </thead>
+                    <tbody>
+                        <template x-for="p in progressItems" :key="p.id">
+                            <tr>
+                                <td x-text="p.id"></td>
+                                <td x-text="p.description"></td>
+                                <td><span class="badge" :class="'status-' + (p.status || '').replace(/ /g, '_')" x-text="p.status"></span></td>
+                                <td x-text="formatDate(p.updated_at)"></td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Custom Data View -->
+        <div x-show="view === 'custom-data'" x-cloak>
+            <h1>Custom Data</h1>
+            <div class="toolbar">
+                <select x-model="customDataCategory" @change="loadCustomData()">
+                    <option value="">All Categories</option>
+                    <template x-for="cat in customCategories" :key="cat">
+                        <option :value="cat" x-text="cat"></option>
+                    </template>
+                </select>
+                <input type="text" placeholder="Search..." x-model="customDataSearch" @keyup.enter="loadCustomData()">
+            </div>
+            <div class="card-grid">
+                <template x-for="item in customDataItems" :key="item.id">
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="badge badge-category" x-text="item.category"></span>
+                            <strong x-text="item.key"></strong>
+                        </div>
+                        <pre class="json-display small" x-text="typeof item.value === 'object' ? JSON.stringify(item.value, null, 2) : String(item.value)"></pre>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <!-- Knowledge Graph View -->
+        <div x-show="view === 'graph'" x-cloak>
+            <h1>Knowledge Graph</h1>
+            <div class="toolbar">
+                <label><input type="checkbox" x-model="graphFilters.decision" @change="updateGraph()"> Decisions</label>
+                <label><input type="checkbox" x-model="graphFilters.system_pattern" @change="updateGraph()"> Patterns</label>
+                <label><input type="checkbox" x-model="graphFilters.progress" @change="updateGraph()"> Progress</label>
+                <label><input type="checkbox" x-model="graphFilters.custom_data" @change="updateGraph()"> Custom Data</label>
+            </div>
+            <div id="graph-container"></div>
+            <div class="graph-legend">
+                <span class="legend-item"><span class="legend-dot" style="background: #4A90D9;"></span> Decision</span>
+                <span class="legend-item"><span class="legend-dot" style="background: #5CB85C;"></span> Pattern</span>
+                <span class="legend-item"><span class="legend-dot" style="background: #F0AD4E;"></span> Progress</span>
+                <span class="legend-item"><span class="legend-dot" style="background: #999;"></span> Custom Data</span>
+            </div>
+        </div>
+
+        <!-- Governance View -->
+        <div x-show="view === 'governance'" x-cloak>
+            <h1>Governance</h1>
+            <div class="card" x-show="governanceData.scopes.length">
+                <h2>Scopes</h2>
+                <div class="table-container">
+                    <table>
+                        <thead><tr><th>ID</th><th>Type</th><th>Name</th><th>Created By</th></tr></thead>
+                        <tbody>
+                            <template x-for="s in governanceData.scopes" :key="s.id">
+                                <tr>
+                                    <td x-text="s.id"></td>
+                                    <td><span class="badge" :class="'badge-' + s.scope_type" x-text="s.scope_type"></span></td>
+                                    <td x-text="s.scope_name"></td>
+                                    <td x-text="s.created_by"></td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card" x-show="governanceData.rules.length">
+                <h2>Active Rules</h2>
+                <template x-for="rule in governanceData.rules" :key="rule.id">
+                    <div class="rule-card">
+                        <span class="badge" :class="'rule-' + rule.rule_type" x-text="rule.rule_type"></span>
+                        <span x-text="rule.description"></span>
+                        <small x-text="'Entity: ' + rule.entity_type"></small>
+                    </div>
+                </template>
+            </div>
+            <div class="card" x-show="governanceData.amendments.length">
+                <h2>Amendments</h2>
+                <template x-for="a in governanceData.amendments" :key="a.id">
+                    <div class="amendment-item">
+                        <span class="badge" :class="'status-' + a.status" x-text="a.status"></span>
+                        <span x-text="a.rationale"></span>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <!-- Chat View -->
+        <div x-show="view === 'chat'" x-cloak>
+            <h1>💬 Project Chat</h1>
+            <template x-if="!chatStatus.available">
+                <div class="card warning">
+                    <p>Ollama not detected. Start Ollama to enable project chat.</p>
+                    <p><a href="https://ollama.ai" target="_blank">Install Ollama →</a></p>
+                </div>
+            </template>
+            <template x-if="chatStatus.available">
+                <div class="chat-container">
+                    <div class="chat-messages" id="chat-messages">
+                        <template x-for="(msg, i) in chatMessages" :key="i">
+                            <div class="chat-message" :class="msg.role">
+                                <div class="message-content" x-text="msg.content"></div>
+                                <template x-if="msg.context_used && msg.context_used.length">
+                                    <div class="message-context">
+                                        <small>Sources:</small>
+                                        <template x-for="c in msg.context_used" :key="c.type + ':' + c.id">
+                                            <span class="tag" x-text="c.type + '#' + c.id"></span>
+                                        </template>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
+                    </div>
+                    <div class="chat-input">
+                        <input type="text" x-model="chatInput" @keyup.enter="sendChat()" placeholder="Ask about this project..." :disabled="chatLoading">
+                        <button @click="sendChat()" :disabled="chatLoading">
+                            <span x-text="chatLoading ? '...' : 'Send'"></span>
+                        </button>
+                    </div>
+                </div>
+            </template>
+        </div>
+
+        <!-- Search Results View -->
+        <div x-show="view === 'search'" x-cloak>
+            <h1>Search Results for "<span x-text="searchQuery"></span>"</h1>
+            <template x-for="r in searchResults" :key="r.type + ':' + r.id">
+                <div class="card search-result">
+                    <span class="badge" :class="'badge-' + r.type" x-text="r.type"></span>
+                    <strong x-text="r.title"></strong>
+                    <p x-text="r.snippet"></p>
+                </div>
+            </template>
+            <p x-show="!searchResults.length">No results found.</p>
+        </div>
+    </main>
+
+    <script src="/static/app.js"></script>
+    <script src="/static/graph.js"></script>
+</body>
+</html>

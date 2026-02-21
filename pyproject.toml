@@ -3,16 +3,16 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "context-portal-mcp"
-version = "0.3.13"
+name = "engrams"
+version = "1.0.0"
 authors = [
     {name = "Scott McLeod", email = "contextportal@gmail.com"}
 ]
-description = "A Model Context Protocol (MCP) server for managing structured project context."
+description = "A governance-aware, context-intelligent development platform built on MCP"
 readme = "README.md"
 license = {text = "Apache-2.0"}
 requires-python = ">=3.10"
-keywords = ["mcp", "context", "portal", "fastapi", "server"]
+keywords = ["mcp", "context", "engrams", "knowledge-graph", "rag"]
 classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
@@ -36,18 +36,24 @@ dependencies = [
     "sentence-transformers>=3.3.1",
     "chromadb>=1.3.5",
     "alembic>=1.17.2",
+    "sqlalchemy>=2.0.0",
     "authlib>=1.6.5",
     "urllib3>=2.6.0",
     "filelock>=3.16.2",
 ]
 
 [project.optional-dependencies]
+dashboard = [
+    "flask>=3.0",
+    "httpx>=0.27",
+]
 dev = [
     "pytest>=7.0.0",
     "pytest-asyncio",
     "black",
     "isort",
     "flake8",
+    "autoflake",
     "mypy",
 ]
 test = [
@@ -57,24 +63,26 @@ test = [
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/GreatScottyMac/context-portal"
-"Bug Reports" = "https://github.com/GreatScottyMac/context-portal/issues"
-"Source" = "https://github.com/GreatScottyMac/context-portal"
-"Documentation" = "https://github.com/GreatScottyMac/context-portal"
+"Homepage" = "https://engrams.sh"
+"Bug Reports" = "https://github.com/yourusername/engrams/issues"
+"Source" = "https://github.com/yourusername/engrams"
+"Documentation" = "https://engrams.sh/docs"
 
 [project.scripts]
-conport-mcp = "context_portal_mcp.main:cli_entry_point"
+engrams = "engrams.main:cli_entry_point"
+engrams-dashboard = "engrams.dashboard.app:main"
 
 # Fixed package discovery for src layout
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["context_portal_mcp*"]
+include = ["engrams*"]
 
 [tool.setuptools.package-data]
-"context_portal_mcp" = [
+"engrams" = [
     "templates/**/*",
+    "dashboard/static/**/*",
     "*.json",
-    "*.yaml", 
+    "*.yaml",
     "*.yml"
 ]
 
@@ -111,7 +119,7 @@ extend-exclude = '''
 profile = "black"
 multi_line_output = 3
 line_length = 88
-known_first_party = ["context_portal_mcp"]
+known_first_party = ["engrams"]
 
 # pytest configuration
 [tool.pytest.ini_options]

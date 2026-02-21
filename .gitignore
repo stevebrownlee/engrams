@@ -121,8 +121,14 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# Context Portal specific
-/context_portal/
+# Engrams specific
+/engrams/
+/.engrams_vector_data/
 *.sqlite
 *.sqlite-journal
 .clinerules/
+.roo/
+.roomodes
+memory-bank/
+.DS_Store
+context_portal/

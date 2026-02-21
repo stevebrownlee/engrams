@@ -1,6 +1,6 @@
-# Contributing to Context Portal MCP (ConPort)
+# Contributing to Engrams
 
-Thank you for your interest in contributing to the Context Portal MCP project! We welcome contributions of all kinds, including bug reports, feature requests, documentation improvements, and code contributions.
+Thank you for your interest in contributing to the Engrams project! We welcome contributions of all kinds, including bug reports, feature requests, documentation improvements, and code contributions.
 
 By participating in this project, you are expected to uphold our [Code of Conduct](CODE_OF_CONDUCT.md). (Note: A CODE_OF_CONDUCT.md file is recommended but not currently present in this repo. You may want to create one.)
 
@@ -8,19 +8,19 @@ By participating in this project, you are expected to uphold our [Code of Conduc
 
 ### Reporting Bugs
 
-If you find a bug, please report it by opening a new issue on the [GitHub repository](https://github.com/GreatScottyMac/context-portal/issues).
+If you find a bug, please report it by opening a new issue on the [GitHub repository](https://github.com/yourusername/engrams/issues).
 
 When reporting a bug, please include:
 
 *   A clear and concise description of the bug.
 *   Steps to reproduce the behavior.
-*   The version of ConPort you are using.
+*   The version of Engrams you are using.
 *   Your operating system and Python version.
 *   Any relevant error messages or logs (like `output.log`).
 
 ### Suggesting Enhancements
 
-If you have an idea for a new feature or enhancement, please suggest it by opening a new issue on the [GitHub repository](https://github.com/GreatScottyMac/context-portal/issues).
+If you have an idea for a new feature or enhancement, please suggest it by opening a new issue on the [GitHub repository](https://github.com/yourusername/engrams/issues).
 
 When suggesting an enhancement, please include:
 
@@ -34,8 +34,8 @@ To contribute code, you'll need to set up a development environment.
 
 1.  **Clone the Repository:**
     ```bash
-    git clone https://github.com/GreatScottyMac/context-portal.git
-    cd context-portal
+    git clone https://github.com/yourusername/engrams.git
+    cd engrams
     ```
 
 2.  **Create and Activate a Virtual Environment:**
@@ -69,7 +69,7 @@ To contribute code, you'll need to set up a development environment.
 
 We follow a standard GitHub pull request workflow.
 
-1.  **Fork the Repository:** Fork the [context-portal repository](https://github.com/GreatScottyMac/context-portal).
+1.  **Fork the Repository:** Fork the [engrams repository](https://github.com/yourusername/engrams).
 2.  **Create a Branch:** Create a new branch for your contribution.
     ```bash
     git checkout -b feature/your-feature-name
@@ -92,7 +92,7 @@ If your contribution involves changes to the Docker image or you need to publish
 
 1.  **Ensure Docker is Installed:** Make sure Docker Desktop (or Docker Engine) is installed and running on your system.
 2.  **Build the Docker Image:**
-    Navigate to the root of the `context-portal` repository and use the `build.ps1` script (for PowerShell users) or `docker build` command directly.
+    Navigate to the root of the `engrams` repository and use the `build.ps1` script (for PowerShell users) or `docker build` command directly.
 
     Using `build.ps1` (recommended for Windows):
     ```powershell
@@ -102,9 +102,9 @@ If your contribution involves changes to the Docker image or you need to publish
 
     Manual Docker Build:
     ```bash
-    docker build -t greatscottymac/context-portal-mcp:latest .
+    docker build -t yourusername/engrams:latest .
     # You can also tag with a specific version:
-    # docker build -t greatscottymac/context-portal-mcp:vX.Y.Z .
+    # docker build -t yourusername/engrams:vX.Y.Z .
     ```
 3.  **Log in to Docker Hub:**
     Before pushing, you need to log in to your Docker Hub account from your terminal:
@@ -115,11 +115,11 @@ If your contribution involves changes to the Docker image or you need to publish
 4.  **Push the Docker Image:**
     After a successful build and login, push the image to Docker Hub:
     ```bash
-    docker push greatscottymac/context-portal-mcp:latest
+    docker push yourusername/engrams:latest
     # If you tagged with a specific version:
-    # docker push greatscottymac/context-portal-mcp:vX.Y.Z
+    # docker push yourusername/engrams:vX.Y.Z
     ```
-    This will upload the image to the `greatscottymac/context-portal-mcp` repository on Docker Hub.
+    This will upload the image to the `yourusername/engrams` repository on Docker Hub.
 5.  **Verify on Docker Hub:**
     Confirm that the image has been successfully pushed by checking your Docker Hub repository in your web browser.
 
@@ -129,7 +129,7 @@ Improving documentation is a valuable contribution! You can suggest changes by o
 
 ### Licensing
 
-By contributing to Context Portal MCP, you agree that your contributions will be licensed under the same [Apache-2.0 License](LICENSE) as the project.
+By contributing to Engrams, you agree that your contributions will be licensed under the same [Apache-2.0 License](LICENSE) as the project.
 
 ## Code of Conduct
 
