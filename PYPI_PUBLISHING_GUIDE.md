@@ -2,20 +2,6 @@
 
 This guide walks you through publishing the Engrams project to PyPI so developers can install it with `uvx` or `pip` and use it as an MCP server in their agentic tools.
 
-## Table of Contents
-
-1. [Prerequisites](#prerequisites)
-2. [Pre-Publication Checklist](#pre-publication-checklist)
-3. [Building the Package](#building-the-package)
-4. [Testing Locally](#testing-locally)
-5. [Publishing to TestPyPI (Recommended First Step)](#publishing-to-testpypi)
-6. [Publishing to PyPI](#publishing-to-pypi)
-7. [Post-Publication Verification](#post-publication-verification)
-8. [User Installation Instructions](#user-installation-instructions)
-9. [Troubleshooting](#troubleshooting)
-
----
-
 ## Prerequisites
 
 ### 1. Install Build Tools
@@ -32,134 +18,21 @@ pip install --upgrade build twine
 
 ### 3. Generate API Tokens
 
-**For TestPyPI:**
-1. Log in to https://test.pypi.org
-2. Go to Account Settings → API tokens
-3. Click "Add API token"
-4. Name: "engrams-test" (or your choice)
-5. Scope: "Entire account" (or specific to this project after first upload)
-6. Copy the token (starts with `pypi-...`)
-
-**For PyPI:**
 1. Log in to https://pypi.org
 2. Go to Account Settings → API tokens
 3. Click "Add API token"
-4. Name: "engrams-production"
+4. Name: "engrams"
 5. Scope: "Entire account" (or specific to this project after first upload)
-6. Copy the token
+6. Copy the token somewhere safe locally
 
-### 4. Configure PyPI Credentials
 
-Create or edit `~/.pypirc`:
-
-```ini
-[distutils]
-index-servers =
-    pypi
-    testpypi
-
-[pypi]
-username = __token__
-password = pypi-YOUR_PYPI_TOKEN_HERE
-
-[testpypi]
-repository = https://test.pypi.org/legacy/
-username = __token__
-password = pypi-YOUR_TESTPYPI_TOKEN_HERE
-```
-
-**Security Note:** Keep this file private (`chmod 600 ~/.pypirc` on Unix-like systems).
-
----
-
-## Pre-Publication Checklist
-
-### 1. Update `pyproject.toml`
-
-Verify the following fields in your `pyproject.toml`:
-
-```toml
-[project]
-name = "engrams"  # This is the PyPI package name
-version = "1.0.0"  # Increment this for each release
-authors = [
-    {name = "Scott McLeod", email = "contextportal@gmail.com"}
-]
-description = "A governance-aware, context-intelligent development platform built on MCP"
-readme = "README.md"
-license = {text = "Apache-2.0"}
-requires-python = ">=3.10"
-
-[project.urls]
-"Homepage" = "https://engrams.sh"
-"Bug Reports" = "https://github.com/yourusername/engrams/issues"  # UPDATE THIS
-"Source" = "https://github.com/yourusername/engrams"  # UPDATE THIS
-"Documentation" = "https://engrams.sh/docs"
-
-[project.scripts]
-engrams = "engrams.main:cli_entry_point"
-engrams-dashboard = "engrams.dashboard.app:main"
-```
-
-**Action Items:**
-- [ ] Update the GitHub URLs to your actual repository
-- [ ] Verify the version number (use semantic versioning)
-- [ ] Ensure all URLs are accessible
-
-### 2. Verify Package Structure
-
-Ensure your source code is properly organized:
-
-```
-context-portal/
-├── src/
-│   └── engrams/
-│       ├── __init__.py
-│       ├── main.py
-│       ├── bindings/
-│       ├── budgeting/
-│       ├── core/
-│       ├── dashboard/
-│       ├── db/
-│       ├── governance/
-│       ├── handlers/
-│       └── onboarding/
-├── pyproject.toml
-├── README.md
-├── LICENSE
-└── requirements.txt
-```
-
-### 3. Ensure Critical Files Exist
-
-- [ ] `README.md` - Clear project description (this becomes your PyPI project page)
-- [ ] `LICENSE` - Apache-2.0 license file
-- [ ] `CHANGELOG.md` - Version history
-- [ ] `pyproject.toml` - Complete and correct
-
-### 4. Test Your Package Locally
-
-Run your test suite to ensure everything works:
-
-```bash
-# Run tests
-pytest
-
-# Optional: Check code quality
-black --check src/
-isort --check-only src/
-flake8 src/
-```
-
-### 5. Clean Previous Builds
+## Clean Previous Builds
 
 Remove any old build artifacts:
 
 ```bash
 rm -rf build/ dist/ *.egg-info src/*.egg-info
 ```
-
----
 
 ## Building the Package
 
@@ -179,10 +52,10 @@ Check the contents of your wheel:
 
 ```bash
 # List contents of the wheel
-unzip -l dist/engrams-1.0.0-py3-none-any.whl
+unzip -l dist/engrams_mcp-1.0.1-py3-none-any.whl
 
 # Or on macOS/Linux
-python -m zipfile -l dist/engrams-1.0.0-py3-none-any.whl
+python -m zipfile -l dist/engrams_mcp-1.0.1-py3-none-any.whl
 ```
 
 Verify that:
@@ -197,125 +70,6 @@ twine check dist/*
 ```
 
 This validates that your package description will render correctly on PyPI.
-
----
-
-## Testing Locally
-
-Before publishing, test the package locally:
-
-### 1. Create a Virtual Environment
-
-```bash
-python -m venv test-env
-source test-env/bin/activate  # On Windows: test-env\Scripts\activate
-```
-
-### 2. Install Your Package Locally
-
-```bash
-pip install dist/engrams-1.0.0-py3-none-any.whl
-```
-
-### 3. Test the CLI Entry Points
-
-```bash
-# Test the main CLI
-engrams --help
-
-# Test if it can run in stdio mode (it should wait for input)
-engrams --mode stdio --workspace_id /tmp/test-workspace
-
-# Press Ctrl+C to exit
-
-# Test the dashboard CLI
-engrams-dashboard --help
-```
-
-### 4. Test in an MCP Configuration
-
-Create a test MCP configuration file (`test-mcp.json`):
-
-```json
-{
-  "mcpServers": {
-    "engrams": {
-      "command": "engrams",
-      "args": [
-        "--mode",
-        "stdio",
-        "--workspace_id",
-        "/path/to/your/test/workspace"
-      ]
-    }
-  }
-}
-```
-
-Test with your MCP client (Claude Desktop, Cursor, etc.).
-
-### 5. Deactivate and Clean Up
-
-```bash
-deactivate
-rm -rf test-env
-```
-
----
-
-## Publishing to TestPyPI
-
-**Always test on TestPyPI first!** This lets you catch issues without affecting the production PyPI.
-
-### 1. Upload to TestPyPI
-
-```bash
-twine upload --repository testpypi dist/*
-```
-
-You'll see output like:
-```
-Uploading distributions to https://test.pypi.org/legacy/
-Uploading engrams-1.0.0-py3-none-any.whl
-Uploading engrams-1.0.0.tar.gz
-```
-
-### 2. Verify on TestPyPI
-
-Visit: https://test.pypi.org/project/engrams/
-
-Check that:
-- The description renders correctly
-- All metadata is correct
-- Links work
-
-### 3. Test Installation from TestPyPI
-
-```bash
-# Create a fresh virtual environment
-python -m venv test-install
-source test-install/bin/activate
-
-# Install from TestPyPI
-pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ engrams
-
-# Test the installation
-engrams --help
-
-# Deactivate
-deactivate
-rm -rf test-install
-```
-
-**Note:** The `--extra-index-url` is needed because dependencies will be pulled from the main PyPI.
-
-### 4. Test with uvx from TestPyPI
-
-```bash
-uvx --from https://test.pypi.org/simple/ engrams --help
-```
-
----
 
 ## Publishing to PyPI
 
@@ -336,7 +90,7 @@ Uploading engrams-1.0.0.tar.gz
 
 ### 2. Verify on PyPI
 
-Visit: https://pypi.org/project/engrams/
+Visit: [https://pypi.org/project/engrams-mcp/](https://pypi.org/project/engrams-mcp/)
 
 **🎉 Your package is now live!**
 
@@ -348,17 +102,17 @@ Visit: https://pypi.org/project/engrams/
 
 ```bash
 # In a new virtual environment
-pip install engrams
+pip install engrams-mcp
 
 # Verify
-engrams --help
+engrams-mcp --help
 ```
 
 ### 2. Test Installation with uvx
 
 ```bash
 # No installation needed - uvx creates ephemeral environments
-uvx engrams --help
+uvx engrams-mcp --help
 ```
 
 ### 3. Test Full MCP Integration
@@ -372,8 +126,8 @@ Update your MCP configuration file (e.g., `~/Library/Application Support/Claude/
       "command": "uvx",
       "args": [
         "--from",
-        "engrams",
-        "engrams",
+        "engrams-mcp",
+        "engrams-mcp",
         "--mode",
         "stdio",
         "--workspace_id",
@@ -421,8 +175,8 @@ Add to MCP configuration (`mcp.json` or `claude_desktop_config.json`):
       "command": "uvx",
       "args": [
         "--from",
-        "engrams",
-        "engrams",
+        "engrams-mcp",
+        "engrams-mcp",
         "--mode",
         "stdio",
         "--workspace_id",
@@ -442,10 +196,10 @@ Add to MCP configuration (`mcp.json` or `claude_desktop_config.json`):
 
 ```bash
 # Install globally or in a virtual environment
-pip install engrams
+pip install engrams-mcp
 
 # Optional: Install dashboard support
-pip install engrams[dashboard]
+pip install engrams-mcp[dashboard]
 ```
 
 Then add to MCP configuration:
@@ -470,7 +224,7 @@ Then add to MCP configuration:
 
 ```bash
 # Install as an isolated application
-pipx install engrams
+pipx install engrams-mcp
 
 # Run dashboard
 engrams-dashboard --workspace /path/to/project
@@ -634,8 +388,8 @@ Your users will be able to use Engrams with:
       "command": "uvx",
       "args": [
         "--from",
-        "engrams",
-        "engrams",
+        "engrams-mcp",
+        "engrams-mcp",
         "--mode",
         "stdio",
         "--workspace_id",
@@ -647,8 +401,8 @@ Your users will be able to use Engrams with:
 ```
 
 **Key Points:**
-- Package name on PyPI: **`engrams`**
-- CLI command: **`engrams`**
+- Package name on PyPI: **`engrams-mcp`**
+- CLI command: **`engrams-mcp`**
 - Dashboard command: **`engrams-dashboard`**
 - First publish to TestPyPI, then PyPI
 - Use semantic versioning

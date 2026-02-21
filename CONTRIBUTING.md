@@ -34,8 +34,8 @@ To contribute code, you'll need to set up a development environment.
 
 1.  **Clone the Repository:**
     ```bash
-    git clone https://github.com/yourusername/engrams.git
-    cd engrams
+    git clone https://github.com/yourusername/engrams-mcp.git
+    cd engrams-mcp
     ```
 
 2.  **Create and Activate a Virtual Environment:**
@@ -69,7 +69,7 @@ To contribute code, you'll need to set up a development environment.
 
 We follow a standard GitHub pull request workflow.
 
-1.  **Fork the Repository:** Fork the [engrams repository](https://github.com/yourusername/engrams).
+1.  **Fork the Repository:** Fork the [engrams-mcp repository](https://github.com/yourusername/engrams-mcp).
 2.  **Create a Branch:** Create a new branch for your contribution.
     ```bash
     git checkout -b feature/your-feature-name
@@ -92,7 +92,7 @@ If your contribution involves changes to the Docker image or you need to publish
 
 1.  **Ensure Docker is Installed:** Make sure Docker Desktop (or Docker Engine) is installed and running on your system.
 2.  **Build the Docker Image:**
-    Navigate to the root of the `engrams` repository and use the `build.ps1` script (for PowerShell users) or `docker build` command directly.
+    Navigate to the root of the `engrams-mcp` repository and use the `build.ps1` script (for PowerShell users) or `docker build` command directly.
 
     Using `build.ps1` (recommended for Windows):
     ```powershell
@@ -102,9 +102,9 @@ If your contribution involves changes to the Docker image or you need to publish
 
     Manual Docker Build:
     ```bash
-    docker build -t yourusername/engrams:latest .
+    docker build -t yourusername/engrams-mcp:latest .
     # You can also tag with a specific version:
-    # docker build -t yourusername/engrams:vX.Y.Z .
+    # docker build -t yourusername/engrams-mcp:vX.Y.Z .
     ```
 3.  **Log in to Docker Hub:**
     Before pushing, you need to log in to your Docker Hub account from your terminal:
@@ -115,11 +115,11 @@ If your contribution involves changes to the Docker image or you need to publish
 4.  **Push the Docker Image:**
     After a successful build and login, push the image to Docker Hub:
     ```bash
-    docker push yourusername/engrams:latest
+    docker push yourusername/engrams-mcp:latest
     # If you tagged with a specific version:
-    # docker push yourusername/engrams:vX.Y.Z
+    # docker push yourusername/engrams-mcp:vX.Y.Z
     ```
-    This will upload the image to the `yourusername/engrams` repository on Docker Hub.
+    This will upload the image to the `yourusername/engrams-mcp` repository on Docker Hub.
 5.  **Verify on Docker Hub:**
     Confirm that the image has been successfully pushed by checking your Docker Hub repository in your web browser.
 

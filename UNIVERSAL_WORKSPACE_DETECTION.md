@@ -29,7 +29,7 @@ This document describes the universal workspace auto-detection system integrated
 
 ## Detection Strategies (Priority Order)
 
-1. **Strong Indicators**  
+1. **Strong Indicators**
    Presence (in current or ancestor directory, up to max depth) of any high-confidence files:
    - `package.json`
    - `.git`
@@ -39,18 +39,18 @@ This document describes the universal workspace auto-detection system integrated
    - `pom.xml`
    If found, the directory is validated (light structural/content checks).
 
-2. **Multiple General Indicators**  
+2. **Multiple General Indicators**
    If two or more of a broader set exist (e.g., `README.md`, `LICENSE`, `requirements.txt`, `CMakeLists.txt`, `Makefile`, `setup.py`, `.gitignore`) the directory is treated as a workspace.
 
-3. **Existing Engrams Workspace**  
+3. **Existing Engrams Workspace**
    A `engrams/` directory (database or prior usage) signals a valid root.
 
-4. **MCP / Environment Context**  
+4. **MCP / Environment Context**
    Environment variables (if directories):
    - `VSCODE_WORKSPACE_FOLDER`
    - `CONPORT_WORKSPACE`
 
-5. **Fallback**  
+5. **Fallback**
    Start directory (with a warning) if nothing else matches.
 
 ---
@@ -64,7 +64,7 @@ This document describes the universal workspace auto-detection system integrated
     "engrams": {
       "command": "uvx",
       "args": [
-        "--from", "context-portal-mcp",
+        "--from", "engrams-mcp",
         "engrams-mcp",
         "--mode", "stdio",
         "--log-level", "INFO"
@@ -81,7 +81,7 @@ This document describes the universal workspace auto-detection system integrated
     "engrams": {
       "command": "uvx",
       "args": [
-        "--from", "context-portal-mcp",
+        "--from", "engrams-mcp",
         "engrams-mcp",
         "--mode", "stdio",
         "--no-auto-detect",
@@ -105,7 +105,7 @@ Returns a diagnostic payload:
 - `start_path`
 - `detected_workspace`
 - `engrams_path`
-- `detection_method`  
+- `detection_method`
   (`strong_indicators` | `multiple_indicators` | `existing_engrams` | `fallback`)
 - `indicators_found`
 - `environment_variables` subset
@@ -153,7 +153,7 @@ Use this when:
 |------------------------|-----------------|
 | Hardcoded absolute `--workspace_id` | Remove if single-root and rely on auto-detect |
 | Multiple client configs per project | Consolidate to one config (unless isolation needed) |
-| Scripts wrapping launch with path injection | Simplify to `uvx --from context-portal-mcp engrams-mcp --mode stdio` |
+| Scripts wrapping launch with path injection | Simplify to `uvx --from engrams-mcp engrams-mcp --mode stdio` |
 
 No database changes required; behavior is runtime-only.
 

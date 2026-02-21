@@ -48,8 +48,8 @@ Engrams runs as a Model Context Protocol (MCP) server. Configure it in your MCP 
       "command": "uvx",
       "args": [
         "--from",
-        "engrams",
-        "engrams",
+        "engrams-mcp",
+        "engrams-mcp",
         "--mode",
         "stdio",
         "--log-level",
@@ -460,8 +460,8 @@ The easiest way to use Engrams is via `uvx`, which handles environments automati
     "engrams": {
       "command": "uvx",
       "args": [
-        "--from", "engrams",
-        "engrams",
+        "--from", "engrams-mcp",
+        "engrams-mcp",
         "--mode", "stdio",
         "--log-level", "INFO"
       ]

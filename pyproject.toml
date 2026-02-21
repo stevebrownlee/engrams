@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "engrams-mcp"
-version = "1.0.0"
+version = "1.0.1"
 authors = [
     {name = "Scott McLeod", email = "contextportal@gmail.com"},
     {name = "Steve Brownlee", email = "steve@stevebrownlee.com"},
@@ -65,8 +65,8 @@ test = [
 
 [project.urls]
 "Homepage" = "https://engrams.sh"
-"Bug Reports" = "https://github.com/stevebrownlee/engrams/issues"
-"Source" = "https://github.com/stevebrownlee/engrams"
+"Bug Reports" = "https://github.com/stevebrownlee/engrams-mcp/issues"
+"Source" = "https://github.com/stevebrownlee/engrams-mcp"
 "Documentation" = "https://engrams.sh/docs"
 
 [project.scripts]
