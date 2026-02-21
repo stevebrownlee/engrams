@@ -306,14 +306,14 @@ Note: Integer-like parameters across tools accept numbers or digit-only strings 
 *   **Arguments:**
     *   `workspace_id` (string): Identifier for the workspace (e.g., absolute path) (Required: Yes)
     *   `output_path` (string, optional): Optional output directory path relative to workspace_id. (Default: './engrams_export/')
-*   **Pydantic Model:** `ExportConportToMarkdownArgs`
+*   **Pydantic Model:** `ExportEngramsToMarkdownArgs`
 
 #### 3.7.2 `import_markdown_to_engrams`
 *   **Description:** Arguments for importing markdown files into Engrams data.
 *   **Arguments:**
     *   `workspace_id` (string): Identifier for the workspace (e.g., absolute path) (Required: Yes)
     *   `input_path` (string, optional): Optional input directory path relative to workspace_id containing markdown files. (Default: './engrams_export/')
-*   **Pydantic Model:** `ImportMarkdownToConportArgs`
+*   **Pydantic Model:** `ImportMarkdownToEngramsArgs`
 
 ### 3.8 Knowledge Graph / Linking Tools
 
@@ -327,7 +327,7 @@ Note: Integer-like parameters across tools accept numbers or digit-only strings 
     *   `target_item_id` (string): ID or key of the target item (Required: Yes)
     *   `relationship_type` (string): Nature of the link (Required: Yes)
     *   `description` (string, optional): Optional description for the link (Default: null)
-*   **Pydantic Model:** `LinkConportItemsArgs`
+*   **Pydantic Model:** `LinkEngramsItemsArgs`
 
 #### 3.8.2 `get_linked_items`
 *   **Description:** Arguments for retrieving links connected to a specific Engrams item, allowing traversal of the **project knowledge graph**.
@@ -367,7 +367,7 @@ Note: Integer-like parameters across tools accept numbers or digit-only strings 
 *   **Description:** Arguments for retrieving the Engrams tool schema.
 *   **Arguments:**
     *   `workspace_id` (string): Identifier for the workspace (e.g., absolute path) (Required: Yes)
-    *   `Pydantic Model`: `GetConportSchemaArgs`
+    *   `Pydantic Model`: `GetEngramsSchemaArgs`
 
 #### 3.10.3 `get_recent_activity_summary`
 *   **Description:** Arguments for retrieving a summary of recent Engrams activity.

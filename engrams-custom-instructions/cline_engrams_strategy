@@ -2,6 +2,9 @@
 engrams_memory_strategy:
   # CRITICAL: At the beginning of every session, the agent MUST execute the 'initialization' sequence
   # to determine the Engrams status and load relevant context.
+  # CRITICAL: NO task that mutates the workspace (file creation, modification, deletion, code generation,
+  # or architectural decisions) may begin until [ENGRAMS_ACTIVE] is confirmed AND the
+  # 'pre_task_governance_check' sequence has been completed without finding a blocking conflict.
   workspace_id_source: "The agent must obtain the absolute path to the current workspace to use as `workspace_id` for all Engrams tool calls. This might be available as `${workspaceFolder}` or require asking the user."
 
   initialization:
@@ -42,12 +45,12 @@ engrams_memory_strategy:
         conditions:
           - if: "results from step 1 are NOT empty/minimal"
             actions:
-              - "Set internal status to [CONPORT_ACTIVE]."
+              - "Set internal status to [ENGRAMS_ACTIVE]."
               - "Inform user: \"Engrams memory initialized. Existing contexts and recent activity loaded.\""
               - "Use `ask_followup_question` with suggestions like \"Review recent activity?\", \"Continue previous task?\", \"What would you like to work on?\"."
           - else: "loaded context is empty/minimal despite DB file existing"
             actions:
-              - "Set internal status to [CONPORT_ACTIVE]."
+              - "Set internal status to [ENGRAMS_ACTIVE]."
               - "Inform user: \"Engrams database file found, but it appears to be empty or minimally initialized. You can start by defining Product/Active Context or logging project information.\""
               - "Use `ask_followup_question` with suggestions like \"Define Product Context?\", \"Log a new decision?\"."
       - step: 3
@@ -110,23 +113,152 @@ engrams_memory_strategy:
                                 - "Define Product Context manually."
                                 - "Skip for now."
                           - "(If \"Define manually\", guide user through `update_product_context`)."
-              - "Proceed to 'load_existing_engrams_context' sequence (which will now load the potentially bootstrapped product context and other empty contexts)."
+              - "Proceed to 'post_task_setup_questionnaire' sequence to configure project-specific verification checks."
           - if_user_response_is: "No, do not use Engrams for this session."
             action: "Proceed to `if_engrams_unavailable_or_init_failed` (with a message indicating user chose not to initialize)."
+
+  post_task_setup_questionnaire:
+    description: |
+      Runs during first-time Engrams setup to configure project-specific verification checks
+      that will be automatically executed as part of the post_task_completion gate.
+      The agent auto-detects the project type and suggests relevant checks.
+    trigger: "During handle_new_engrams_setup, after projectBrief import and DB initialization."
+    steps:
+      - step: 1
+        action: "Auto-detect project type by scanning workspace root for manifest files."
+        detection_rules:
+          - indicator: "package.json"
+            suggests: ["npm test", "npm run lint", "npm run build", "npx tsc --noEmit"]
+            project_type: "Node.js/TypeScript"
+          - indicator: "pyproject.toml OR requirements.txt OR setup.py"
+            suggests: ["pytest", "flake8 .", "mypy .", "python -m py_compile"]
+            project_type: "Python"
+          - indicator: "Cargo.toml"
+            suggests: ["cargo check", "cargo test", "cargo clippy"]
+            project_type: "Rust"
+          - indicator: "go.mod"
+            suggests: ["go test ./...", "go vet ./...", "golangci-lint run"]
+            project_type: "Go"
+          - indicator: "pom.xml OR build.gradle"
+            suggests: ["mvn test", "mvn compile", "gradle test", "gradle build"]
+            project_type: "Java/JVM"
+          - indicator: "Gemfile"
+            suggests: ["bundle exec rspec", "bundle exec rubocop"]
+            project_type: "Ruby"
+          - indicator: "composer.json"
+            suggests: ["composer test", "php -l", "phpstan analyse"]
+            project_type: "PHP"
+      - step: 2
+        action: "Present detected project type and suggested checks to the user."
+        tool_to_use: "ask_followup_question"
+        example_question: "I detected this is a **Python** project. Would you like to configure automatic post-task verification checks? These will run after every completed task to catch issues early."
+        example_suggestions:
+          - "Yes, use the suggested checks: pytest, flake8, mypy"
+          - "Yes, but let me customize which checks to include"
+          - "No, skip post-task checks for now"
+      - step: 3
+        action: "If user wants to customize, present each check individually."
+        customization_options:
+          - "Each suggested check can be toggled on/off"
+          - "User can add custom commands (e.g., 'make lint', 'docker compose run tests')"
+          - "User can set check severity: 'blocking' (must pass) vs 'warning' (report but continue)"
+      - step: 4
+        action: "Store the configured checks in Engrams as custom_data."
+        tool_to_use: "log_custom_data"
+        parameters:
+          category: "post_task_checks"
+          key: "verification_commands"
+          value_schema:
+            project_type: "string (detected type)"
+            checks:
+              - command: "string (the CLI command to run)"
+                name: "string (human-readable name)"
+                severity: "'blocking' | 'warning'"
+                enabled: "boolean"
+      - step: 5
+        action: "Log a decision recording the post-task check configuration."
+        tool_to_use: "log_decision"
+        parameters:
+          summary: "Configured post-task verification checks for [project_type] project"
+          tags: ["post-task-checks", "project-setup", "dx"]
+      - step: 6
+        action: "Proceed to 'load_existing_engrams_context' sequence."
 
   if_engrams_unavailable_or_init_failed:
     thinking_preamble: |
 
-    agent_action: "Inform user: \"Engrams memory will not be used for this session. Status: [CONPORT_INACTIVE].\""
+    agent_action: "Inform user: \"Engrams memory will not be used for this session. Status: [ENGRAMS_INACTIVE].\""
 
   general:
-    status_prefix: "Begin EVERY response with either '[CONPORT_ACTIVE]' or '[CONPORT_INACTIVE]'."
-    proactive_logging_cue: "Remember to proactively identify opportunities to log or update Engrams based on the conversation (e.g., if user outlines a new plan, consider logging decisions or progress). Confirm with the user before logging."
+    status_prefix: "Begin EVERY response with either '[ENGRAMS_ACTIVE]' or '[ENGRAMS_INACTIVE]'."
+    proactive_logging_cue: "Proactively log decisions, progress, and context changes to Engrams throughout the conversation. Do NOT wait for the user to ask — if a decision was made, a task completed, or context changed, log it automatically as part of the workflow."
     proactive_error_handling: "When encountering errors (e.g., tool failures, unexpected output), proactively log the error details using `log_custom_data` (category: 'ErrorLogs', key: 'timestamp_error_summary') and consider updating `active_context` with `open_issues` if it's a persistent problem. Prioritize using Engrams's `get_item_history` or `get_recent_activity_summary` to diagnose issues if they relate to past context changes."
     semantic_search_emphasis: "For complex or nuanced queries, especially when direct keyword search (`search_decisions_fts`, `search_custom_data_value_fts`) might be insufficient, prioritize using `semantic_search_engrams` to leverage conceptual understanding and retrieve more relevant context. Explain to the user why semantic search is being used."
 
+  pre_task_governance_check:
+    description: |
+      MANDATORY gate that MUST run before executing any task that creates, modifies, or deletes files,
+      generates code, or makes architectural decisions. Engrams MUST be [ENGRAMS_ACTIVE] before this
+      check can proceed. If status is [ENGRAMS_INACTIVE], run the initialization sequence first.
+    trigger: "Before ANY workspace-mutating action: file creation, modification, deletion, code generation, or architectural decisions."
+    mandatory: true
+    steps:
+      - step: 1
+        action: "Verify Engrams is [ENGRAMS_ACTIVE]. If not, complete the initialization sequence before proceeding."
+      - step: 2
+        action: "Invoke `get_decisions` (limit 20) to retrieve all team decisions. Scan results for any decision that constrains the planned task (e.g., file naming rules, prohibited patterns, required workflows)."
+      - step: 3
+        action: "Invoke `get_scopes` to check whether governance scopes are configured in this workspace."
+      - step: 4
+        action: "If scopes exist, invoke `get_governance_rules` for each relevant scope to retrieve `hard_block` and `soft_warn` rules applicable to the task type."
+      - step: 5
+        action: "Evaluate whether the planned task violates any loaded decision or governance rule."
+        conditions:
+          - if: "A conflict is found (a decision prohibits the action, OR a hard_block governance rule applies)"
+            then: "STOP. Do NOT proceed. Inform the user of the conflict, citing the specific item by ID and summary. Require explicit override confirmation before taking any action."
+          - elif: "A soft_warn rule applies"
+            then: "Inform the user of the concern and the matched rule. Proceed only after the user explicitly acknowledges."
+          - else: "No conflict found"
+            then: "Proceed with the task as planned."
+    efficiency_note: "As an alternative to steps 2-4, invoke `get_relevant_context` with a `task_description` describing the planned action and a modest `token_budget` (e.g., 2000 tokens). This surfaces relevant decisions and governance items in a single call."
+
+  post_task_completion:
+    description: |
+      MANDATORY gate that MUST run BEFORE calling `attempt_completion`. When Engrams is [ENGRAMS_ACTIVE],
+      the agent must: (1) run any configured project verification checks, (2) log all significant
+      outcomes to Engrams, then (3) present results to the user.
+    trigger: "Before ANY call to `attempt_completion` when Engrams is [ENGRAMS_ACTIVE]."
+    mandatory: true
+    steps:
+      - step: 1
+        action: "Load project verification checks from Engrams."
+        tool_to_use: "get_custom_data"
+        parameters: { category: "post_task_checks", key: "verification_commands" }
+        on_missing: "Skip to step 4 (no checks configured)."
+      - step: 2
+        action: "Execute each enabled check command via `execute_command`."
+        sub_steps:
+          - "Run the command (e.g., `pytest`, `npm run lint`, `cargo check`)."
+          - "If severity is 'blocking' and check fails: STOP. Inform user. Do NOT call `attempt_completion`."
+          - "If severity is 'warning' and check fails: Note warning, continue."
+          - "If check passes: Continue to next check."
+      - step: 3
+        action: "Summarize check results. If all passed, proceed. If any blocking check failed, halt and report."
+      - step: 4
+        action: "Review the work just completed. Identify: (a) decisions made, (b) task status changes, (c) new patterns, (d) context changes."
+      - step: 5
+        action: "Log each decision using `log_decision` with summary, rationale, and implementation_details."
+      - step: 6
+        action: "Log or update progress using `log_progress` or `update_progress` to reflect task completion."
+      - step: 7
+        action: "If the current work focus or active context changed, update it via `update_active_context` with `patch_content`."
+      - step: 8
+        action: "Identify and log any new relationships between items using `link_engrams_items`."
+      - step: 9
+        action: "Only after all checks pass and all Engrams updates are complete, proceed to call `attempt_completion`."
+
   engrams_updates:
-    frequency: "UPDATE CONPORT THROUGHOUT THE CHAT SESSION, WHEN SIGNIFICANT CHANGES OCCUR, OR WHEN EXPLICITLY REQUESTED."
+    frequency: "UPDATE ENGRAMS THROUGHOUT THE CHAT SESSION, WHEN SIGNIFICANT CHANGES OCCUR, OR WHEN EXPLICITLY REQUESTED."
     workspace_id_note: "All Engrams tool calls require the `workspace_id`."
     tools:
       - name: get_product_context
@@ -275,10 +407,10 @@ engrams_memory_strategy:
 
   engrams_sync_routine:
     trigger: "^(Sync Engrams|Engrams Sync)$"
-    user_acknowledgement_text: "[CONPORT_SYNCING]"
+    user_acknowledgement_text: "[ENGRAMS_SYNCING]"
     instructions:
       - "Halt Current Task: Stop current activity."
-      - "Acknowledge Command: Send `[CONPORT_SYNCING]` to the user."
+      - "Acknowledge Command: Send `[ENGRAMS_SYNCING]` to the user."
       - "Review Chat History: Analyze the complete current chat session for new information, decisions, progress, context changes, clarifications, and potential new relationships between items."
     core_update_process:
       thinking_preamble: |

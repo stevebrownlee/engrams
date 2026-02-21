@@ -1,8 +1,11 @@
 # --- Engrams Memory Strategy (Compact) ---
 engrams_memory_strategy:
   # Keep responses prefixed and always include workspace_id in tool calls.
+  # CRITICAL: NO task that mutates the workspace (file creation, modification, deletion, code generation,
+  # or architectural decisions) may begin until [ENGRAMS_ACTIVE] is confirmed AND the
+  # pre_task_governance_check has been completed without finding a blocking conflict.
   notes:
-    - "Prefix every response with [CONPORT_ACTIVE] or [CONPORT_INACTIVE]."
+    - "Prefix every response with [ENGRAMS_ACTIVE] or [ENGRAMS_INACTIVE]."
     - "workspace_id: absolute path of current workspace. Ask user if unknown."
 
   # 1) Initialization (single flow with 3 outcomes)
@@ -24,29 +27,56 @@ engrams_memory_strategy:
               - "get_custom_data(category:'critical_settings') → store"
               - "get_custom_data(category:'ProjectGlossary') → store"
               - "get_recent_activity_summary(limit_per_type:3) → store"
-              - "Set status [CONPORT_ACTIVE]. Tell user contexts loaded; offer: review recent, continue, or new task."
+              - "Set status [ENGRAMS_ACTIVE]. Tell user contexts loaded; offer: review recent, continue, or new task."
           - elif: "context.db missing"
             then:
               - "Tell user no DB found. Ask to initialize now."
               - "If yes: optional bootstrap: list root → if 'projectBrief.md' found, read; ask to import into product context; on yes: update_product_context(content:{initial_product_brief: ...})."
+              - "Run post_task_setup_questionnaire: auto-detect project type from manifest files, suggest verification checks (test/lint/typecheck/build), let user customize, store as custom_data(category:'post_task_checks', key:'verification_commands')."
               - "Proceed to load sequence above."
           - else: "tool failure"
             then:
-              - "Tell user Engrams unavailable. Set [CONPORT_INACTIVE]."
+              - "Tell user Engrams unavailable. Set [ENGRAMS_INACTIVE]."
 
   # 2) General norms (concise)
   general:
-    - "Status prefix: [CONPORT_ACTIVE]/[CONPORT_INACTIVE]."
-    - "Proactive logging: suggest logging decisions/progress/context when appropriate; ask before logging."
+    - "Status prefix: [ENGRAMS_ACTIVE]/[ENGRAMS_INACTIVE]."
+    - "Proactive logging: automatically log decisions/progress/context changes to Engrams as they happen. Do NOT wait for user to ask."
     - "Error handling: on tool errors, log_custom_data(category:'ErrorLogs', key:'timestamp_error_summary', value: details); update active_context.open_issues if persistent."
     - "Semantic search: prefer when keywords insufficient; state why using it."
 
-  # 3) Core routines (short checklists)
+  # 3) Pre-task governance gate (MANDATORY before any workspace-mutating action)
+  pre_task_governance_check:
+    trigger: "Before ANY file creation, modification, deletion, code generation, or architectural decision."
+    mandatory: true
+    do:
+      - "Verify [ENGRAMS_ACTIVE]. If not, run initialization first."
+      - "get_decisions(limit:20) → scan for any decision constraining the planned task."
+      - "get_scopes() → check if governance scopes exist."
+      - "If scopes exist: get_governance_rules(scope_id: ...) → check hard_block and soft_warn rules."
+      - "Evaluate: if hard_block conflict or prohibiting decision found → STOP, cite the item by ID, require explicit user override."
+      - "Evaluate: if soft_warn found → warn the user, proceed only after explicit acknowledgement."
+      - "Evaluate: no conflict → proceed with task."
+    efficiency_note: "Alternative: call get_relevant_context(task_description:'...', token_budget:2000) to surface relevant decisions and governance items in one call."
+
+  post_task_completion:
+    trigger: "Before ANY call to `attempt_completion` when [ENGRAMS_ACTIVE]."
+    mandatory: true
+    do:
+      - "Load post_task_checks from get_custom_data(category:'post_task_checks', key:'verification_commands'). Skip if not configured."
+      - "Execute each enabled check. If 'blocking' check fails → STOP, report to user. If 'warning' fails → note, continue."
+      - "Review completed work: identify decisions made, tasks completed, patterns introduced, context changes."
+      - "Log decisions via log_decision; update progress via log_progress/update_progress."
+      - "Update active_context if work focus changed."
+      - "Link related items via link_engrams_items."
+      - "Only after all checks pass and Engrams updates complete, call attempt_completion."
+
+  # 4) Core routines (short checklists)
   engrams_sync_routine:
     trigger: "^(Sync Engrams|Engrams Sync)$"
-    user_ack: "[CONPORT_SYNCING]"
+    user_ack: "[ENGRAMS_SYNCING]"
     do:
-      - "Stop current activity; send [CONPORT_SYNCING]."
+      - "Stop current activity; send [ENGRAMS_SYNCING]."
       - "Review chat for new info: decisions, progress, context changes, links."
       - "Log/Update accordingly (see tools below)."
       - "Optionally get_recent_activity_summary to confirm."
@@ -72,7 +102,7 @@ engrams_memory_strategy:
       - "On confirm: ensure source/target types+IDs, agreed relationship; optional description; call link_engrams_items."
       - "Confirm outcome to user."
 
-  # 4) Engrams tools quick reference (keep MCP call specs intact; minimal prose)
+  # 5) Engrams tools quick reference (keep MCP call specs intact; minimal prose)
   engrams_updates:
     frequency: "Update during chat when significant changes occur or upon request."
     tools:

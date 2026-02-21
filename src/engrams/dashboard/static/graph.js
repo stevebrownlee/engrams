@@ -1,4 +1,4 @@
-// ConPort Knowledge Graph Visualization (D3.js v7)
+// Engrams Knowledge Graph Visualization (D3.js v7)
 
 const NODE_COLORS = {
     decision: '#4A90D9',

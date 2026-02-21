@@ -21,7 +21,7 @@ from engrams.db.models import (
     SearchProjectGlossaryArgs,
     GetItemHistoryArgs,
     GetRecentActivitySummaryArgs,
-    SemanticSearchConportArgs,
+    SemanticSearchEngramsArgs,
 )
 
 WS = "dummy_workspace"
@@ -96,9 +96,9 @@ def test_recent_activity_summary_coercion_and_bounds():
         GetRecentActivitySummaryArgs(workspace_id=WS, hours_ago="0")
 
 def test_semantic_search_top_k_coercion_and_bounds():
-    m = SemanticSearchConportArgs(workspace_id=WS, query_text="what", top_k=" 5 ")
+    m = SemanticSearchEngramsArgs(workspace_id=WS, query_text="what", top_k=" 5 ")
     assert m.top_k == 5
     with pytest.raises(ValidationError):
-        SemanticSearchConportArgs(workspace_id=WS, query_text="what", top_k="0")
+        SemanticSearchEngramsArgs(workspace_id=WS, query_text="what", top_k="0")
     with pytest.raises(ValidationError):
-        SemanticSearchConportArgs(workspace_id=WS, query_text="what", top_k="26")
+        SemanticSearchEngramsArgs(workspace_id=WS, query_text="what", top_k="26")

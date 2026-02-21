@@ -4,7 +4,7 @@ trigger: always_on
 
 mem4sprint_strategy:
   notes:
-    - "Prefix every response with [CONPORT_ACTIVE] or [CONPORT_INACTIVE]."
+    - "Prefix every response with [ENGRAMS_ACTIVE] or [ENGRAMS_INACTIVE]."
     - "Always include workspace_id (absolute path) in Engrams tool calls."
     - "Source of truth: Engrams DB for operational memory; this repo's rule files drive behavior."
     - "Self-contained: this file and mem4sprint.schema_and_templates.md are authoritative. Do NOT assume external strategy files."
@@ -26,18 +26,19 @@ mem4sprint_strategy:
               - "get_system_patterns(limit:5) → store"
               - "get_custom_data(category:'critical_settings') → store"
               - "get_custom_data(category:'ProjectGlossary') → store"
-              - "Set status [CONPORT_ACTIVE]. Offer: review recent, continue, or new task."
+              - "Set status [ENGRAMS_ACTIVE]. Offer: review recent, continue, or new task."
           - elif: "context.db missing"
             then:
               - "Tell user no DB found. Ask to initialize now."
               - "If yes and 'projectBrief.md' exists: read then update_product_context(content:{initial_product_brief: ...})."
+              - "Run post_task_setup_questionnaire: auto-detect project type from manifest files, suggest verification checks (test/lint/typecheck/build), let user customize, store as custom_data(category:'post_task_checks', key:'verification_commands')."
               - "Proceed to load sequence above."
           - else: "tool failure"
             then:
-              - "Tell user Engrams unavailable. Set [CONPORT_INACTIVE]."
+              - "Tell user Engrams unavailable. Set [ENGRAMS_INACTIVE]."
 
   general:
-    - "Proactive logging: propose decisions/progress/context updates; ask before logging."
+    - "Proactive logging: automatically log decisions/progress/context changes as they happen. Do NOT wait for user to ask."
     - "Semantic search: use when keywords are insufficient; state why."
     - "Error handling: on tool errors, log_custom_data(category:'ErrorLogs', key:'<ts>_error', value: details)."
     - "DB-only operational memory; on-demand export to markdown for review."
@@ -103,11 +104,23 @@ mem4sprint_strategy:
 
   canonical_mcp_call_recipes: "See Appendix: Operational Call Recipes in mem4sprint.schema_and_templates.md"
 
+  post_task_completion:
+    trigger: "Before ANY call to `attempt_completion` when [ENGRAMS_ACTIVE]."
+    mandatory: true
+    do:
+      - "Load post_task_checks from get_custom_data(category:'post_task_checks', key:'verification_commands'). Skip if not configured."
+      - "Execute each enabled check. If 'blocking' check fails → STOP, report to user. If 'warning' fails → note, continue."
+      - "Review completed work: identify decisions made, tasks completed, patterns introduced, context changes."
+      - "Log decisions via log_decision; update progress via log_progress/update_progress."
+      - "Update active_context if work focus changed."
+      - "Link related items via link_engrams_items."
+      - "Only after all checks pass and Engrams updates complete, call attempt_completion."
+
   engrams_sync_routine:
     trigger: "^(Sync Engrams|Engrams Sync)$"
-    user_ack: "[CONPORT_SYNCING]"
+    user_ack: "[ENGRAMS_SYNCING]"
     do:
-      - "Stop current activity; send [CONPORT_SYNCING]."
+      - "Stop current activity; send [ENGRAMS_SYNCING]."
       - "Review chat for new info: decisions, progress, context changes, links."
       - "Log/Update accordingly: log_decision, log_progress/update_progress, update_active_context/product_context, log_system_pattern, link_engrams_items, batch_log_items."
       - "Optionally get_recent_activity_summary to confirm."

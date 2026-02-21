@@ -48,7 +48,7 @@ This document describes the universal workspace auto-detection system integrated
 4. **MCP / Environment Context**
    Environment variables (if directories):
    - `VSCODE_WORKSPACE_FOLDER`
-   - `CONPORT_WORKSPACE`
+   - `ENGRAMS_WORKSPACE`
 
 5. **Fallback**
    Start directory (with a warning) if nothing else matches.

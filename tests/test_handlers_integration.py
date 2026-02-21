@@ -59,7 +59,7 @@ def test_handlers_integration_smoke():
 
     # Link decision → progress
     link = H.handle_link_engrams_items(
-        models.LinkConportItemsArgs(
+        models.LinkEngramsItemsArgs(
             workspace_id=workspace_id,
             source_item_type="decision",
             source_item_id=str(dec_d["id"]),
@@ -145,7 +145,7 @@ def test_handlers_integration_smoke():
 
     # Export
     export = H.handle_export_engrams_to_markdown(
-        models.ExportConportToMarkdownArgs(workspace_id=workspace_id)
+        models.ExportEngramsToMarkdownArgs(workspace_id=workspace_id)
     )
     export_d = as_dict(export)
     assert export_d.get("status") == "success"

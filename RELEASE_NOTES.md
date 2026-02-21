@@ -9,7 +9,7 @@
 
 ### Installation
 ```bash
-uvx --from git+https://github.com/GreatScottyMac/context-portal.git@v0.3.13 conport-mcp --mode stdio
+uvx --from git+https://github.com/GreatScottyMac/context-portal.git@v0.3.13 engrams-mcp --mode stdio
 ```
 
 Or via pip:
@@ -26,7 +26,7 @@ pip install context-portal-mcp
 
 ### Installation
 ```bash
-uvx --from git+https://github.com/GreatScottyMac/context-portal.git@v0.3.12 conport-mcp --mode stdio
+uvx --from git+https://github.com/GreatScottyMac/context-portal.git@v0.3.12 engrams-mcp --mode stdio
 ```
 
 Or via pip:
@@ -68,7 +68,7 @@ pip install context-portal-mcp
 
 ### Installation
 ```bash
-uvx --from git+https://github.com/GreatScottyMac/context-portal.git@v0.3.11 conport-mcp --mode stdio
+uvx --from git+https://github.com/GreatScottyMac/context-portal.git@v0.3.11 engrams-mcp --mode stdio
 ```
 
 Or via pip:
@@ -86,7 +86,7 @@ pip install context-portal-mcp
 
 ### Installation
 ```bash
-uvx --from git+https://github.com/GreatScottyMac/context-portal.git@v0.3.10 conport-mcp --mode stdio
+uvx --from git+https://github.com/GreatScottyMac/context-portal.git@v0.3.10 engrams-mcp --mode stdio
 ```
 
 Or via pip:
@@ -113,7 +113,7 @@ pip install context-portal-mcp
 
 ### Installation
 ```bash
-uvx --from git+https://github.com/GreatScottyMac/context-portal.git@v0.3.9 conport-mcp --mode stdio
+uvx --from git+https://github.com/GreatScottyMac/context-portal.git@v0.3.9 engrams-mcp --mode stdio
 ```
 
 Or via pip:
@@ -132,7 +132,7 @@ pip install context-portal-mcp
 
 ### Installation
 ```bash
-uvx --from git+https://github.com/GreatScottyMac/context-portal.git@v0.3.8 conport-mcp --mode stdio
+uvx --from git+https://github.com/GreatScottyMac/context-portal.git@v0.3.8 engrams-mcp --mode stdio
 ```
 
 ## v0.3.7 (2025-10-30)
@@ -147,7 +147,7 @@ uvx --from git+https://github.com/GreatScottyMac/context-portal.git@v0.3.8 conpo
 
 ### Installation
 ```bash
-uvx --from git+https://github.com/GreatScottyMac/context-portal.git conport-mcp --mode stdio
+uvx --from git+https://github.com/GreatScottyMac/context-portal.git engrams-mcp --mode stdio
 ```
 
 Or via pip:
@@ -188,7 +188,7 @@ pip install context-portal-mcp
 ### Technical Details
 ### Security
 - Dependency hardening: Pin Authlib to `~=1.6.5` to address CVE-2025-61920 (High) and GHSA-g7f3-828f-7h7m (Moderate). Regenerated `uv.lock` to ensure 1.6.5 is locked. No runtime regressions observed (15/15 tests passing).
-- **Affected Tools:** `get_decisions`, `get_progress`, `get_system_patterns`, `get_custom_data`, `search_decisions_fts`, `search_custom_data_value_fts`, `search_project_glossary_fts`, `get_recent_activity_summary`, `semantic_search_conport`, `get_item_history`, `batch_log_items`, `delete_decision_by_id`, `delete_system_pattern_by_id`
+- **Affected Tools:** `get_decisions`, `get_progress`, `get_system_patterns`, `get_custom_data`, `search_decisions_fts`, `search_custom_data_value_fts`, `search_project_glossary_fts`, `get_recent_activity_summary`, `semantic_search_engrams`, `get_item_history`, `batch_log_items`, `delete_decision_by_id`, `delete_system_pattern_by_id`
 - **Root Cause:** FastMCP field-level `ge=1` and `le=25` constraints were applied before Pydantic model validation, preventing the custom `IntCoercionMixin` from converting string inputs to integers
 - **Solution:** Moved all integer validation logic to `@model_validator(mode='after')` methods that run after field coercion
 
@@ -223,7 +223,7 @@ No migration steps required. Existing workflows with explicit `--workspace_id` c
 ## v0.2.23 (2025-08-30)
 
 ### Features
-* **Compact ConPort Strategy for Windsurf:** Added a compact ConPort memory strategy file under 12k characters for Windsurf IDE compatibility, preserving core functionality while reducing size. (Credit: @kundeng, [PR #55](https://github.com/GreatScottyMac/context-portal/pull/55))
+* **Compact Engrams Strategy for Windsurf:** Added a compact Engrams memory strategy file under 12k characters for Windsurf IDE compatibility, preserving core functionality while reducing size. (Credit: @kundeng, [PR #55](https://github.com/GreatScottyMac/context-portal/pull/55))
 * **Mem4Sprint Strategy and FTS5 Updates:** Introduced mem4sprint strategy with flat categories, FTS5-safe examples, handler-only query normalization, and updated README for better IDE configuration. (Credit: @kundeng, [PR #56](https://github.com/GreatScottyMac/context-portal/pull/56))
 * **CLI Base Path Argument:** Added `--base-path` CLI argument for custom storage locations, enhancing user flexibility. (Credit: @kundeng, [PR #59](https://github.com/GreatScottyMac/context-portal/pull/59))
 
@@ -245,15 +245,15 @@ No migration steps required. Existing workflows with explicit `--workspace_id` c
 
 ### Features & Fixes
 *   **Deferred Workspace Initialization:** The server now initializes the workspace and database on the first tool call rather than on startup. This resolves a critical issue where an invalid or un-expanded `${workspaceFolder}` variable from the client would prevent the server from starting. (Credit: @yy1588133)
-*   **Full-Text Search (FTS):** Introduced FTS5 virtual tables for `decisions` and `custom_data`. This significantly enhances search capabilities within ConPort. (Credit: @yy1588133)
-*   **Comprehensive Test Suite:** Added a new test script (`test_conport_tools.py`) to validate all ConPort MCP tools, improving stability and reliability. (Credit: @yy1588133)
+*   **Full-Text Search (FTS):** Introduced FTS5 virtual tables for `decisions` and `custom_data`. This significantly enhances search capabilities within Engrams. (Credit: @yy1588133)
+*   **Comprehensive Test Suite:** Added a new test script (`test_engrams_tools.py`) to validate all Engrams MCP tools, improving stability and reliability. (Credit: @yy1588133)
 
 <br>
 
 ## v0.2.20 (2025-07-23)
 
 ### Bug Fixes
-Applied a fix to resolve the intermittent connection issue with the ConPort MCP server. A 500ms delay has been added to the startup sequence in src/context_portal_mcp/main.py to prevent a race condition. 
+Applied a fix to resolve the intermittent connection issue with the Engrams MCP server. A 500ms delay has been added to the startup sequence in src/context_portal_mcp/main.py to prevent a race condition. 
 
 <br>
 
@@ -270,7 +270,7 @@ This release provides a hotfix to ensure the log file path is correctly resolved
 
 **Key Fix:**
 
-- **Log Path Resolution:** The logging setup logic in `main.py` has been improved to robustly join the `workspace_id`, the `context_portal` directory, and any relative log file path. This corrects an issue where client-provided relative paths (e.g., `./logs/conport.log`) were incorrectly resolved from the workspace root instead of from within the `context_portal` directory.
+- **Log Path Resolution:** The logging setup logic in `main.py` has been improved to robustly join the `workspace_id`, the `context_portal` directory, and any relative log file path. This corrects an issue where client-provided relative paths (e.g., `./logs/engrams.log`) were incorrectly resolved from the workspace root instead of from within the `context_portal` directory.
 
 **Impact:**
 
@@ -284,7 +284,7 @@ This release changes the default location for the server's log file to a more st
 
 **Key Change:**
 
-- **Default Log Path:** The `--log-file` argument now defaults to `context_portal/logs/conport.log`. The server will automatically create this directory structure within the active workspace if it doesn't exist. This keeps project-related files, including logs, neatly organized inside the `context_portal` directory.
+- **Default Log Path:** The `--log-file` argument now defaults to `context_portal/logs/engrams.log`. The server will automatically create this directory structure within the active workspace if it doesn't exist. This keeps project-related files, including logs, neatly organized inside the `context_portal` directory.
 
 **Impact:**
 
@@ -294,7 +294,7 @@ This change improves project organization by preventing log files from clutterin
 
 ## Version 0.2.16 - IDE Compatibility Fix
 
-This hotfix release addresses a critical startup failure when using the ConPort server with the latest versions of client IDEs (e.g., Roo Code v3.20.0 and later).
+This hotfix release addresses a critical startup failure when using the Engrams server with the latest versions of client IDEs (e.g., Roo Code v3.20.0 and later).
 
 **Key Fix:**
 
@@ -308,7 +308,7 @@ This is a critical update for all users to ensure compatibility with the latest 
 
 ## Version 0.2.14 - Database Stability and Bug Fixes
 
-This release addresses a series of critical bugs related to database initialization and Alembic migrations, significantly improving the stability and reliability of the ConPort server.
+This release addresses a series of critical bugs related to database initialization and Alembic migrations, significantly improving the stability and reliability of the Engrams server.
 
 **Key Fixes:**
 
@@ -346,7 +346,7 @@ This release addresses a critical bug that caused MCP connection failures on Win
 
 **Impact:**
 
-This is a critical fix for Windows users, ensuring the ConPort MCP server can start and run reliably.
+This is a critical fix for Windows users, ensuring the Engrams MCP server can start and run reliably.
 
 <br>
 
@@ -360,7 +360,7 @@ This release addresses a critical bug that caused MCP connection failures on Win
 
 **Impact:**
 
-This is a critical fix for Windows users, ensuring the ConPort MCP server can start and run reliably.
+This is a critical fix for Windows users, ensuring the Engrams MCP server can start and run reliably.
 
 <br>
 
@@ -372,25 +372,25 @@ This release introduces several key improvements, including a fix for Alembic mi
 
 - **Alembic Migration Fix:** Resolved a bug that caused import failures for `system_patterns.md` due to a missing `timestamp` column in the database schema. A new Alembic migration script has been added to correctly add this column, ensuring data integrity and successful imports.
 - **UTF-8 Encoding:** All file read/write operations during data import and export now explicitly use `encoding="utf-8"`. This prevents encoding errors and ensures cross-platform compatibility.
-- **Streamlined Installation:** The `README.md` has been updated to feature `uvx` as the primary and recommended method for running the ConPort server. This simplifies the setup process for new users. A special thanks to contributor [elasticdotventures](https://github.com/elasticdotventures) for their work on the `uvx` configuration.
-- **Automated Alembic Provisioning:** The ConPort server now automatically ensures that the necessary `alembic.ini` and `alembic/` directory are present in the workspace root at startup, copying them from internal templates if they are missing.
+- **Streamlined Installation:** The `README.md` has been updated to feature `uvx` as the primary and recommended method for running the Engrams server. This simplifies the setup process for new users. A special thanks to contributor [elasticdotventures](https://github.com/elasticdotventures) for their work on the `uvx` configuration.
+- **Automated Alembic Provisioning:** The Engrams server now automatically ensures that the necessary `alembic.ini` and `alembic/` directory are present in the workspace root at startup, copying them from internal templates if they are missing.
 - **Runtime Error Fix:** Corrected an `IndentationError` in `main.py` that occurred during server startup.
 
 **Impact:**
 
-This release improves the robustness and reliability of ConPort's database migrations and data handling. The updated documentation and automated Alembic provisioning make the server easier to set up and use, while the encoding fix ensures that data is handled consistently across different environments.
+This release improves the robustness and reliability of Engrams's database migrations and data handling. The updated documentation and automated Alembic provisioning make the server easier to set up and use, while the encoding fix ensures that data is handled consistently across different environments.
 
 <br>
 
 ## Version 0.2.6 - Bug Fix Release
 
-This release addresses a critical issue with Alembic database migrations that could occur when initializing ConPort in environments where a `context.db` file already existed, but without proper Alembic version tracking.
+This release addresses a critical issue with Alembic database migrations that could occur when initializing Engrams in environments where a `context.db` file already existed, but without proper Alembic version tracking.
 
 **Key Fix:**
-- Modified the initial Alembic migration script (`068b7234d6a7_initial_database_schema.py`) to use `CREATE TABLE IF NOT EXISTS` for the `product_context` and `active_context` tables. This prevents `sqlite3.OperationalError` when the tables are already present, ensuring smoother initialization and operation of the ConPort server.
+- Modified the initial Alembic migration script (`068b7234d6a7_initial_database_schema.py`) to use `CREATE TABLE IF NOT EXISTS` for the `product_context` and `active_context` tables. This prevents `sqlite3.OperationalError` when the tables are already present, ensuring smoother initialization and operation of the Engrams server.
 
 **Impact:**
-This fix improves the robustness of ConPort's database initialization process, particularly in scenarios involving partial or pre-existing database setups.
+This fix improves the robustness of Engrams's database initialization process, particularly in scenarios involving partial or pre-existing database setups.
 
 <br>
 
@@ -400,7 +400,7 @@ This release focuses on enhancing deployment flexibility and improving the PyPI 
 
 ### Key Updates:
 
-*   **Official Docker Image:** Context Portal MCP is now available as an official Docker image on Docker Hub (`greatscottymac/context-portal-mcp`). This provides a streamlined way to deploy and run ConPort without needing to manage Python environments directly.
+*   **Official Docker Image:** Context Portal MCP is now available as an official Docker image on Docker Hub (`greatscottymac/context-portal-mcp`). This provides a streamlined way to deploy and run Engrams without needing to manage Python environments directly.
     *   Updated [`README.md`](README.md) with comprehensive instructions on how to pull and run the Docker image, including direct `docker run` commands and recommended MCP client configurations for seamless IDE integration.
     *   Added a new section to [`CONTRIBUTING.md`](CONTRIBUTING.md) detailing the process for building and publishing Docker images for contributors.
     
@@ -417,7 +417,7 @@ We recommend all users update to this version for improved deployment options an
 
 <br>
 
-## ConPort v0.2.4 Update Notes
+## Engrams v0.2.4 Update Notes
 
 This release focuses on significant stability improvements, particularly around database management and migration, alongside enhanced data import capabilities.
 
@@ -440,15 +440,15 @@ This release focuses on significant stability improvements, particularly around 
 *   **Solution:** Verified and resolved discrepancies in the database schema, ensuring that `timestamp` columns are correctly present and accessible in both `system_patterns` and `custom_data` tables. This involved identifying and removing redundant migration attempts.
 
 #### 4. Enhanced Data Import Capabilities
-*   **Problem:** Need to import existing ConPort data from various backup sources into a newly provisioned or migrated database.
-*   **Solution:** Successfully implemented a two-phase data import strategy using `import_markdown_to_conport`, allowing for the consolidation of project data from multiple markdown export sources (e.g., `conport-export/` and `conport_migration_test_backup/`). This ensures that existing project context, decisions, progress, and custom data can be seamlessly integrated.
+*   **Problem:** Need to import existing Engrams data from various backup sources into a newly provisioned or migrated database.
+*   **Solution:** Successfully implemented a two-phase data import strategy using `import_markdown_to_engrams`, allowing for the consolidation of project data from multiple markdown export sources (e.g., `engrams-export/` and `engrams_migration_test_backup/`). This ensures that existing project context, decisions, progress, and custom data can be seamlessly integrated.
 
 #### 5. General Stability and Reliability
 *   Addressed various minor issues including `IndentationError`, `SyntaxError`, `pip.exe` missing from `uv venv`, incorrect `package-data` in `pyproject.toml`, ChromaDB `ValueError` for list metadata, and log file location issues.
 *   Improved overall server startup and database connection handling.
 
 ### Upgrade Notes:
-*   Users upgrading from previous versions are recommended to ensure their `alembic.ini` and `alembic/` directories in the workspace are correctly provisioned by starting the ConPort server. If issues persist, consider deleting `context.db`, `alembic.ini`, and the `alembic/` directory in your workspace to allow for a clean re-provisioning and migration.
+*   Users upgrading from previous versions are recommended to ensure their `alembic.ini` and `alembic/` directories in the workspace are correctly provisioned by starting the Engrams server. If issues persist, consider deleting `context.db`, `alembic.ini`, and the `alembic/` directory in your workspace to allow for a clean re-provisioning and migration.
 <br>
 
 ## Context Portal MCP v0.2.3 Update Notes
@@ -511,7 +511,7 @@ This release introduces significant architectural improvements, critical bug fix
 This release marks the initial integration of Alembic for database schema management.
 
 ### New Features:
-- **Alembic Database Migrations:** ConPort now uses Alembic to manage its `context.db` schema. This enables automated database upgrades when updating the `context-portal-mcp` package, designed to preserve existing data.
+- **Alembic Database Migrations:** Engrams now uses Alembic to manage its `context.db` schema. This enables automated database upgrades when updating the `context-portal-mcp` package, designed to preserve existing data.
 
 ### Important Notes:
 - For users upgrading from versions prior to `v0.1.9`, a manual data migration (export, delete `context.db`, import) might be necessary due to significant schema changes. Refer to the `UPDATE_GUIDE.md` for detailed instructions.
@@ -520,7 +520,7 @@ This release marks the initial integration of Alembic for database schema manage
 
 ## v0.1.8 - Enhanced Logging, Critical Fixes, and Improved Context Handling
 
-This release brings significant improvements to the ConPort MCP server, focusing on enhanced observability, critical bug fixes, and more robust context management. Thanks @devxpain !!
+This release brings significant improvements to the Engrams MCP server, focusing on enhanced observability, critical bug fixes, and more robust context management. Thanks @devxpain !!
 
 ### Key Changes:
 
@@ -539,14 +539,14 @@ This release brings significant improvements to the ConPort MCP server, focusing
 
 ## v0.1.7
 
-Fixed the `export_conport_to_markdown` tool so that it includes `current_focus` and `open_issues` fields, along with the existing `current_task`.
+Fixed the `export_engrams_to_markdown` tool so that it includes `current_focus` and `open_issues` fields, along with the existing `current_task`.
 
 <br>
 
 ## v0.1.6
 
 Fixed incorrect script entry point in pyproject.toml, updated to:
-conport-mcp = "context_portal_mcp.main:cli_entry_point"
+engrams-mcp = "context_portal_mcp.main:cli_entry_point"
 
 Corrected the license reference in pyproject.toml to Apache 2.0
 
@@ -562,31 +562,31 @@ Added PyPi installation option
 
 **Release Notes Summary: Semantic Search & Enhanced Data Intelligence**
 
-This version introduces a powerful semantic search capability to ConPort, along with a more intelligent data backend:
+This version introduces a powerful semantic search capability to Engrams, along with a more intelligent data backend:
 
-*   **New Semantic Search Tool (`semantic_search_conport`)**:
-    *   Users can now search for ConPort items (Decisions, Progress, System Patterns, Custom Data, etc.) based on the semantic meaning of their query text, going beyond simple keyword matching.
+*   **New Semantic Search Tool (`semantic_search_engrams`)**:
+    *   Users can now search for Engrams items (Decisions, Progress, System Patterns, Custom Data, etc.) based on the semantic meaning of their query text, going beyond simple keyword matching.
     *   Supports advanced filtering by item type, tags (match all or any), and custom data categories to refine search results.
 
 *   **Automatic Embedding Generation**:
-    *   Key ConPort items (Decisions, Progress Entries, System Patterns, and text-based Custom Data) now automatically have embeddings generated and stored when they are logged.
+    *   Key Engrams items (Decisions, Progress Entries, System Patterns, and text-based Custom Data) now automatically have embeddings generated and stored when they are logged.
     *   This powers the semantic search and enables future AI-driven insights.
     *   Utilizes the `all-MiniLM-L6-v2` model for generating embeddings, ensuring consistency.
 
 *   **Integrated Vector Store (ChromaDB)**:
-    *   Embeddings are stored in a local ChromaDB vector database, managed per workspace within the `.conport_vector_data` directory.
+    *   Embeddings are stored in a local ChromaDB vector database, managed per workspace within the `.engrams_vector_data` directory.
     *   The system now explicitly configures ChromaDB to use the project's defined embedding model, enhancing consistency and reliability.
 
 *   **Embedding Lifecycle Management**:
-    *   Embeddings are now automatically removed from the vector store when their corresponding items (currently Decisions and System Patterns) are deleted from ConPort, keeping the search index synchronized.
+    *   Embeddings are now automatically removed from the vector store when their corresponding items (currently Decisions and System Patterns) are deleted from Engrams, keeping the search index synchronized.
 
-These updates significantly enhance the ability to find relevant information within your ConPort workspace and lay the groundwork for more advanced contextual understanding features.
+These updates significantly enhance the ability to find relevant information within your Engrams workspace and lay the groundwork for more advanced contextual understanding features.
 
 <br>
 
 v0.1.2
 
-ConPort custom instructions refactored with better YAML nesting.
+Engrams custom instructions refactored with better YAML nesting.
 
 <br>
 
@@ -598,4 +598,4 @@ Added logic to handle prompt caching when a compatible LLM is being used.
 
 v0.1.0-beta
 
-Introducing Context Portal MCP (ConPort), a database-backed Model Context Protocol (MCP) server for managing structured project context, designed to be used by AI assistants and developer tools within IDEs and other interfaces.
+Introducing Context Portal MCP (Engrams), a database-backed Model Context Protocol (MCP) server for managing structured project context, designed to be used by AI assistants and developer tools within IDEs and other interfaces.

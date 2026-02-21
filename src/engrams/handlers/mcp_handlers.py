@@ -729,7 +729,7 @@ def handle_get_system_patterns(
 
 
 def handle_get_engrams_schema(
-    args: models.GetConportSchemaArgs,
+    args: models.GetEngramsSchemaArgs,
 ) -> Dict[str, Dict[str, Any]]:
     """
     Handles the 'get_engrams_schema' MCP tool.
@@ -1005,16 +1005,16 @@ def handle_search_custom_data_value_fts(
 # --- Semantic Search Handler ---
 
 
-async def handle_semantic_search_conport(
-    args: models.SemanticSearchConportArgs,
+async def handle_semantic_search_engrams(
+    args: models.SemanticSearchEngramsArgs,
 ) -> List[Dict[str, Any]]:
     """
-    Handles the 'semantic_search_conport' MCP tool.
+    Handles the 'semantic_search_engrams' MCP tool.
     Performs a semantic search using embeddings and vector store, with optional metadata filters.
     """
     try:
         log.info(
-            f"Handling semantic_search_conport for workspace {args.workspace_id} with query: '{args.query_text[:50]}...'"
+            f"Handling semantic_search_engrams for workspace {args.workspace_id} with query: '{args.query_text[:50]}...'"
         )
 
         query_vector = embedding_service.get_embedding(args.query_text)
@@ -1111,7 +1111,7 @@ async def handle_semantic_search_conport(
         )
     except Exception as e:
         log.exception(
-            f"Unexpected error in handle_semantic_search_conport for workspace {args.workspace_id}"
+            f"Unexpected error in handle_semantic_search_engrams for workspace {args.workspace_id}"
         )
         raise ContextPortalError(
             f"Unexpected error during semantic search: {type(e).__name__}"
@@ -1223,7 +1223,7 @@ def _format_system_patterns_md(patterns: List[models.SystemPattern]) -> str:
 
 
 def handle_export_engrams_to_markdown(
-    args: models.ExportConportToMarkdownArgs,
+    args: models.ExportEngramsToMarkdownArgs,
 ) -> Dict[str, Any]:
     """
     Exports all Engrams data for a workspace to markdown files.
@@ -1500,8 +1500,8 @@ def _parse_custom_data_category_md(
     return items
 
 
-def handle_import_markdown_to_conport(
-    args: models.ImportMarkdownToConportArgs,
+def handle_import_markdown_to_engrams(
+    args: models.ImportMarkdownToEngramsArgs,
 ) -> Dict[str, Any]:
     """
     Imports data from markdown files into Engrams for a workspace.
@@ -1634,7 +1634,7 @@ def handle_import_markdown_to_conport(
     return summary_report
 
 
-def handle_link_engrams_items(args: models.LinkConportItemsArgs) -> Dict[str, Any]:
+def handle_link_engrams_items(args: models.LinkEngramsItemsArgs) -> Dict[str, Any]:
     """
     Handles the 'link_engrams_items' MCP tool.
     Creates a link between two Engrams items.

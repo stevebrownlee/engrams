@@ -23,13 +23,13 @@ DEFAULT_COLLECTION_NAME = "engrams_semantic_store"
 def _get_vector_store_path(workspace_id: str) -> str:
     """Determines the path for the vector store for a given workspace."""
     # IMPORTANT: Ensure workspace_id is a safe path component.
-    # This path should be inside the .conport directory for the workspace.
-    # Example: /path/to/workspace/.conport/vector_store
+    # This path should be inside the .engrams directory for the workspace.
+    # Example: /path/to/workspace/.engrams/vector_store
     # For now, using a simpler structure, assuming workspace_id is the root.
     # This needs to align with how SQLite DB path is handled.
     # From Design Doc: context_portal/[workspace_id]/vector_store/
     # This implies workspace_id is a name, not a full path.
-    # Let's assume a base data directory for conport, then workspace_id subdir.
+    # Let's assume a base data directory for engrams, then workspace_id subdir.
     # For now, let's assume workspace_id IS the base path for that workspace's data.
 
     # This path logic needs to be robust and align with overall project structure.

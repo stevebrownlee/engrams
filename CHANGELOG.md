@@ -7,38 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.0.0] - 2026-02-20
 
-### Major Release: ConPort → Engrams Rebranding
+### Major Release: Engrams → Engrams Rebranding
 
-This is the first major release of Engrams, a comprehensive rebranding and enhancement of ConPort v0.3.13.
+This is the first major release of Engrams, a comprehensive rebranding and enhancement of Engrams v0.3.13.
 
 #### Changed
 
 - **Package Name**: `context-portal-mcp` → `engrams`
 - **Module Name**: `context_portal_mcp` → `engrams`
 - **CLI Commands**:
-  - `conport-mcp` → `engrams`
-  - `conport-dashboard` → `engrams-dashboard`
+  - `engrams-mcp` → `engrams`
+  - `engrams-dashboard` → `engrams-dashboard`
 - **Directory Structure**:
   - `context_portal/` → `engrams/`
-  - `.conport_vector_data/` → `.engrams_vector_data/`
-  - `conport-custom-instructions/` → `engrams-custom-instructions/`
+  - `.engrams_vector_data/` → `.engrams_vector_data/`
+  - `engrams-custom-instructions/` → `engrams-custom-instructions/`
 - **Environment Variables**:
-  - `CONPORT_WORKSPACE` → `ENGRAMS_WORKSPACE` (legacy variable still supported for backward compatibility)
+  - `ENGRAMS_WORKSPACE` → `ENGRAMS_WORKSPACE` (legacy variable still supported for backward compatibility)
 - **Documentation**:
-  - `conport_mcp_deep_dive.md` → `engrams_deep_dive.md`
-  - All references to ConPort updated to Engrams throughout documentation
+  - `engrams_mcp_deep_dive.md` → `engrams_deep_dive.md`
+  - All references to Engrams updated to Engrams throughout documentation
 - **Tool Names**:
-  - `link_conport_items` → `link_engrams_items`
-  - `get_conport_schema` → `get_engrams_schema`
-  - `export_conport_to_markdown` → `export_engrams_to_markdown`
-  - `import_markdown_to_conport` → `import_markdown_to_engrams`
+  - `link_engrams_items` → `link_engrams_items`
+  - `get_engrams_schema` → `get_engrams_schema`
+  - `export_engrams_to_markdown` → `export_engrams_to_markdown`
+  - `import_markdown_to_engrams` → `import_markdown_to_engrams`
 
 #### Added
 
 - **Backward Compatibility Module** (`src/engrams/core/backward_compat.py`):
-  - Automatic migration from ConPort to Engrams directory structure
-  - Fallback support for legacy `CONPORT_WORKSPACE` environment variable
-  - Automatic vector store migration from `.conport_vector_data/` to `.engrams_vector_data/`
+  - Automatic migration from Engrams to Engrams directory structure
+  - Fallback support for legacy `ENGRAMS_WORKSPACE` environment variable
+  - Automatic vector store migration from `.engrams_vector_data/` to `.engrams_vector_data/`
   - Optional compatibility symlink creation for development environments
 
 - **Five Major Features** (from AGENTS.md):
@@ -50,25 +50,25 @@ This is the first major release of Engrams, a comprehensive rebranding and enhan
 
 #### Migration Guide
 
-Users upgrading from ConPort to Engrams will experience:
+Users upgrading from Engrams to Engrams will experience:
 
 1. **Automatic Directory Migration**: Old `context_portal/` directories are automatically migrated to `engrams/`
 2. **Database Preservation**: Existing `context.db` files are preserved and migrated intact
-3. **Vector Store Migration**: Old `.conport_vector_data/` is automatically moved to `.engrams_vector_data/`
-4. **Environment Variable Fallback**: Legacy `CONPORT_WORKSPACE` environment variable still works (with deprecation warning)
+3. **Vector Store Migration**: Old `.engrams_vector_data/` is automatically moved to `.engrams_vector_data/`
+4. **Environment Variable Fallback**: Legacy `ENGRAMS_WORKSPACE` environment variable still works (with deprecation warning)
 
 For detailed migration instructions, see [MIGRATION_TO_ENGRAMS.md](MIGRATION_TO_ENGRAMS.md).
 
 #### Breaking Changes
 
 - Package name changed on PyPI: install `engrams` instead of `context-portal-mcp`
-- CLI command names changed: use `engrams` instead of `conport-mcp`
+- CLI command names changed: use `engrams` instead of `engrams-mcp`
 - Tool names changed in MCP interface (see "Changed" section above)
 - Module imports must be updated: `from engrams` instead of `from context_portal_mcp`
 
 #### Deprecations
 
-- `CONPORT_WORKSPACE` environment variable is deprecated in favor of `ENGRAMS_WORKSPACE`
+- `ENGRAMS_WORKSPACE` environment variable is deprecated in favor of `ENGRAMS_WORKSPACE`
   - Legacy variable still supported for backward compatibility
   - Deprecation warning logged when legacy variable is used
 
@@ -80,11 +80,11 @@ This project is forked from [GreatScottyMac/context-portal](https://github.com/G
 
 ## Previous Versions
 
-For historical information about ConPort versions, see the original [context-portal repository](https://github.com/GreatScottyMac/context-portal).
+For historical information about Engrams versions, see the original [context-portal repository](https://github.com/GreatScottyMac/context-portal).
 
-### ConPort v0.3.13 (Base Fork)
+### Engrams v0.3.13 (Base Fork)
 
-The Engrams v1.0.0 release is based on ConPort v0.3.13, which included:
+The Engrams v1.0.0 release is based on Engrams v0.3.13, which included:
 
 - Core MCP server implementation with FastAPI/FastMCP
 - SQLite-based context storage (one database per workspace)
@@ -117,15 +117,15 @@ uvx --from engrams engrams --mode stdio
 
 ### Configuration Updates
 
-If you have existing MCP client configurations pointing to `conport-mcp`, update them to use `engrams`:
+If you have existing MCP client configurations pointing to `engrams-mcp`, update them to use `engrams`:
 
 **Before:**
 ```json
 {
   "mcpServers": {
-    "conport": {
+    "engrams": {
       "command": "uvx",
-      "args": ["--from", "context-portal-mcp", "conport-mcp", "--mode", "stdio"]
+      "args": ["--from", "context-portal-mcp", "engrams-mcp", "--mode", "stdio"]
     }
   }
 }

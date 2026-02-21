@@ -1,4 +1,4 @@
-// ConPort Dashboard Application Logic
+// Engrams Dashboard Application Logic
 function dashboard() {
     return {
         // State

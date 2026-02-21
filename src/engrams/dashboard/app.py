@@ -3,8 +3,8 @@
 Standalone process — reads the same ``context_portal/context.db`` that the
 MCP server writes to, but in **read-only** mode.  Start with::
 
-    conport-dashboard --workspace /path/to/project
-    conport-dashboard --workspace /path/to/project --enable-chat --ollama-model mistral
+    engrams-dashboard --workspace /path/to/project
+    engrams-dashboard --workspace /path/to/project --enable-chat --ollama-model mistral
 """
 
 import argparse
@@ -338,7 +338,7 @@ def create_app(
 
 
 def main():
-    """CLI entry point for ``conport-dashboard``."""
+    """CLI entry point for ``engrams-dashboard``."""
     parser = argparse.ArgumentParser(description="Engrams Project Knowledge Dashboard")
     parser.add_argument(
         "--workspace",

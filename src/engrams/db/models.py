@@ -589,7 +589,7 @@ class SearchProjectGlossaryArgs(IntCoercionMixin, BaseArgs):
 # --- Export Tool ---
 
 
-class ExportConportToMarkdownArgs(BaseArgs):
+class ExportEngramsToMarkdownArgs(BaseArgs):
     """Arguments for exporting Engrams data to markdown files."""
 
     output_path: Optional[str] = Field(
@@ -601,7 +601,7 @@ class ExportConportToMarkdownArgs(BaseArgs):
 # --- Import Tool ---
 
 
-class ImportMarkdownToConportArgs(BaseArgs):
+class ImportMarkdownToEngramsArgs(BaseArgs):
     """Arguments for importing markdown files into Engrams data."""
 
     input_path: Optional[str] = Field(
@@ -632,7 +632,7 @@ class ContextLink(BaseModel):
     )
 
 
-class LinkConportItemsArgs(BaseArgs):
+class LinkEngramsItemsArgs(BaseArgs):
     """Arguments for creating a link between two Engrams items."""
 
     source_item_type: str = Field(..., description="Type of the source item")
@@ -726,7 +726,7 @@ class GetItemHistoryArgs(IntCoercionMixin, BaseArgs):
 # --- Engrams Schema Tool Args ---
 
 
-class GetConportSchemaArgs(BaseArgs):
+class GetEngramsSchemaArgs(BaseArgs):
     """Arguments for retrieving the Engrams tool schema."""
 
 
@@ -774,7 +774,7 @@ class GetRecentActivitySummaryArgs(IntCoercionMixin, BaseArgs):
 # --- Semantic Search Tool Args ---
 
 
-class SemanticSearchConportArgs(IntCoercionMixin, BaseArgs):
+class SemanticSearchEngramsArgs(IntCoercionMixin, BaseArgs):
     """Arguments for performing a semantic search across Engrams data."""
 
     INT_FIELDS: ClassVar[Set[str]] = {"top_k"}
@@ -802,7 +802,7 @@ class SemanticSearchConportArgs(IntCoercionMixin, BaseArgs):
     )
 
     @model_validator(mode="after")
-    def check_numerical_constraints(self) -> "SemanticSearchConportArgs":
+    def check_numerical_constraints(self) -> "SemanticSearchEngramsArgs":
         if self.top_k < 1:
             raise ValueError("top_k must be greater than or equal to 1")
         if self.top_k > 25:
@@ -942,15 +942,15 @@ TOOL_ARG_MODELS = _LazyToolArgModels(
         "delete_custom_data": DeleteCustomDataArgs,
         "search_custom_data_value_fts": SearchCustomDataValueArgs,
         "search_project_glossary_fts": SearchProjectGlossaryArgs,
-        "export_engrams_to_markdown": ExportConportToMarkdownArgs,
-        "import_markdown_to_conport": ImportMarkdownToConportArgs,
-        "link_engrams_items": LinkConportItemsArgs,
+        "export_engrams_to_markdown": ExportEngramsToMarkdownArgs,
+        "import_markdown_to_engrams": ImportMarkdownToEngramsArgs,
+        "link_engrams_items": LinkEngramsItemsArgs,
         "get_linked_items": GetLinkedItemsArgs,
         "batch_log_items": BatchLogItemsArgs,
         "get_item_history": GetItemHistoryArgs,
-        "get_engrams_schema": GetConportSchemaArgs,
+        "get_engrams_schema": GetEngramsSchemaArgs,
         "get_recent_activity_summary": GetRecentActivitySummaryArgs,
-        "semantic_search_conport": SemanticSearchConportArgs,
+        "semantic_search_engrams": SemanticSearchEngramsArgs,
         "update_progress": UpdateProgressArgs,
         "delete_progress_by_id": DeleteProgressByIdArgs,
         # Feature 1-4 tools are lazily resolved via _LazyToolArgModels._LAZY_REFS

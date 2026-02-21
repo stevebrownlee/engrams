@@ -130,14 +130,14 @@ async def engrams_lifespan(_server: FastMCP) -> AsyncIterator[None]:
 
 # --- FastMCP Server Instance ---
 # Version from pyproject.toml would be ideal here, or define centrally
-CONPORT_VERSION = "0.3.13"
+ENGRAMS_VERSION = "0.3.13"
 
 engrams_mcp = FastMCP(name="Engrams", lifespan=engrams_lifespan)  # Pass name directly
 
 # --- FastAPI App ---
 # The FastAPI app will be the main ASGI app, and FastMCP will be mounted onto it.
 # We keep our own FastAPI app instance in case we want to add other non-MCP HTTP endpoints later.
-app = FastAPI(title="Engrams MCP Server Wrapper", version=CONPORT_VERSION)
+app = FastAPI(title="Engrams MCP Server Wrapper", version=ENGRAMS_VERSION)
 
 # --- Adapt and Register Tools with FastMCP ---
 # We use our Pydantic models as input_schema for robust validation.
@@ -1314,7 +1314,7 @@ async def tool_export_engrams_to_markdown(
     """
     try:
         _ = ctx
-        pydantic_args = models.ExportConportToMarkdownArgs(
+        pydantic_args = models.ExportEngramsToMarkdownArgs(
             workspace_id=workspace_id, output_path=output_path
         )
         return mcp_handlers.handle_export_engrams_to_markdown(pydantic_args)
@@ -1335,14 +1335,14 @@ async def tool_export_engrams_to_markdown(
 
 
 @engrams_mcp.tool(
-    name="import_markdown_to_conport",
+    name="import_markdown_to_engrams",
     description="Imports data from markdown files into Engrams.",
     annotations=ToolAnnotations(
         title="Import from Markdown",
         destructiveHint=True,
     ),
 )
-async def tool_import_markdown_to_conport(
+async def tool_import_markdown_to_engrams(
     workspace_id: Annotated[
         str, Field(description="Identifier for the workspace (e.g., absolute path)")
     ],
@@ -1369,23 +1369,23 @@ async def tool_import_markdown_to_conport(
     """
     try:
         _ = ctx
-        pydantic_args = models.ImportMarkdownToConportArgs(
+        pydantic_args = models.ImportMarkdownToEngramsArgs(
             workspace_id=workspace_id, input_path=input_path
         )
-        return mcp_handlers.handle_import_markdown_to_conport(pydantic_args)
+        return mcp_handlers.handle_import_markdown_to_engrams(pydantic_args)
     except exceptions.ContextPortalError as e:
-        log.error("Error in import_markdown_to_conport handler: %s", e)
+        log.error("Error in import_markdown_to_engrams handler: %s", e)
         raise
     except Exception as e:
         log.error(
-            "Error processing args for import_markdown_to_conport: %s. "
+            "Error processing args for import_markdown_to_engrams: %s. "
             "Args: workspace_id=%s, input_path='%s'",
             e,
             workspace_id,
             input_path,
         )
         raise exceptions.ContextPortalError(
-            f"Server error processing import_markdown_to_conport: {type(e).__name__}"
+            f"Server error processing import_markdown_to_engrams: {type(e).__name__}"
         )
 
 
@@ -1430,7 +1430,7 @@ async def tool_link_engrams_items(
     """
     try:
         _ = ctx
-        pydantic_args = models.LinkConportItemsArgs(
+        pydantic_args = models.LinkEngramsItemsArgs(
             workspace_id=workspace_id,
             source_item_type=source_item_type,
             source_item_id=str(source_item_id),  # Ensure string as per model
@@ -1872,7 +1872,7 @@ async def tool_get_engrams_schema(
     """
     try:
         _ = ctx
-        pydantic_args = models.GetConportSchemaArgs(workspace_id=workspace_id)
+        pydantic_args = models.GetEngramsSchemaArgs(workspace_id=workspace_id)
         return mcp_handlers.handle_get_engrams_schema(pydantic_args)
     except exceptions.ContextPortalError as e:
         log.error("Error in get_engrams_schema handler: %s", e)
@@ -1977,14 +1977,14 @@ async def tool_get_recent_activity_summary(
 
 
 @engrams_mcp.tool(
-    name="semantic_search_conport",
+    name="semantic_search_engrams",
     description="Performs a semantic search across Engrams data.",
     annotations=ToolAnnotations(
         title="Semantic Search",
         readOnlyHint=True,
     ),
 )
-async def tool_semantic_search_conport(
+async def tool_semantic_search_engrams(
     workspace_id: Annotated[
         str, Field(description="Identifier for the workspace (e.g., absolute path)")
     ],
@@ -2048,7 +2048,7 @@ async def tool_semantic_search_conport(
     try:
         _ = ctx
         # The model's own validators will check tag filters and custom_data_category_filter.
-        pydantic_args = models.SemanticSearchConportArgs(
+        pydantic_args = models.SemanticSearchEngramsArgs(
             workspace_id=workspace_id,
             query_text=query_text,
             top_k=int(top_k),
@@ -2058,31 +2058,31 @@ async def tool_semantic_search_conport(
             filter_custom_data_categories=filter_custom_data_categories,
         )
         # Ensure the handler is awaited if it's async
-        return await mcp_handlers.handle_semantic_search_conport(pydantic_args)
+        return await mcp_handlers.handle_semantic_search_engrams(pydantic_args)
     except exceptions.ContextPortalError as e:  # Specific app errors
-        log.error("Error in semantic_search_conport handler: %s", e)
+        log.error("Error in semantic_search_engrams handler: %s", e)
         raise
     except ValueError as e:  # Catch Pydantic validation errors
         log.error(
-            "Validation error for semantic_search_conport: %s. "
+            "Validation error for semantic_search_engrams: %s. "
             "Args: workspace_id=%s, query_text='%s'",
             e,
             workspace_id,
             query_text,
         )
         raise exceptions.ContextPortalError(
-            f"Invalid arguments for semantic_search_conport: {e}"
+            f"Invalid arguments for semantic_search_engrams: {e}"
         )
     except Exception as e:  # Catch-all for other unexpected errors
         log.error(
-            "Unexpected error processing args for semantic_search_conport: %s. "
+            "Unexpected error processing args for semantic_search_engrams: %s. "
             "Args: workspace_id=%s, query_text='%s'",
             e,
             workspace_id,
             query_text,
         )
         raise exceptions.ContextPortalError(
-            f"Server error processing semantic_search_conport: {type(e).__name__} - {e}"
+            f"Server error processing semantic_search_engrams: {type(e).__name__} - {e}"
         )
 
 
@@ -2123,7 +2123,7 @@ async def tool_get_workspace_detection_info(
         # Add additional runtime information
         detection_info.update(
             {
-                "server_version": CONPORT_VERSION,
+                "server_version": ENGRAMS_VERSION,
                 "detection_timestamp": datetime.now().isoformat(),
                 "auto_detection_available": True,
                 "mcp_context_workspace": detector.detect_from_mcp_context(),
@@ -3529,12 +3529,12 @@ async def read_root():
 
 # Determine the absolute path to the root of the Engrams server project
 # Assumes this script (main.py) is at src/engrams/main.py
-CONPORT_SERVER_ROOT_DIR = Path(
+ENGRAMS_SERVER_ROOT_DIR = Path(
     os.path.abspath(
         os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..")
     )
 )
-log.info("Engrams Server Root Directory identified as: %s", CONPORT_SERVER_ROOT_DIR)
+log.info("Engrams Server Root Directory identified as: %s", ENGRAMS_SERVER_ROOT_DIR)
 
 
 def main_logic(sys_args=None):
@@ -3596,9 +3596,9 @@ def main_logic(sys_args=None):
     parser.add_argument(
         "--log-file",
         type=str,
-        default="logs/conport.log",
+        default="logs/engrams.log",
         help="Path to a file where logs should be written, relative to the "
-        "context_portal directory. Defaults to 'logs/conport.log'.",
+        "context_portal directory. Defaults to 'logs/engrams.log'.",
     )
     parser.add_argument(
         "--db-path",
@@ -3687,7 +3687,7 @@ def main_logic(sys_args=None):
             try:
                 detect_and_migrate_old_conport(effective_workspace_id)
             except Exception as e:  # pylint: disable=broad-exception-caught
-                log.warning("ConPort migration check failed (non-fatal): %s", e)
+                log.warning("Engrams migration check failed (non-fatal): %s", e)
 
         # Pre-warm the database connection to trigger one-time initialization (e.g., migrations)
         # before the MCP transport starts. This prevents timeouts on the client's first tool call.
