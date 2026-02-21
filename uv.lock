@@ -810,8 +810,8 @@ wheels = [
 ]
 
 [[package]]
-name = "engrams"
-version = "1.0.0"
+name = "engrams-mcp"
+version = "1.0.2"
 source = { editable = "." }
 dependencies = [
     { name = "alembic" },

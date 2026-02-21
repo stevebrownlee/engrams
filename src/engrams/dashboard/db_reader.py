@@ -4,7 +4,10 @@ import json
 import logging
 import os
 import sqlite3
+from pathlib import Path
 from typing import Any, Dict, List, Optional
+
+from ..core.config import get_database_path
 
 log = logging.getLogger(__name__)
 
@@ -13,11 +16,23 @@ class EngramsReader:
     """Read-only access to a Engrams workspace database."""
 
     def __init__(self, workspace_path: str):
-        db_path = os.path.join(workspace_path, "engrams", "context.db")
+        # Use the same get_database_path function as the MCP server
+        # to respect custom database paths set via config
+        try:
+            db_path = get_database_path(workspace_path)
+        except ValueError:
+            # Fallback to default path if workspace_path is invalid
+            db_path = Path(workspace_path) / "engrams" / "context.db"
+
         if not os.path.exists(db_path):
             raise FileNotFoundError(f"Engrams database not found at: {db_path}")
-        self.db_path = db_path
-        self.conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+        self.db_path = str(db_path)
+        # Use check_same_thread=False because Flask serves requests from
+        # multiple threads but this connection is read-only, making it safe.
+        self.conn = sqlite3.connect(
+            f"file:{self.db_path}?mode=ro", uri=True,
+            check_same_thread=False,
+        )
         self.conn.row_factory = sqlite3.Row
 
     def close(self):

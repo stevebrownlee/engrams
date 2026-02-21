@@ -29,21 +29,64 @@ def detect_and_migrate_old_conport(workspace_id: str) -> None:
     old_db_path = workspace / "context_portal" / "context.db"
     new_db_path = workspace / "engrams" / "context.db"
 
-    # Only migrate if old path exists and new path doesn't
-    if old_db_path.exists() and not new_db_path.exists():
-        logger.info(
-            f"Detected ConPort directory at {old_db_path.parent}, migrating to Engrams..."
-        )
-        try:
-            # Create new engrams directory if it doesn't exist
-            new_db_path.parent.mkdir(parents=True, exist_ok=True)
+    # Handle migration: if old path exists, migrate it
+    if old_db_path.exists():
+        if not new_db_path.exists():
+            # Standard case: old exists, new doesn't - move old to new
+            logger.info(
+                f"Detected ConPort directory at {old_db_path.parent}, migrating to Engrams..."
+            )
+            try:
+                # Create new engrams directory if it doesn't exist
+                new_db_path.parent.mkdir(parents=True, exist_ok=True)
 
-            # Move the entire context_portal directory to engrams
-            shutil.move(str(old_db_path.parent), str(new_db_path.parent))
-            logger.info("ConPort database migration complete")
-        except Exception as e:
-            logger.error(f"Failed to migrate ConPort directory: {e}")
-            raise
+                # Move the entire context_portal directory to engrams
+                shutil.move(str(old_db_path.parent), str(new_db_path.parent))
+                logger.info("ConPort database migration complete")
+            except Exception as e:
+                logger.error(f"Failed to migrate ConPort directory: {e}")
+                raise
+        else:
+            # Edge case: both exist - check which has more recent/valid data
+            # If old database has data and new is empty/stale, use old
+            try:
+                import sqlite3
+                old_conn = sqlite3.connect(str(old_db_path))
+                new_conn = sqlite3.connect(str(new_db_path))
+
+                old_cursor = old_conn.cursor()
+                new_cursor = new_conn.cursor()
+
+                old_cursor.execute("SELECT COUNT(*) FROM decisions")
+                old_count = old_cursor.fetchone()[0]
+
+                new_cursor.execute("SELECT COUNT(*) FROM decisions")
+                new_count = new_cursor.fetchone()[0]
+
+                old_conn.close()
+                new_conn.close()
+
+                # If old has more data, it's likely the active database
+                if old_count > new_count:
+                    logger.warning(
+                        f"Both context_portal and engrams databases exist. "
+                        f"Old database has {old_count} decisions, new has {new_count}. "
+                        f"Removing stale new database and using old one."
+                    )
+                    try:
+                        # Remove the stale new database
+                        new_db_path.unlink()
+                        # Move old to new location
+                        new_db_path.parent.mkdir(parents=True, exist_ok=True)
+                        shutil.move(str(old_db_path.parent), str(new_db_path.parent))
+                        logger.info("Replaced stale database with active one")
+                    except Exception as e:
+                        logger.error(f"Failed to resolve database conflict: {e}")
+                        raise
+            except Exception as e:
+                logger.debug(f"Could not compare databases: {e}")
+                # If we can't compare, leave as-is
+                pass
 
     # Migrate vector store if it exists
     old_vector_path = workspace / ".conport_vector_data"
