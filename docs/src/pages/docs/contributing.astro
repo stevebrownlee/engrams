@@ -1,0 +1,94 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="Contributing" description="How to contribute to the Engrams project.">
+  <h1>Contributing to Engrams</h1>
+  <p class="lead">
+    Contributions of all kinds are welcome — bug reports, feature requests, documentation
+    improvements, and code contributions.
+  </p>
+
+  <h2>Code of conduct</h2>
+  <p>
+    By participating in this project you are expected to uphold our
+    <a href="https://github.com/stevebrownlee/engrams-mcp/blob/main/CODE_OF_CONDUCT.md" target="_blank" rel="noopener">Code of Conduct</a>.
+    Please report unacceptable behaviour via a GitHub issue.
+  </p>
+
+  <h2>Reporting bugs</h2>
+  <p>Open a new issue on <a href="https://github.com/stevebrownlee/engrams-mcp/issues" target="_blank" rel="noopener">GitHub Issues</a> and include:</p>
+  <ul>
+    <li>A clear description of the bug</li>
+    <li>Steps to reproduce</li>
+    <li>Engrams version (<code>engrams --version</code>)</li>
+    <li>Operating system and Python version</li>
+    <li>Relevant error messages or log output</li>
+  </ul>
+
+  <h2>Suggesting enhancements</h2>
+  <p>Open a GitHub issue describing:</p>
+  <ul>
+    <li>The proposed enhancement</li>
+    <li>The problem it solves or benefit it provides</li>
+    <li>Any design considerations</li>
+  </ul>
+
+  <h2>Development setup</h2>
+
+  <h3>1. Clone and install</h3>
+  <pre><code>{`git clone https://github.com/stevebrownlee/engrams-mcp.git
+cd engrams-mcp
+
+# Create virtual environment (uv recommended)
+uv venv
+source .venv/bin/activate   # macOS/Linux
+# .venv\\Scripts\\activate  # Windows
+
+# Install all dependencies including dev extras
+uv pip install -r requirements.txt
+uv pip install -e ".[dev,dashboard,test]"`}</code></pre>
+
+  <h3>2. Run tests</h3>
+  <pre><code>{`pytest
+# or with coverage
+pytest --cov=src/engrams`}</code></pre>
+
+  <h3>3. Code style</h3>
+  <pre><code>{`# Format
+black src/ tests/
+isort src/ tests/
+
+# Lint
+flake8 src/ tests/
+autoflake --remove-all-unused-imports -r src/`}</code></pre>
+
+  <h2>Pull request workflow</h2>
+  <ol>
+    <li>Fork the repository</li>
+    <li>Create a branch: <code>git checkout -b feature/my-feature</code></li>
+    <li>Make your changes and add tests</li>
+    <li>Ensure all tests pass and code style is clean</li>
+    <li>Push to your fork and open a PR against <code>main</code></li>
+    <li>Provide a clear description of your changes</li>
+  </ol>
+
+  <h2>Documentation improvements</h2>
+  <p>
+    Documentation lives in <code>docs/src/pages/</code> as Astro <code>.astro</code> files.
+    To preview locally:
+  </p>
+  <pre><code>{`cd docs
+npm install
+npm run dev`}</code></pre>
+
+  <h2>Licensing</h2>
+  <p>
+    By contributing you agree that your contributions will be licensed under the
+    <a href="https://github.com/stevebrownlee/engrams-mcp/blob/main/LICENSE" target="_blank" rel="noopener">Apache-2.0 License</a>.
+  </p>
+</DocsLayout>
+
+<style>
+  .lead { font-size: 1.125rem; color: var(--color-text-muted); line-height: 1.75; margin-bottom: 1.75rem; }
+</style>

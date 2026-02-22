@@ -1,0 +1,139 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="Custom Domain Setup" description="DNS records needed to point your custom domain to the GitHub Pages deployment.">
+  <h1>Custom Domain &amp; DNS Setup</h1>
+  <p class="lead">
+    These instructions explain what DNS records to add at your domain registrar to point your
+    custom domain (e.g. <code>engrams.sh</code>) to the GitHub Pages deployment.
+  </p>
+
+  <div class="callout note">
+    <strong>Prerequisite:</strong> Your GitHub Actions workflow must have successfully deployed
+    the site at least once before GitHub Pages activates. Check
+    <strong>Settings → Pages</strong> in your repository after the first push.
+  </div>
+
+  <h2>1. Enable GitHub Pages in the repository</h2>
+  <ol>
+    <li>Go to your GitHub repository → <strong>Settings → Pages</strong>.</li>
+    <li>Under <strong>Build and deployment</strong>, set source to <strong>GitHub Actions</strong>.</li>
+    <li>Push to <code>main</code> — the workflow will build and deploy automatically.</li>
+  </ol>
+
+  <h2>2. Set the custom domain in GitHub</h2>
+  <ol>
+    <li>In <strong>Settings → Pages → Custom domain</strong>, enter your domain (e.g. <code>engrams.sh</code>).</li>
+    <li>Click <strong>Save</strong>. GitHub will attempt to verify the domain.</li>
+    <li>Enable <strong>Enforce HTTPS</strong> once the SSL certificate is provisioned (can take up to 24 hours).</li>
+  </ol>
+
+  <div class="callout tip">
+    <strong>CNAME file:</strong> A <code>CNAME</code> file containing <code>engrams.sh</code>
+    is already included in <code>docs/public/CNAME</code> and will be copied to the build output
+    automatically. This prevents GitHub from clearing your custom domain after each deploy.
+  </div>
+
+  <h2>3. Add DNS records at your registrar</h2>
+  <p>
+    Log in to your domain registrar (Namecheap, Cloudflare, GoDaddy, etc.) and add the
+    following records:
+  </p>
+
+  <h3>Option A — Apex domain (<code>engrams.sh</code>)</h3>
+  <p>Add four <strong>A records</strong> pointing to GitHub's IP addresses:</p>
+  <table>
+    <thead><tr><th>Type</th><th>Host / Name</th><th>Value</th><th>TTL</th></tr></thead>
+    <tbody>
+      <tr><td>A</td><td><code>@</code></td><td><code>185.199.108.153</code></td><td>3600</td></tr>
+      <tr><td>A</td><td><code>@</code></td><td><code>185.199.109.153</code></td><td>3600</td></tr>
+      <tr><td>A</td><td><code>@</code></td><td><code>185.199.110.153</code></td><td>3600</td></tr>
+      <tr><td>A</td><td><code>@</code></td><td><code>185.199.111.153</code></td><td>3600</td></tr>
+    </tbody>
+  </table>
+
+  <p>Also add an <strong>AAAA record</strong> for IPv6 support (optional but recommended):</p>
+  <table>
+    <thead><tr><th>Type</th><th>Host / Name</th><th>Value</th><th>TTL</th></tr></thead>
+    <tbody>
+      <tr><td>AAAA</td><td><code>@</code></td><td><code>2606:50c0:8000::153</code></td><td>3600</td></tr>
+      <tr><td>AAAA</td><td><code>@</code></td><td><code>2606:50c0:8001::153</code></td><td>3600</td></tr>
+      <tr><td>AAAA</td><td><code>@</code></td><td><code>2606:50c0:8002::153</code></td><td>3600</td></tr>
+      <tr><td>AAAA</td><td><code>@</code></td><td><code>2606:50c0:8003::153</code></td><td>3600</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Option B — www subdomain (<code>www.engrams.sh</code>)</h3>
+  <p>Add a <strong>CNAME record</strong>:</p>
+  <table>
+    <thead><tr><th>Type</th><th>Host / Name</th><th>Value</th><th>TTL</th></tr></thead>
+    <tbody>
+      <tr><td>CNAME</td><td><code>www</code></td><td><code>&lt;your-github-username&gt;.github.io</code></td><td>3600</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout warn">
+    <strong>⚠️ Replace <code>&lt;your-github-username&gt;</code></strong> with your actual
+    GitHub username (e.g. <code>stevebrownlee.github.io</code>).
+  </div>
+
+  <h3>Option C — docs subdomain (<code>docs.engrams.sh</code>)</h3>
+  <p>If you want to host docs at a subdomain instead of the apex, add only a CNAME:</p>
+  <table>
+    <thead><tr><th>Type</th><th>Host / Name</th><th>Value</th><th>TTL</th></tr></thead>
+    <tbody>
+      <tr><td>CNAME</td><td><code>docs</code></td><td><code>&lt;your-github-username&gt;.github.io</code></td><td>3600</td></tr>
+    </tbody>
+  </table>
+  <p>And update <code>docs/public/CNAME</code> to contain <code>docs.engrams.sh</code>.</p>
+
+  <h2>4. Verify propagation</h2>
+  <p>DNS changes can take up to 48 hours to propagate globally, though they usually take effect within minutes. Check using:</p>
+  <pre><code>{`# Check A records
+dig engrams.sh A +short
+
+# Check CNAME
+dig www.engrams.sh CNAME +short
+
+# Online tool
+https://www.whatsmydns.net/#A/engrams.sh`}</code></pre>
+
+  <h2>5. Cloudflare users</h2>
+  <p>
+    If your domain is behind Cloudflare, set the A records with the <strong>proxy status
+    turned OFF</strong> (grey cloud, DNS only). Cloudflare proxying can interfere with
+    GitHub Pages' TLS certificate issuance.
+  </p>
+
+  <h2>Troubleshooting</h2>
+  <table>
+    <thead><tr><th>Symptom</th><th>Likely cause</th><th>Fix</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Domain shows GitHub 404</td>
+        <td>Pages not yet deployed or custom domain not saved</td>
+        <td>Re-check Settings → Pages and trigger a manual deploy</td>
+      </tr>
+      <tr>
+        <td>SSL certificate not issued</td>
+        <td>DNS not yet propagated</td>
+        <td>Wait up to 24 h; check DNS propagation with <code>dig</code></td>
+      </tr>
+      <tr>
+        <td>Custom domain resets after deploy</td>
+        <td>Missing <code>CNAME</code> file in build output</td>
+        <td>Ensure <code>docs/public/CNAME</code> exists and contains your domain</td>
+      </tr>
+      <tr>
+        <td>Mixed-content warnings</td>
+        <td>HTTP assets on HTTPS page</td>
+        <td>Enable "Enforce HTTPS" in Settings → Pages</td>
+      </tr>
+    </tbody>
+  </table>
+</DocsLayout>
+
+<style>
+  .lead { font-size: 1.125rem; color: var(--color-text-muted); line-height: 1.75; margin-bottom: 1.75rem; }
+</style>

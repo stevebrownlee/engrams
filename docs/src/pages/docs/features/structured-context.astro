@@ -1,0 +1,65 @@
+---
+import DocsLayout from '../../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="Structured Context" description="Store and retrieve structured project knowledge in Engrams.">
+  <h1>Structured Context Storage</h1>
+  <p class="lead">
+    Store your project knowledge in a structured SQLite database that is organically used during
+    conversations with your AI. The more you store in Engrams, the less you need to provide in
+    each prompt.
+  </p>
+
+  <h2>How it works</h2>
+  <p>
+    Every significant fact about your project — a database choice, a coding convention, an
+    architectural pattern — can be stored in Engrams. Your AI retrieves these facts automatically
+    when they become relevant, grounding its responses in your actual project decisions rather
+    than generic assumptions.
+  </p>
+
+  <h2>Example</h2>
+  <pre><code>{`You: "Implement a new /medications endpoint that looks for a
+      patient_id in the request body and returns their meds.
+      Start with authorized GET and POST only."
+
+AI:  Found relevant decisions:
+     Decision #23: PostgreSQL is our primary database
+     Decision #24: All operations written with SQLAlchemy
+     Decision #7:  JWT token authentication
+
+     I'll extract the authenticated user from the request body
+     for POST operations. The INSERT and SELECT will use SQLAlchemy.`}</code></pre>
+
+  <h2>Product Context vs Active Context</h2>
+  <table>
+    <thead><tr><th>Type</th><th>What it stores</th><th>How often it changes</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>Product Context</strong></td>
+        <td>Project goals, tech stack, architecture overview, key features</td>
+        <td>Rarely — on major pivots</td>
+      </tr>
+      <tr>
+        <td><strong>Active Context</strong></td>
+        <td>Current focus, open questions, recent changes, next steps</td>
+        <td>Every session</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>MCP tools</h2>
+  <ul>
+    <li><code>get_product_context</code> / <code>update_product_context</code></li>
+    <li><code>get_active_context</code> / <code>update_active_context</code></li>
+    <li><code>log_decision</code> / <code>get_decisions</code> / <code>search_decisions_fts</code></li>
+    <li><code>log_progress</code> / <code>get_progress</code></li>
+    <li><code>log_system_pattern</code> / <code>get_system_patterns</code></li>
+    <li><code>log_custom_data</code> / <code>get_custom_data</code></li>
+  </ul>
+
+  <p>See the full <a href="/docs/reference/mcp-tools">MCP Tools reference</a> for parameters.</p>
+</DocsLayout>
+<style>
+  .lead { font-size: 1.125rem; color: var(--color-text-muted); line-height: 1.75; margin-bottom: 1.75rem; }
+</style>

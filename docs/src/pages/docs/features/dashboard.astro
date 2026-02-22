@@ -1,0 +1,64 @@
+---
+import DocsLayout from '../../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="Knowledge Dashboard" description="Browser-based visual explorer for your project knowledge graph.">
+  <h1>Knowledge Dashboard</h1>
+  <p class="lead">
+    A browser-based visual explorer with optional local LLM chat via Ollama. Explore your
+    project knowledge visually without burning API tokens.
+  </p>
+
+  <div class="callout note">
+    <strong>Optional dependency.</strong>
+    The dashboard requires the <code>dashboard</code> extra. Install with:
+    <code>pip install "engrams-mcp[dashboard]"</code>
+  </div>
+
+  <h2>Starting the dashboard</h2>
+  <pre><code>{`# Auto-detect workspace from current directory
+cd /path/to/your/project
+engrams dashboard
+
+# Explicit workspace
+engrams dashboard --workspace /path/to/project
+
+# With Ollama chat enabled
+engrams dashboard --enable-chat --ollama-model llama3.2
+
+# Custom port
+engrams dashboard --port 9000
+
+# Combine flags
+engrams dashboard --workspace /path/to/project --enable-chat --port 9000`}</code></pre>
+
+  <h2>Dashboard views</h2>
+  <table>
+    <thead><tr><th>View</th><th>What you see</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Overview</strong></td><td>Project stats, activity timeline, staleness indicators</td></tr>
+      <tr><td><strong>Decision Explorer</strong></td><td>Filterable table with full-text search and tag navigation</td></tr>
+      <tr><td><strong>Pattern Library</strong></td><td>System patterns with linked decisions and code bindings</td></tr>
+      <tr><td><strong>Task Tracker</strong></td><td>Hierarchical progress view with status filtering</td></tr>
+      <tr><td><strong>Knowledge Graph</strong></td><td>Interactive D3.js visualization of all entity relationships</td></tr>
+      <tr><td><strong>Custom Data Browser</strong></td><td>Category-based navigation with JSON pretty-printing</td></tr>
+      <tr><td><strong>Governance Dashboard</strong></td><td>Scope hierarchy, active rules, compliance overview</td></tr>
+      <tr><td><strong>Ollama Chat</strong></td><td>Ask questions using a local LLM (optional)</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Security</h2>
+  <p>
+    The dashboard binds to <code>127.0.0.1</code> (localhost only) by default and provides
+    <strong>read-only</strong> access — it cannot modify your Engrams data.
+  </p>
+
+  <div class="callout warn">
+    <strong>⚠️ Do not expose the dashboard port externally.</strong>
+    The dashboard has no authentication. If you need remote access, use an SSH tunnel or
+    a reverse proxy with authentication.
+  </div>
+</DocsLayout>
+<style>
+  .lead { font-size: 1.125rem; color: var(--color-text-muted); line-height: 1.75; margin-bottom: 1.75rem; }
+</style>

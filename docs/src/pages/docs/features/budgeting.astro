@@ -1,0 +1,67 @@
+---
+import DocsLayout from '../../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="Context Budgeting" description="Intelligent token-aware context selection for efficient AI prompts.">
+  <h1>Context Budgeting</h1>
+  <p class="lead">
+    Intelligent token-aware context selection that works behind the scenes. As your Engrams
+    database grows, budgeting ensures the AI loads only what matters for the current task —
+    keeping prompts fast and costs low.
+  </p>
+
+  <h2>The problem it solves</h2>
+  <p>
+    Your Engrams database grows over time — 50 decisions, 20 patterns, dozens of glossary terms.
+    Loading all of them into every prompt would be expensive and noisy. Context budgeting scores
+    each item by relevance and fits only the highest-value items into the token window.
+  </p>
+
+  <h2>Example</h2>
+  <pre><code>{`You: "Add WebSocket support for real-time notifications"
+
+AI:  Retrieving project context...
+
+     Loaded 6 of 43 Engrams items (budget: 4,000 tokens):
+     ✓ Decision #31: Use WebSockets for real-time features
+     ✓ Pattern #8:   Event-driven pub/sub architecture
+     ✓ Decision #7:  JWT auth (tokens must validate on WS connect)
+     ✓ Decision #19: Redis for pub/sub message brokering
+     ✓ Pattern #12:  Connection lifecycle management
+     ✓ Glossary:     "notification_channel" schema definition
+
+     Skipped 37 lower-relevance items (database indexing,
+     REST endpoint conventions, deployment configs, etc.)
+
+     Implementing WebSocket endpoint using pub/sub with Redis,
+     authenticating via JWT on connect...`}</code></pre>
+
+  <h2>Scoring factors</h2>
+  <ul>
+    <li><strong>Semantic similarity</strong> — how closely the item relates to the current query</li>
+    <li><strong>Recency</strong> — recently updated items score higher</li>
+    <li><strong>Code bindings</strong> — items bound to files being edited score higher</li>
+    <li><strong>Item type</strong> — configurable per-type base weights</li>
+  </ul>
+
+  <h2>Configuration</h2>
+  <p>
+    View and update the budget configuration using the MCP tools:
+  </p>
+  <pre><code>{`# View current config
+get_context_budget_config
+
+# Update the token budget (example: increase to 8000 tokens)
+update_context_budget_config({ "max_tokens": 8000 })`}</code></pre>
+
+  <h2>MCP tools</h2>
+  <ul>
+    <li><code>get_relevant_context</code> — retrieve scored, budget-aware context</li>
+    <li><code>estimate_context_size</code> — estimate token usage before loading</li>
+    <li><code>get_context_budget_config</code> — view current budget settings</li>
+    <li><code>update_context_budget_config</code> — adjust budget and scoring weights</li>
+  </ul>
+</DocsLayout>
+<style>
+  .lead { font-size: 1.125rem; color: var(--color-text-muted); line-height: 1.75; margin-bottom: 1.75rem; }
+</style>

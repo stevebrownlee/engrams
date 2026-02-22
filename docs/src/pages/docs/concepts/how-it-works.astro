@@ -1,0 +1,86 @@
+---
+import DocsLayout from '../../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="How Engrams Works" description="Architecture and design of the Engrams memory platform.">
+  <h1>How Engrams Works</h1>
+  <p class="lead">
+    Engrams sits between your AI agent and your project. It stores, indexes, and retrieves structured
+    knowledge so your AI always has the right context — without you asking for it.
+  </p>
+
+  <h2>The core loop</h2>
+  <ol>
+    <li><strong>You talk to your AI.</strong> "Add a /users endpoint."</li>
+    <li><strong>The AI calls Engrams tools</strong> to retrieve relevant decisions, patterns, and progress items.</li>
+    <li><strong>Engrams scores and returns</strong> the most relevant items within the configured token budget.</li>
+    <li><strong>The AI generates a response</strong> grounded in your actual project decisions.</li>
+    <li><strong>New knowledge is logged</strong> back into Engrams as the session progresses.</li>
+  </ol>
+
+  <h2>Storage</h2>
+  <p>
+    Each project gets its own <strong>SQLite database</strong> at
+    <code>&lt;project-root&gt;/context_portal/context.db</code>.
+    Data is never shared between projects. The database is created automatically on first use.
+  </p>
+
+  <h2>Workspace detection</h2>
+  <p>
+    Engrams detects the active project automatically using a priority-ordered list of project
+    indicators: <code>.git</code>, <code>package.json</code>, <code>pyproject.toml</code>,
+    <code>Cargo.toml</code>, and others. You never need to pass a workspace path manually.
+  </p>
+
+  <h2>Communication modes</h2>
+  <table>
+    <thead><tr><th>Mode</th><th>How it works</th><th>Best for</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>stdio</strong></td>
+        <td>Direct inter-process communication via stdin/stdout</td>
+        <td>Local IDE extensions (Roo, Cline, Cursor, Windsurf)</td>
+      </tr>
+      <tr>
+        <td><strong>HTTP</strong></td>
+        <td>FastAPI server on a configurable port (default 8000)</td>
+        <td>Remote clients, multiple agents sharing one server</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Vector embeddings & semantic search</h2>
+  <p>
+    When you log a decision or pattern, Engrams generates a <strong>vector embedding</strong>
+    using <code>sentence-transformers</code> and stores it in ChromaDB. When your AI searches for
+    "caching strategy", it finds decisions about Redis, TTL, and query indexes — because Engrams
+    understands <em>meaning</em>, not just words.
+  </p>
+
+  <h2>Full-text search (FTS)</h2>
+  <p>
+    In addition to semantic search, Engrams maintains SQLite FTS5 virtual tables for decisions,
+    custom data, and glossary items. FTS is fast and requires no embedding lookup — ideal for
+    exact or partial keyword matches.
+  </p>
+
+  <h2>The knowledge graph</h2>
+  <p>
+    Entities (decisions, patterns, progress items, custom data) can be explicitly linked via
+    <code>link_engrams_items</code>. These relationships form a queryable graph that lets your AI
+    navigate from a decision to the patterns that implement it, or from a task to the decisions
+    it depends on.
+  </p>
+
+  <h2>Context budgeting</h2>
+  <p>
+    As your knowledge base grows, loading everything into every prompt becomes expensive. Engrams'
+    budgeting system scores each item by relevance to the current query and loads only the
+    highest-value items within a configurable token limit. See
+    <a href="/docs/features/budgeting">Context Budgeting</a> for details.
+  </p>
+</DocsLayout>
+
+<style>
+  .lead { font-size: 1.125rem; color: var(--color-text-muted); line-height: 1.75; margin-bottom: 1.75rem; }
+</style>

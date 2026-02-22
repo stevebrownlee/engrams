@@ -1,0 +1,172 @@
+/* ============================================================
+   Engrams Documentation – Global Styles
+   Palette: Sky Aqua #56CBF9 | Maya Blue #7FBEEB |
+            Powder Blue #AFBED1 | Pastel Petal #EAC5D8 | Lavender #DBD8F0
+   ============================================================ */
+
+:root {
+  --sky-aqua:    #56CBF9;
+  --maya-blue:   #7FBEEB;
+  --powder-blue: #AFBED1;
+  --pastel-petal:#EAC5D8;
+  --lavender:    #DBD8F0;
+
+  /* Semantic tokens */
+  --color-bg:          #f8f9fc;
+  --color-bg-sidebar:  #ffffff;
+  --color-bg-code:     #f0f3f8;
+  --color-surface:     #ffffff;
+  --color-border:      #e2e8f2;
+  --color-accent:      var(--sky-aqua);
+  --color-accent-dim:  var(--maya-blue);
+  --color-accent-soft: var(--lavender);
+  --color-muted:       var(--powder-blue);
+  --color-highlight:   var(--pastel-petal);
+
+  --color-text:        #1e2430;
+  --color-text-muted:  #5a6478;
+  --color-text-light:  #8492aa;
+  --color-link:        #2a7eb8;
+  --color-link-hover:  #1a5f8e;
+
+  --sidebar-width: 260px;
+  --toc-width:     220px;
+  --header-height: 60px;
+
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.07);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.08);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--color-bg);
+  color: var(--color-text);
+  line-height: 1.7;
+  min-height: 100vh;
+}
+
+/* ── Typography ─────────────────────────────────────────── */
+h1, h2, h3, h4, h5 {
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--color-text);
+  scroll-margin-top: calc(var(--header-height) + 1.5rem);
+}
+h1 { font-size: 2.25rem; margin-bottom: 1rem; }
+h2 { font-size: 1.6rem;  margin-top: 2.5rem; margin-bottom: .75rem; padding-bottom: .4rem; border-bottom: 2px solid var(--color-border); }
+h3 { font-size: 1.2rem;  margin-top: 1.75rem; margin-bottom: .5rem; color: #2a3550; }
+h4 { font-size: 1rem;    margin-top: 1.25rem; margin-bottom: .35rem; text-transform: uppercase; letter-spacing: .05em; color: var(--color-text-muted); }
+p  { margin-bottom: 1rem; }
+
+a {
+  color: var(--color-link);
+  text-decoration: none;
+}
+a:hover { color: var(--color-link-hover); text-decoration: underline; }
+
+ul, ol { padding-left: 1.5rem; margin-bottom: 1rem; }
+li { margin-bottom: .25rem; }
+
+strong { font-weight: 600; }
+em     { font-style: italic; }
+
+hr { border: none; border-top: 1px solid var(--color-border); margin: 2rem 0; }
+
+/* ── Code ───────────────────────────────────────────────── */
+code {
+  font-family: var(--font-mono);
+  font-size: .875em;
+  background: var(--color-bg-code);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: .1em .35em;
+  color: #c0392b;
+}
+
+pre {
+  background: #1a2035;
+  border-radius: var(--radius-md);
+  padding: 1.25rem 1.5rem;
+  overflow-x: auto;
+  margin-bottom: 1.5rem;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid rgba(255,255,255,.04);
+}
+pre code {
+  font-family: var(--font-mono);
+  font-size: .85rem;
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: #c9d3e8;
+}
+
+/* Inline JSON / shell highlights */
+.token-key   { color: var(--sky-aqua); }
+.token-str   { color: #98c379; }
+.token-num   { color: #d19a66; }
+.token-kw    { color: var(--pastel-petal); }
+
+/* ── Tables ─────────────────────────────────────────────── */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1.5rem;
+  font-size: .9375rem;
+}
+th {
+  background: var(--lavender);
+  text-align: left;
+  padding: .6rem 1rem;
+  font-weight: 600;
+  font-size: .8125rem;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--color-text-muted);
+  border-bottom: 2px solid var(--color-border);
+}
+td {
+  padding: .6rem 1rem;
+  border-bottom: 1px solid var(--color-border);
+  vertical-align: top;
+}
+tr:last-child td { border-bottom: none; }
+tbody tr:hover { background: #f5f7fb; }
+
+/* ── Callout / Tip boxes ────────────────────────────────── */
+.callout {
+  border-left: 4px solid var(--color-accent);
+  background: rgba(86, 203, 249, .08);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  padding: 1rem 1.25rem;
+  margin: 1.5rem 0;
+}
+.callout.tip    { border-color: var(--sky-aqua);    background: rgba(86,203,249,.08); }
+.callout.note   { border-color: var(--maya-blue);   background: rgba(127,190,235,.08); }
+.callout.warn   { border-color: #f0a500;             background: rgba(240,165,0,.08); }
+.callout.danger { border-color: #e05555;             background: rgba(224,85,85,.08); }
+.callout strong { display: block; margin-bottom: .25rem; font-size: .875rem; text-transform: uppercase; letter-spacing: .06em; }
+
+/* ── Scrollbar ──────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--powder-blue); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--maya-blue); }
+
+/* ── Utility ────────────────────────────────────────────── */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }

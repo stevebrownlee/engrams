@@ -1,0 +1,86 @@
+---
+import DocsLayout from '../../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="Knowledge Types" description="The structured knowledge types stored in Engrams.">
+  <h1>Knowledge Types</h1>
+  <p class="lead">
+    Engrams stores six distinct types of structured knowledge. Each maps to a database table and
+    a set of MCP tools for creating, reading, searching, and deleting records.
+  </p>
+
+  <h2>Product Context</h2>
+  <p>
+    A single JSON document representing the high-level, relatively stable description of your project —
+    goals, architecture overview, key features, tech stack.
+    Updated with <code>update_product_context</code>; retrieved with <code>get_product_context</code>.
+  </p>
+  <div class="callout note">
+    <strong>When to use it:</strong> Think of this as your project's README in structured form.
+    Update it when you make a major architectural pivot or add a significant new feature area.
+  </div>
+
+  <h2>Active Context</h2>
+  <p>
+    A single JSON document representing the <em>current</em> state of work — the present focus,
+    open questions, next steps, recent changes. Updated frequently during a session.
+  </p>
+
+  <h2>Decisions</h2>
+  <p>
+    Individual architectural or implementation choices with a summary, rationale, implementation
+    details, and optional tags. Decisions are the most commonly used knowledge type.
+  </p>
+  <pre><code>{`Decision #7: Use JWT tokens for stateless authentication
+Rationale: Scales better than sessions, works with microservices
+Tags: auth, security, architecture`}</code></pre>
+  <p>Supports full-text search (FTS5) and semantic vector search.</p>
+
+  <h2>Progress</h2>
+  <p>
+    Task tracking with hierarchical parent/child support. Each entry has a status
+    (<code>TODO</code>, <code>IN_PROGRESS</code>, <code>DONE</code>, <code>BLOCKED</code>) and
+    an optional parent ID for subtask relationships.
+  </p>
+
+  <h2>System Patterns</h2>
+  <p>
+    Recurring architectural or design patterns observed or used in the project. Unlike decisions
+    (which capture <em>why</em>), patterns capture <em>how</em>.
+  </p>
+  <pre><code>{`Pattern #3: Token validation middleware
+Description: All API routes validate JWT in Authorization header
+             using the shared auth.middleware module`}</code></pre>
+
+  <h2>Custom Data</h2>
+  <p>
+    A flexible category/key/value store for any project knowledge that doesn't fit the above types:
+    glossaries, technical specifications, meeting notes, configuration snippets.
+  </p>
+  <pre><code>{`Category: ProjectGlossary
+Key: "notification_channel"
+Value: { "schema": "...", "description": "WebSocket channel for push notifications" }`}</code></pre>
+  <p>Supports FTS and a dedicated <code>search_project_glossary_fts</code> tool.</p>
+
+  <h2>Context Links (Relationships)</h2>
+  <p>
+    Explicit edges in the knowledge graph. A link connects two entities with a named relationship type:
+  </p>
+  <table>
+    <thead><tr><th>Relationship type</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td><code>implements</code></td><td>Pattern implements a Decision</td></tr>
+      <tr><td><code>related_to</code></td><td>General association</td></tr>
+      <tr><td><code>tracks</code></td><td>Progress item tracks a Decision</td></tr>
+      <tr><td><code>blocks</code></td><td>One item blocks another</td></tr>
+      <tr><td><code>clarifies</code></td><td>Custom data clarifies a Decision</td></tr>
+      <tr><td><code>depends_on</code></td><td>Dependency relationship</td></tr>
+      <tr><td><code>supersedes</code></td><td>A new decision supersedes an old one</td></tr>
+      <tr><td><code>resolves</code></td><td>A progress item resolves a Decision</td></tr>
+    </tbody>
+  </table>
+</DocsLayout>
+
+<style>
+  .lead { font-size: 1.125rem; color: var(--color-text-muted); line-height: 1.75; margin-bottom: 1.75rem; }
+</style>

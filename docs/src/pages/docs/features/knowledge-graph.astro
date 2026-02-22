@@ -1,0 +1,68 @@
+---
+import DocsLayout from '../../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="Knowledge Graph" description="Explicitly link entities to build a queryable relationship network.">
+  <h1>Knowledge Graph &amp; Relationships</h1>
+  <p class="lead">
+    Capture how decisions relate to patterns, how tasks track decisions, and how features depend
+    on each other. Build a queryable relationship network that gives your AI real project topology.
+  </p>
+
+  <h2>Creating links</h2>
+  <pre><code>{`You: "Link the rate limiting pattern to Decision #14.
+      The pattern implements the decision."
+
+AI:  Relationship created:
+     Pattern #8 (Rate limiting) implements Decision #14 (API protection)
+
+     Now when you review Decision #14, you'll see which patterns
+     implement it. When you work on the rate limiting pattern, you'll
+     see the decision it addresses.`}</code></pre>
+
+  <h2>Exploring relationships</h2>
+  <pre><code>{`You: "Show me everything related to the authentication decision"
+
+AI:  Linked items for Decision #7 (JWT authentication):
+
+     Implements:
+     • Pattern #3: Token validation middleware
+     • Pattern #5: Token refresh strategy
+
+     Tracks:
+     • Progress #12: Implement JWT endpoints
+     • Progress #18: Add token refresh logic
+
+     Related Decisions:
+     • Decision #12: Token expiry (7 days)
+     • Decision #18: CORS policy
+
+     Code Bindings:
+     • src/auth/login.py
+     • src/auth/middleware.py`}</code></pre>
+
+  <h2>Relationship types</h2>
+  <table>
+    <thead><tr><th>Type</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td><code>implements</code></td><td>A pattern or task implements a decision</td></tr>
+      <tr><td><code>related_to</code></td><td>General association</td></tr>
+      <tr><td><code>tracks</code></td><td>Progress item tracks a decision</td></tr>
+      <tr><td><code>blocks</code></td><td>One item blocks progress on another</td></tr>
+      <tr><td><code>clarifies</code></td><td>Custom data clarifies a decision</td></tr>
+      <tr><td><code>depends_on</code></td><td>Dependency relationship</td></tr>
+      <tr><td><code>supersedes</code></td><td>A new decision supersedes an old one</td></tr>
+      <tr><td><code>resolves</code></td><td>A progress item resolves a decision</td></tr>
+      <tr><td><code>derived_from</code></td><td>An item was derived from another</td></tr>
+    </tbody>
+  </table>
+
+  <h2>MCP tools</h2>
+  <ul>
+    <li><code>link_engrams_items</code> — create a relationship between two items</li>
+    <li><code>get_linked_items</code> — retrieve all items linked to a given item (with optional filters)</li>
+  </ul>
+</DocsLayout>
+<style>
+  .lead { font-size: 1.125rem; color: var(--color-text-muted); line-height: 1.75; margin-bottom: 1.75rem; }
+</style>

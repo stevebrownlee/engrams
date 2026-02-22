@@ -1,0 +1,157 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="Introduction" description="What is Engrams and why should you use it?">
+  <div class="intro-logo">
+    <img src="/engram.png" alt="Engrams logo" />
+  </div>
+  <h1>Introduction</h1>
+  <p class="lead">
+    Engrams is a <strong>governance-aware, context-intelligent memory platform</strong> built on the
+    <a href="/docs/concepts/mcp">Model Context Protocol (MCP)</a>. It transforms how AI agents
+    understand and work with your projects by providing structured memory, intelligent context
+    retrieval, and visual knowledge exploration.
+  </p>
+
+  <div class="callout tip">
+    <strong>🚀 Just want to dive in?</strong>
+    Skip straight to <a href="/docs/installation">Installation</a> or the
+    <a href="/docs/quick-start">Quick Start guide</a>.
+  </div>
+
+  <h2>What problem does Engrams solve?</h2>
+  <p>
+    AI coding assistants are powerful — but they forget everything between sessions. You end up
+    re-explaining your tech stack, your architectural decisions, and your coding conventions in
+    every single conversation. The larger your project grows, the worse this gets.
+  </p>
+  <p>
+    Engrams gives your AI a <em>persistent, queryable project memory</em>. Instead of loading
+    your entire codebase into the context window, Engrams surfaces only what's relevant to the
+    current task — automatically.
+  </p>
+
+  <h2>Stored knowledge types</h2>
+  <table>
+    <thead>
+      <tr><th>Type</th><th>Description</th><th>Example</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Decisions</strong></td>
+        <td>Architectural &amp; implementation choices with rationale</td>
+        <td>"Use PostgreSQL — we need ACID guarantees"</td>
+      </tr>
+      <tr>
+        <td><strong>Progress</strong></td>
+        <td>Tasks, sub-tasks, and their statuses</td>
+        <td>TODO / IN_PROGRESS / DONE</td>
+      </tr>
+      <tr>
+        <td><strong>Patterns</strong></td>
+        <td>Recurring design or architectural patterns</td>
+        <td>"JWT validation middleware"</td>
+      </tr>
+      <tr>
+        <td><strong>Context</strong></td>
+        <td>Project goals, current focus, team agreements</td>
+        <td>Product context &amp; active context</td>
+      </tr>
+      <tr>
+        <td><strong>Custom Data</strong></td>
+        <td>Glossaries, specs, any structured project knowledge</td>
+        <td>Domain glossary terms</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Key capabilities</h2>
+  <ul>
+    <li><strong>Semantic search</strong> — find context by meaning, not keyword</li>
+    <li><strong>Codebase bindings</strong> — link decisions to file paths; context follows the code</li>
+    <li><strong>Context budgeting</strong> — token-aware selection keeps costs low as your knowledge base grows</li>
+    <li><strong>Team governance</strong> — enforce team-level architectural mandates with a two-scope hierarchy</li>
+    <li><strong>Knowledge Dashboard</strong> — browser-based explorer with D3 graph visualization</li>
+    <li><strong>Export / Import</strong> — markdown export for version control and team sharing</li>
+  </ul>
+
+  <h2>Architecture overview</h2>
+  <p>
+    Engrams runs as an MCP server alongside your AI tool. Your IDE extension (Roo Code, Cline,
+    Cursor, Windsurf, etc.) communicates with Engrams over stdio or HTTP. Each project gets its
+    own isolated SQLite database in a <code>context_portal/</code> directory at the project root.
+  </p>
+
+  <div class="arch-diagram" aria-label="Architecture diagram">
+    <div class="arch-row">
+      <div class="arch-box user">You</div>
+      <div class="arch-arrow">↔</div>
+      <div class="arch-box ai">AI Agent<br/><small>(Roo, Cline, Cursor…)</small></div>
+      <div class="arch-arrow">↔</div>
+      <div class="arch-box mcp">Engrams MCP<br/><small>(uvx engrams-mcp)</small></div>
+      <div class="arch-arrow">↔</div>
+      <div class="arch-box db">SQLite DB<br/><small>context_portal/context.db</small></div>
+    </div>
+  </div>
+
+  <h2>Next steps</h2>
+  <ul>
+    <li><a href="/docs/installation">Install Engrams</a></li>
+    <li><a href="/docs/quick-start">Run through the Quick Start</a></li>
+    <li><a href="/docs/concepts/how-it-works">Understand how Engrams works</a></li>
+  </ul>
+</DocsLayout>
+
+<style>
+  .intro-logo {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 1.75rem;
+  }
+  .intro-logo img {
+    height: 120px;
+    width: auto;
+    object-fit: contain;
+  }
+
+  .lead {
+    font-size: 1.125rem;
+    color: var(--color-text-muted);
+    line-height: 1.75;
+    margin-bottom: 1.75rem;
+  }
+
+  .arch-diagram {
+    background: var(--lavender);
+    border-radius: var(--radius-lg);
+    padding: 2rem 1.5rem;
+    margin: 2rem 0;
+    overflow-x: auto;
+  }
+  .arch-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .75rem;
+    flex-wrap: wrap;
+  }
+  .arch-box {
+    background: #fff;
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: .65rem 1rem;
+    font-size: .875rem;
+    font-weight: 600;
+    text-align: center;
+    min-width: 110px;
+    line-height: 1.4;
+    box-shadow: var(--shadow-sm);
+  }
+  .arch-box small { font-weight: 400; font-size: .75rem; color: var(--color-text-muted); display: block; }
+  .arch-box.user  { border-color: var(--pastel-petal); }
+  .arch-box.ai    { border-color: var(--sky-aqua); }
+  .arch-box.mcp   { border-color: var(--maya-blue); background: linear-gradient(135deg,rgba(86,203,249,.08),rgba(127,190,235,.08)); }
+  .arch-box.db    { border-color: var(--powder-blue); }
+  .arch-arrow { font-size: 1.25rem; color: var(--color-text-light); flex-shrink: 0; }
+</style>

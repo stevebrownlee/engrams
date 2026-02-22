@@ -1,0 +1,74 @@
+---
+import DocsLayout from '../../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="Team Governance" description="Enforce team-level architectural mandates while allowing individual flexibility.">
+  <h1>Team Governance</h1>
+  <p class="lead">
+    Two-layer scope hierarchy with conflict detection and amendment workflows. Enforce team
+    standards while allowing individual developers flexibility.
+  </p>
+
+  <h2>The two scopes</h2>
+  <table>
+    <thead><tr><th>Scope</th><th>Who owns it</th><th>Override rules</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>Team</strong></td>
+        <td>The whole engineering team</td>
+        <td>Cannot be overridden by individual decisions without an approved amendment</td>
+      </tr>
+      <tr>
+        <td><strong>Individual</strong></td>
+        <td>A single developer</td>
+        <td>Can extend team decisions; cannot contradict them</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Conflict detection</h2>
+  <pre><code>{`You: "I want to use MongoDB for the analytics module"
+
+AI:  ⚠️ Governance Conflict Detected
+
+     Your proposal conflicts with Team Decision #23:
+     "Standardize on PostgreSQL for all data storage"
+     Scope: Core Architecture (Team-level)
+
+     This is a hard block. Would you like to propose an amendment?`}</code></pre>
+
+  <h2>Amendment workflow</h2>
+  <pre><code>{`You: "Propose an amendment to allow InfluxDB for time-series metrics"
+
+AI:  Amendment proposal created:
+     Amendment #2 to Decision #5
+     Proposal: Allow InfluxDB for time-series metrics data
+     Rationale: PostgreSQL isn't optimized for high-volume time-series
+     Status: Pending team review`}</code></pre>
+
+  <h2>Individual strategies</h2>
+  <pre><code>{`You: "When I say I'm ready to create a PR, compare my branch with main
+      and generate a succinct summary for the PR description. Then run
+      autoflake and npm run lint -- --fix."
+
+AI:  Individual strategy #4 created:
+     Code summarization, import cleanup, and JS linting on PR creation.`}</code></pre>
+
+  <h2>Effective context</h2>
+  <p>
+    <code>get_effective_context</code> merges team and individual decisions, applying the correct
+    precedence rules. Your AI always sees the right combined view.
+  </p>
+
+  <h2>MCP tools</h2>
+  <ul>
+    <li><code>create_scope</code> / <code>get_scopes</code></li>
+    <li><code>log_governance_rule</code> / <code>get_governance_rules</code></li>
+    <li><code>check_compliance</code></li>
+    <li><code>get_scope_amendments</code> / <code>review_amendment</code></li>
+    <li><code>get_effective_context</code></li>
+  </ul>
+</DocsLayout>
+<style>
+  .lead { font-size: 1.125rem; color: var(--color-text-muted); line-height: 1.75; margin-bottom: 1.75rem; }
+</style>

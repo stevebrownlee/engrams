@@ -1,0 +1,72 @@
+---
+import DocsLayout from '../../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="MCP Protocol" description="What the Model Context Protocol is and how Engrams uses it.">
+  <h1>MCP Protocol</h1>
+  <p class="lead">
+    The <strong>Model Context Protocol (MCP)</strong> is an open standard for connecting AI models
+    to external tools and data sources. Engrams is an MCP server that exposes project memory as
+    a set of callable tools.
+  </p>
+
+  <h2>What is MCP?</h2>
+  <p>
+    MCP defines a standard interface between AI clients (your IDE extension) and servers (Engrams).
+    The client discovers available tools, calls them with structured arguments, and receives
+    structured responses. This decouples the AI from any particular storage backend.
+  </p>
+
+  <h2>How Engrams uses MCP</h2>
+  <p>
+    Every Engrams capability is exposed as an MCP tool — <code>log_decision</code>,
+    <code>get_relevant_context</code>, <code>bind_code_to_item</code>, and so on.
+    Your AI assistant calls these tools automatically as it works, without you having to prompt it.
+    The strategy file (installed via <code>engrams init</code>) teaches the AI <em>when</em> and
+    <em>how</em> to call each tool.
+  </p>
+
+  <h2>Supported clients</h2>
+  <table>
+    <thead><tr><th>Client</th><th>Config method</th><th>Init command</th></tr></thead>
+    <tbody>
+      <tr><td>Roo Code</td><td>mcp.json</td><td><code>engrams init --tool roo</code></td></tr>
+      <tr><td>Cline</td><td>VS Code settings</td><td><code>engrams init --tool cline</code></td></tr>
+      <tr><td>Cursor</td><td>~/.cursor/mcp.json</td><td><code>engrams init --tool cursor</code></td></tr>
+      <tr><td>Windsurf</td><td>mcp_config.json</td><td><code>engrams init --tool windsurf</code></td></tr>
+      <tr><td>Claude Code</td><td>CLAUDE.md</td><td><code>engrams init --tool claude-code</code></td></tr>
+      <tr><td>Claude Desktop</td><td>claude_desktop_config.json</td><td><code>engrams init --tool claude-desktop</code></td></tr>
+      <tr><td>Any MCP client</td><td>Varies</td><td><code>engrams init --tool generic</code></td></tr>
+    </tbody>
+  </table>
+
+  <h2>Communication modes</h2>
+  <h3>stdio</h3>
+  <p>
+    The default and recommended mode for local IDE use. The client spawns the Engrams process
+    and communicates via stdin/stdout. Zero network overhead.
+  </p>
+  <pre><code>engrams serve --mode stdio</code></pre>
+
+  <h3>HTTP</h3>
+  <p>
+    Runs as a FastAPI web server. Useful when multiple agents need to share one Engrams instance,
+    or for remote access.
+  </p>
+  <pre><code>engrams serve --mode http --host 0.0.0.0 --port 8000</code></pre>
+
+  <div class="callout warn">
+    <strong>⚠️ HTTP mode security</strong>
+    The HTTP server has no authentication by default. Only expose it on trusted networks.
+  </div>
+
+  <h2>Further reading</h2>
+  <ul>
+    <li><a href="https://modelcontextprotocol.io" target="_blank" rel="noopener">MCP specification</a></li>
+    <li><a href="/docs/reference/mcp-tools">Engrams MCP Tools reference</a></li>
+  </ul>
+</DocsLayout>
+
+<style>
+  .lead { font-size: 1.125rem; color: var(--color-text-muted); line-height: 1.75; margin-bottom: 1.75rem; }
+</style>

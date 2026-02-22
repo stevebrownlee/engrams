@@ -1,0 +1,158 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="Quick Start" description="Get Engrams running in your project in under five minutes.">
+  <h1>Quick Start</h1>
+  <p class="lead">
+    From zero to a fully-loaded project memory in five minutes.
+    Make sure you have completed the <a href="/docs/installation">installation</a> first.
+  </p>
+
+  <div class="steps">
+
+    <!-- Step 1 -->
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <h3>Configure the MCP server</h3>
+        <p>Add Engrams to your MCP client config (see <a href="/docs/installation">Installation</a>) and restart your IDE.</p>
+      </div>
+    </div>
+
+    <!-- Step 2 -->
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <h3>Scaffold the strategy file</h3>
+        <p>Run from your <strong>project root</strong>:</p>
+        <pre><code>engrams init --tool roo   # or cline, cursor, windsurf, claude-code…</code></pre>
+        <p>This creates the custom-instructions file that tells your AI how to use Engrams.</p>
+      </div>
+    </div>
+
+    <!-- Step 3 -->
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <h3>Bootstrap from existing docs (optional)</h3>
+        <p>
+          If you already have a <code>README.md</code>, architecture doc, or similar, ask your AI
+          to import it into Engrams:
+        </p>
+        <pre><code>{`You: Initialize the Engrams database by reading README.md
+     and docs/ARCHITECTURE.md
+
+AI:  [ENGRAMS_ACTIVE] Engrams initialized.
+     Architectural patterns stored.
+     Coding standard decisions recorded.
+
+     What would you like to work on?`}</code></pre>
+      </div>
+    </div>
+
+    <!-- Step 4 -->
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-body">
+        <h3>Log your first decisions</h3>
+        <p>Start a conversation and tell your AI about important choices:</p>
+        <pre><code>{`You: The team has decided to use PostgreSQL as our primary database
+     because we need ACID guarantees and complex query support.
+
+AI:  Decision logged to Engrams:
+     Decision #1: Use PostgreSQL for primary database
+     Rationale: ACID guarantees, complex queries, mature ecosystem
+     Tags: database, architecture`}</code></pre>
+      </div>
+    </div>
+
+    <!-- Step 5 -->
+    <div class="step">
+      <div class="step-num">5</div>
+      <div class="step-body">
+        <h3>Watch context surface automatically</h3>
+        <p>Now ask your AI to implement something:</p>
+        <pre><code>{`You: Add a new /users endpoint to the API
+
+AI:  I'll help with that. Retrieving project context...
+
+     Found Decision #1: PostgreSQL is the primary database
+     Found Decision #7: JWT auth required on all routes
+     Found Pattern #2: Structured error handling
+
+     Implementing with SQLAlchemy, JWT middleware,
+     and proper error responses...`}</code></pre>
+        <p>
+          The AI found those decisions <em>automatically</em> — you didn't have to mention them.
+        </p>
+      </div>
+    </div>
+
+  </div>
+
+  <h2>What to try next</h2>
+  <div class="next-cards">
+    <a href="/docs/features/bindings" class="next-card">
+      <span class="nc-icon">🔗</span>
+      <strong>Codebase Bindings</strong>
+      <span>Bind decisions to file paths so context follows the code</span>
+    </a>
+    <a href="/docs/features/governance" class="next-card">
+      <span class="nc-icon">⚖️</span>
+      <strong>Team Governance</strong>
+      <span>Enforce team-level architectural mandates</span>
+    </a>
+    <a href="/docs/features/dashboard" class="next-card">
+      <span class="nc-icon">📊</span>
+      <strong>Knowledge Dashboard</strong>
+      <span>Visually explore your project's knowledge graph</span>
+    </a>
+    <a href="/docs/reference/cli" class="next-card">
+      <span class="nc-icon">💻</span>
+      <strong>CLI Reference</strong>
+      <span>All <code>engrams</code> commands</span>
+    </a>
+  </div>
+</DocsLayout>
+
+<style>
+  .lead { font-size: 1.125rem; color: var(--color-text-muted); line-height: 1.75; margin-bottom: 1.75rem; }
+
+  .steps { display: flex; flex-direction: column; gap: 0; }
+  .step {
+    display: flex; gap: 1.25rem;
+    padding: 1.5rem 0;
+    border-bottom: 1px solid var(--color-border);
+  }
+  .step:last-child { border-bottom: none; }
+  .step-num {
+    flex-shrink: 0;
+    width: 2rem; height: 2rem;
+    background: linear-gradient(135deg, var(--sky-aqua), var(--maya-blue));
+    color: #fff; font-weight: 700; font-size: .875rem;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    margin-top: .1rem;
+  }
+  .step-body { flex: 1; }
+  .step-body h3 { margin-top: 0; font-size: 1.05rem; }
+
+  .next-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+  .next-card {
+    display: flex; flex-direction: column; gap: .35rem;
+    background: var(--color-bg); border: 1.5px solid var(--color-border);
+    border-radius: var(--radius-lg); padding: 1.25rem;
+    text-decoration: none; color: var(--color-text);
+    transition: border-color .15s, box-shadow .15s, transform .15s;
+  }
+  .next-card:hover { border-color: var(--sky-aqua); box-shadow: var(--shadow-md); transform: translateY(-2px); text-decoration: none; }
+  .nc-icon { font-size: 1.4rem; }
+  .next-card strong { font-size: .9375rem; }
+  .next-card span { font-size: .8125rem; color: var(--color-text-muted); line-height: 1.5; }
+</style>

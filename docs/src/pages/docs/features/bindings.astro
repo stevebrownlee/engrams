@@ -1,0 +1,67 @@
+---
+import DocsLayout from '../../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="Codebase Bindings" description="Link decisions and patterns to file paths so context surfaces automatically.">
+  <h1>Codebase Bindings</h1>
+  <p class="lead">
+    Link decisions and patterns to code paths using glob patterns. When AI agents edit files,
+    bound context surfaces automatically — no manual prompting and no loading the entire
+    knowledge base.
+  </p>
+
+  <h2>Why bindings?</h2>
+  <p>
+    Without bindings, you'd need to remind your AI about each relevant decision in every prompt.
+    With bindings, <em>touching the file is enough</em>.
+  </p>
+
+  <h2>Creating bindings</h2>
+  <pre><code>{`You: "Bind the SQLAlchemy decision to the data layer, the JWT auth
+      decision to the auth module, and the error handling pattern to
+      all route files"
+
+AI:  Bindings created:
+     Decision #24 (SQLAlchemy ORM) → src/db/**/*.py
+     Decision #7  (JWT auth)       → src/auth/**/*.py
+     Pattern #5  (Error handling)  → src/api/routes/**/*.py`}</code></pre>
+
+  <h2>Context follows the code</h2>
+  <pre><code>{`You: "Add a new route in src/api/routes/medications.py that
+      queries src/db/repositories/medications.py"
+
+AI:  Checking context for files being edited...
+
+     src/api/routes/medications.py is bound to:
+     ✓ Pattern #5: Structured error handling
+     ✓ Decision #7: JWT auth required on all routes
+     ✓ Decision #14: Rate limiting at 1000 req/min
+
+     src/db/repositories/medications.py is bound to:
+     ✓ Decision #24: Use SQLAlchemy for all DB operations
+     ✓ Decision #23: PostgreSQL is the primary database
+
+     Implementing with SQLAlchemy queries, JWT middleware,
+     rate limiting, and structured error responses...`}</code></pre>
+
+  <h2>Binding management</h2>
+  <p>
+    Bindings can become stale when files are moved or deleted.
+    Use <code>verify_bindings</code> and <code>get_stale_bindings</code> to audit, and
+    <code>suggest_bindings</code> to automatically propose new bindings based on pattern analysis.
+  </p>
+
+  <h2>MCP tools</h2>
+  <ul>
+    <li><code>bind_code_to_item</code> — create a binding (supports glob patterns)</li>
+    <li><code>get_bindings_for_item</code> — list all bindings for a decision or pattern</li>
+    <li><code>get_context_for_files</code> — retrieve all context bound to a set of files</li>
+    <li><code>verify_bindings</code> — check whether bound paths still exist</li>
+    <li><code>get_stale_bindings</code> — list bindings with non-existent paths</li>
+    <li><code>suggest_bindings</code> — propose bindings based on analysis</li>
+    <li><code>unbind_code_from_item</code> — remove a binding</li>
+  </ul>
+</DocsLayout>
+<style>
+  .lead { font-size: 1.125rem; color: var(--color-text-muted); line-height: 1.75; margin-bottom: 1.75rem; }
+</style>

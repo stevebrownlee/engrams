@@ -1,0 +1,105 @@
+---
+import '../styles/global.css';
+import Header from '../components/Header.astro';
+import Sidebar from '../components/Sidebar.astro';
+
+export interface Props {
+  title: string;
+  description?: string;
+}
+
+const { title, description = 'Engrams – Enhanced Memory & Knowledge Platform for AI Agents' } = Astro.props;
+
+const canonicalURL = new URL(Astro.url.pathname, Astro.site);
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonicalURL} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>{title} – Engrams Docs</title>
+    <meta property="og:title" content={`${title} – Engrams Docs`} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+  </head>
+  <body>
+    <Header />
+
+    <div class="layout-shell">
+      <Sidebar />
+
+      <main class="doc-content" id="main-content">
+        <div class="content-inner">
+          <slot />
+        </div>
+      </main>
+    </div>
+
+    <footer class="site-footer">
+      <div class="footer-inner">
+        <span>© {new Date().getFullYear()} Engrams · Apache-2.0 License</span>
+        <nav class="footer-links">
+          <a href="https://github.com/stevebrownlee/engrams-mcp" target="_blank" rel="noopener">GitHub</a>
+          <a href="https://pypi.org/project/engrams-mcp/" target="_blank" rel="noopener">PyPI</a>
+          <a href="/docs/contributing">Contributing</a>
+        </nav>
+      </div>
+    </footer>
+  </body>
+</html>
+
+<style>
+  .layout-shell {
+    display: flex;
+    min-height: calc(100vh - var(--header-height));
+    padding-top: var(--header-height);
+  }
+
+  .doc-content {
+    flex: 1;
+    min-width: 0;
+    padding: 2.5rem 2rem 4rem;
+    max-width: 860px;
+    margin: 0 auto;
+    margin-left: var(--sidebar-width);
+  }
+
+  .content-inner {
+    width: 100%;
+  }
+
+  .site-footer {
+    background: #fff;
+    border-top: 1px solid var(--color-border);
+    padding: 1.25rem 2rem;
+  }
+  .footer-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: .85rem;
+    color: var(--color-text-muted);
+    flex-wrap: wrap;
+    gap: .5rem;
+  }
+  .footer-links {
+    display: flex;
+    gap: 1.5rem;
+  }
+  .footer-links a {
+    color: var(--color-text-muted);
+    text-decoration: none;
+    transition: color .15s;
+  }
+  .footer-links a:hover { color: var(--color-accent); }
+
+  @media (max-width: 768px) {
+    .doc-content { padding: 1.5rem 1rem 3rem; }
+  }
+</style>

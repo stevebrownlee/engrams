@@ -1,0 +1,61 @@
+---
+import DocsLayout from '../../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="Semantic Search" description="How Engrams finds context by meaning, not just keywords.">
+  <h1>Semantic Search</h1>
+  <p class="lead">
+    Engrams finds relevant context by understanding <em>meaning</em>, not just exact keyword
+    matches. Ask about "performance optimization" and it finds decisions about caching, indexing,
+    and query tuning.
+  </p>
+
+  <h2>How it works</h2>
+  <p>
+    When you log a decision or pattern, Engrams generates a <strong>vector embedding</strong>
+    using the <code>sentence-transformers</code> library and stores it in ChromaDB. At retrieval
+    time, the query is embedded and compared against stored vectors using cosine similarity.
+    Items with the highest semantic similarity are returned first.
+  </p>
+
+  <h2>Example</h2>
+  <pre><code>{`You: "How should I handle caching for better performance?"
+
+AI:  Searching for relevant decisions...
+
+     Found:
+     • Decision #8: Use Redis for session caching
+     • Decision #15: Cache invalidation strategy (TTL-based)
+     • Decision #22: Database query optimization with indexes
+
+     Based on these decisions, I recommend Redis for session
+     caching with a 24-hour TTL...`}</code></pre>
+
+  <h2>Semantic vs full-text search</h2>
+  <table>
+    <thead><tr><th>Type</th><th>Best for</th><th>Tool</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>Semantic</strong></td>
+        <td>Conceptual queries — finds meaning-related items</td>
+        <td><code>get_relevant_context</code></td>
+      </tr>
+      <tr>
+        <td><strong>Full-text (FTS)</strong></td>
+        <td>Keyword or phrase search — fast exact/partial matches</td>
+        <td><code>search_decisions_fts</code>, <code>search_custom_data_value_fts</code></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>MCP tools</h2>
+  <ul>
+    <li><code>get_relevant_context</code> — semantic search across all knowledge types</li>
+    <li><code>search_decisions_fts</code> — full-text search on decisions</li>
+    <li><code>search_custom_data_value_fts</code> — full-text search on custom data values</li>
+    <li><code>search_project_glossary_fts</code> — full-text search scoped to the glossary</li>
+  </ul>
+</DocsLayout>
+<style>
+  .lead { font-size: 1.125rem; color: var(--color-text-muted); line-height: 1.75; margin-bottom: 1.75rem; }
+</style>

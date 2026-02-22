@@ -1,0 +1,67 @@
+---
+import DocsLayout from '../../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="Project Onboarding" description="Progressive briefing system for getting up to speed on any project.">
+  <h1>Project Onboarding</h1>
+  <p class="lead">
+    Progressive briefing system for getting up to speed on any project. Perfect for new team
+    members, returning to a project after time away, or starting a fresh AI session.
+  </p>
+
+  <h2>Request a briefing</h2>
+  <pre><code>{`You: "Give me a project briefing"
+
+AI:  PROJECT BRIEFING: TaskMaster API
+
+     Purpose: RESTful API for task management with team collaboration
+
+     Key Decisions:
+     • PostgreSQL for primary database (ACID guarantees)
+     • JWT tokens for stateless authentication
+     • Redis for session caching
+     • Microservices architecture with event sourcing
+
+     Current Status:
+     • User authentication: Complete
+     • Task CRUD: In progress
+     • Real-time notifications: Planned
+
+     Tech Stack: Python, FastAPI, PostgreSQL, Redis, Docker`}</code></pre>
+
+  <h2>Drill into a section</h2>
+  <pre><code>{`You: "Tell me more about the authentication system"
+
+AI:  AUTHENTICATION SYSTEM DETAILS
+
+     Decision #7: Use JWT tokens for stateless auth
+     Rationale: Scales better than sessions, works with microservices
+
+     Pattern #3: Token validation middleware
+     Implementation: src/auth/middleware.py
+
+     Related decisions:
+     • Decision #12: Token refresh strategy (7-day expiry)
+     • Decision #18: CORS policy for token endpoints
+
+     Code locations:
+     • src/auth/login.py     — Token generation
+     • src/auth/middleware.py — Token validation
+     • src/auth/session.py   — Session management`}</code></pre>
+
+  <h2>Briefing staleness</h2>
+  <p>
+    Engrams tracks when each briefing section was last updated and flags stale sections —
+    so you know which parts of the briefing may be out of date.
+  </p>
+
+  <h2>MCP tools</h2>
+  <ul>
+    <li><code>get_project_briefing</code> — generate a full or partial project briefing</li>
+    <li><code>get_briefing_staleness</code> — check which sections are outdated</li>
+    <li><code>get_section_detail</code> — drill into a specific briefing section</li>
+  </ul>
+</DocsLayout>
+<style>
+  .lead { font-size: 1.125rem; color: var(--color-text-muted); line-height: 1.75; margin-bottom: 1.75rem; }
+</style>

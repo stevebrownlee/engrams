@@ -1,3 +1,9 @@
+node_modules/
+# Astro docs build output
+docs/dist/
+docs/node_modules/
+docs/.astro/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

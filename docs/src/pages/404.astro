@@ -1,0 +1,52 @@
+---
+import '../styles/global.css';
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>404 – Page Not Found – Engrams Docs</title>
+  </head>
+  <body>
+    <div class="not-found">
+      <span class="code">404</span>
+      <h1>Page not found</h1>
+      <p>The page you're looking for doesn't exist or has moved.</p>
+      <a href="/docs/getting-started" class="btn">Go to docs →</a>
+      <a href="/" class="back">← Home</a>
+    </div>
+  </body>
+</html>
+
+<style>
+  body { background: var(--color-bg); font-family: var(--font-sans); margin: 0; }
+  .not-found {
+    min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 2rem;
+    gap: 1rem;
+  }
+  .code {
+    font-size: 7rem; font-weight: 800;
+    background: linear-gradient(135deg, var(--sky-aqua), var(--pastel-petal));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1;
+  }
+  h1 { font-size: 1.75rem; color: var(--color-text); margin: 0; }
+  p  { color: var(--color-text-muted); margin: 0; }
+  .btn {
+    margin-top: .5rem;
+    display: inline-block;
+    background: linear-gradient(135deg, var(--sky-aqua), var(--maya-blue));
+    color: #fff; font-weight: 600; padding: .65rem 1.5rem;
+    border-radius: var(--radius-md); text-decoration: none;
+    box-shadow: 0 4px 15px rgba(86,203,249,.4);
+  }
+  .btn:hover { opacity: .9; }
+  .back { font-size: .875rem; color: var(--color-text-muted); text-decoration: none; }
+  .back:hover { color: var(--color-link); }
+</style>

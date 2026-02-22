@@ -1,0 +1,127 @@
+---
+import DocsLayout from '../../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="CLI Reference" description="All engrams CLI commands and flags.">
+  <h1>CLI Reference</h1>
+  <p class="lead">Complete reference for the <code>engrams</code> command-line interface.</p>
+
+  <h2>Global usage</h2>
+  <pre><code>engrams &lt;command&gt; [options]</code></pre>
+
+  <h2>Top-level flags</h2>
+  <table>
+    <thead><tr><th>Flag</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td><code>--help</code>, <code>-h</code></td><td>Show help and exit</td></tr>
+      <tr><td><code>--version</code></td><td>Print the Engrams version and exit</td></tr>
+    </tbody>
+  </table>
+
+  <hr />
+
+  <h2><code>engrams serve</code></h2>
+  <p>Start the Engrams MCP server. This is the default command when no subcommand is provided.</p>
+  <pre><code>engrams serve [--mode stdio|http] [--host HOST] [--port PORT] [--log-level LEVEL]</code></pre>
+  <table>
+    <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td><code>--mode</code></td><td><code>stdio</code></td><td>Communication mode: <code>stdio</code> or <code>http</code></td></tr>
+      <tr><td><code>--host</code></td><td><code>127.0.0.1</code></td><td>Host to bind (HTTP mode only)</td></tr>
+      <tr><td><code>--port</code></td><td><code>8000</code></td><td>Port to listen on (HTTP mode only)</td></tr>
+      <tr><td><code>--log-level</code></td><td><code>INFO</code></td><td>Logging level: DEBUG, INFO, WARNING, ERROR</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Examples</h3>
+  <pre><code>{`# stdio mode (for IDE MCP clients)
+engrams serve --mode stdio
+
+# HTTP mode
+engrams serve --mode http --host 0.0.0.0 --port 8000
+
+# Verbose logging
+engrams serve --mode stdio --log-level DEBUG`}</code></pre>
+
+  <hr />
+
+  <h2><code>engrams init</code></h2>
+  <p>
+    Scaffold the AI strategy file for a supported coding tool into the current project directory.
+    Run this from your <strong>project root</strong>.
+  </p>
+  <pre><code>engrams init --tool &lt;name&gt; [--list] [--force] [--project-dir DIR]</code></pre>
+  <table>
+    <thead><tr><th>Flag</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td><code>--tool NAME</code></td><td>Target AI tool (see supported tools below)</td></tr>
+      <tr><td><code>--list</code></td><td>List all supported tool names and exit</td></tr>
+      <tr><td><code>--force</code></td><td>Overwrite an existing strategy file</td></tr>
+      <tr><td><code>--project-dir DIR</code></td><td>Target project directory (default: <code>.</code>)</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Supported tools</h3>
+  <table>
+    <thead><tr><th>Tool name</th><th>Output file</th></tr></thead>
+    <tbody>
+      <tr><td><code>roo</code></td><td><code>.roo/rules/engrams_strategy</code></td></tr>
+      <tr><td><code>cline</code></td><td><code>.clinerules</code></td></tr>
+      <tr><td><code>cursor</code></td><td><code>.cursorrules</code></td></tr>
+      <tr><td><code>windsurf</code></td><td><code>.windsurfrules</code></td></tr>
+      <tr><td><code>claude-code</code></td><td><code>CLAUDE.md</code></td></tr>
+      <tr><td><code>claude-desktop</code></td><td>Prints instructions for manual paste</td></tr>
+      <tr><td><code>generic</code></td><td><code>engrams_strategy.md</code></td></tr>
+    </tbody>
+  </table>
+
+  <h3>Examples</h3>
+  <pre><code>{`# List available tools
+engrams init --list
+
+# Initialize for Roo Code
+engrams init --tool roo
+
+# Force overwrite an existing file
+engrams init --tool cursor --force
+
+# Scaffold into a specific directory
+engrams init --tool cline --project-dir /path/to/project`}</code></pre>
+
+  <hr />
+
+  <h2><code>engrams dashboard</code></h2>
+  <p>Start the browser-based Engrams knowledge dashboard.</p>
+  <pre><code>engrams dashboard [--workspace DIR] [--port PORT] [--enable-chat] [--ollama-model MODEL]</code></pre>
+  <table>
+    <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td><code>--workspace DIR</code></td><td>Auto-detected</td><td>Path to the project workspace</td></tr>
+      <tr><td><code>--port PORT</code></td><td><code>8080</code></td><td>Port for the dashboard web server</td></tr>
+      <tr><td><code>--enable-chat</code></td><td>off</td><td>Enable the Ollama chat panel</td></tr>
+      <tr><td><code>--ollama-model MODEL</code></td><td><code>llama3.2</code></td><td>Ollama model for the chat panel</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Examples</h3>
+  <pre><code>{`# Auto-detect workspace
+cd /path/to/project && engrams dashboard
+
+# Explicit workspace
+engrams dashboard --workspace /path/to/project
+
+# With Ollama chat
+engrams dashboard --enable-chat --ollama-model llama3.2
+
+# Custom port
+engrams dashboard --port 9000`}</code></pre>
+
+  <div class="callout note">
+    <strong>Legacy command:</strong> <code>engrams-dashboard</code> remains available for backward
+    compatibility but <code>engrams dashboard</code> is preferred.
+  </div>
+</DocsLayout>
+
+<style>
+  .lead { font-size: 1.125rem; color: var(--color-text-muted); line-height: 1.75; margin-bottom: 1.75rem; }
+</style>

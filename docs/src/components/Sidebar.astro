@@ -1,0 +1,193 @@
+---
+const currentPath = Astro.url.pathname;
+
+const nav = [
+  {
+    section: 'Getting Started',
+    items: [
+      { label: 'Introduction',     href: '/docs/getting-started' },
+      { label: 'Installation',     href: '/docs/installation' },
+      { label: 'Quick Start',      href: '/docs/quick-start' },
+    ],
+  },
+  {
+    section: 'Core Concepts',
+    items: [
+      { label: 'How Engrams Works', href: '/docs/concepts/how-it-works' },
+      { label: 'Knowledge Types',   href: '/docs/concepts/knowledge-types' },
+      { label: 'MCP Protocol',      href: '/docs/concepts/mcp' },
+    ],
+  },
+  {
+    section: 'Features',
+    items: [
+      { label: 'Structured Context',   href: '/docs/features/structured-context' },
+      { label: 'Semantic Search',      href: '/docs/features/semantic-search' },
+      { label: 'Team Governance',      href: '/docs/features/governance' },
+      { label: 'Codebase Bindings',    href: '/docs/features/bindings' },
+      { label: 'Context Budgeting',    href: '/docs/features/budgeting' },
+      { label: 'Project Onboarding',   href: '/docs/features/onboarding' },
+      { label: 'Knowledge Dashboard',  href: '/docs/features/dashboard' },
+      { label: 'Knowledge Graph',      href: '/docs/features/knowledge-graph' },
+      { label: 'Batch & Export',       href: '/docs/features/batch-export' },
+    ],
+  },
+  {
+    section: 'Reference',
+    items: [
+      { label: 'CLI Reference',    href: '/docs/reference/cli' },
+      { label: 'MCP Tools',        href: '/docs/reference/mcp-tools' },
+      { label: 'AI Tool Setup',    href: '/docs/reference/ai-tool-setup' },
+    ],
+  },
+  {
+    section: 'Deployment',
+    items: [
+      { label: 'Custom Domain & DNS', href: '/docs/dns-setup' },
+    ],
+  },
+  {
+    section: 'Contributing',
+    items: [
+      { label: 'Contributing Guide', href: '/docs/contributing' },
+    ],
+  },
+];
+
+function isActive(href: string) {
+  return currentPath === href || currentPath.startsWith(href + '/');
+}
+---
+
+<aside class="sidebar" id="sidebar" aria-label="Documentation navigation">
+  <nav class="sidebar-nav">
+    {nav.map(group => (
+      <div class="nav-group">
+        <span class="nav-group-label">{group.section}</span>
+        <ul role="list">
+          {group.items.map(item => (
+            <li>
+              <a
+                href={item.href}
+                class={`nav-item ${isActive(item.href) ? 'active' : ''}`}
+                aria-current={isActive(item.href) ? 'page' : undefined}
+              >
+                {item.label}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </div>
+    ))}
+  </nav>
+
+  <div class="sidebar-footer">
+    <a href="https://pypi.org/project/engrams-mcp/" class="version-badge" target="_blank" rel="noopener">
+      <span class="badge-dot"></span>
+      engrams-mcp v1.0.3
+    </a>
+  </div>
+</aside>
+
+<style>
+  .sidebar {
+    position: fixed;
+    top: var(--header-height);
+    left: 0;
+    width: var(--sidebar-width);
+    height: calc(100vh - var(--header-height));
+    background: var(--color-bg-sidebar);
+    border-right: 1px solid var(--color-border);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    z-index: 50;
+  }
+
+  .sidebar-nav {
+    flex: 1;
+    padding: 1.5rem 0 1rem;
+  }
+
+  .nav-group {
+    margin-bottom: 1.75rem;
+    padding: 0 1rem;
+  }
+
+  .nav-group-label {
+    display: block;
+    font-size: .6875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: var(--color-text-light);
+    margin-bottom: .4rem;
+    padding: 0 .5rem;
+  }
+
+  ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .nav-item {
+    display: block;
+    padding: .38rem .5rem;
+    font-size: .875rem;
+    color: var(--color-text-muted);
+    text-decoration: none;
+    border-radius: var(--radius-sm);
+    transition: background .12s, color .12s;
+    line-height: 1.4;
+    border-left: 2px solid transparent;
+  }
+
+  .nav-item:hover {
+    background: var(--lavender);
+    color: var(--color-text);
+    text-decoration: none;
+  }
+
+  .nav-item.active {
+    background: rgba(86, 203, 249, .12);
+    color: #1a6fa0;
+    font-weight: 600;
+    border-left-color: var(--sky-aqua);
+  }
+
+  .sidebar-footer {
+    padding: 1rem;
+    border-top: 1px solid var(--color-border);
+  }
+
+  .version-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    font-size: .75rem;
+    color: var(--color-text-muted);
+    text-decoration: none;
+    padding: .3rem .5rem;
+    border-radius: var(--radius-sm);
+    transition: color .15s;
+  }
+  .version-badge:hover { color: var(--color-link); text-decoration: none; }
+  .badge-dot {
+    width: 6px; height: 6px;
+    background: #4caf7d;
+    border-radius: 50%;
+    flex-shrink: 0;
+    box-shadow: 0 0 0 2px rgba(76,175,125,.25);
+  }
+
+  @media (max-width: 768px) {
+    .sidebar {
+      transform: translateX(-100%);
+      transition: transform .25s ease;
+    }
+    .sidebar.open {
+      transform: translateX(0);
+    }
+  }
+</style>

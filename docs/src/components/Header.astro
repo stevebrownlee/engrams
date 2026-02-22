@@ -1,0 +1,196 @@
+---
+const navItems = [
+  { label: 'Docs',     href: '/docs/getting-started' },
+  { label: 'GitHub',   href: 'https://github.com/stevebrownlee/engrams-mcp', external: true },
+  { label: 'PyPI',     href: 'https://pypi.org/project/engrams-mcp/',        external: true },
+];
+---
+
+<header class="site-header">
+  <div class="header-inner">
+    <!-- Logo -->
+    <a href="/" class="logo" aria-label="Engrams home">
+      <img src="/engram.png" alt="" class="logo-img" aria-hidden="true" />
+      <span class="logo-text">Engrams</span>
+    </a>
+
+    <!-- Search placeholder -->
+    <div class="search-box" role="search" aria-label="Search docs">
+      <svg class="search-icon" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+        <circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" stroke-width="1.75"/>
+        <path d="M14 14l3.5 3.5" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
+      </svg>
+      <span class="search-placeholder">Search docs…</span>
+      <kbd>⌘K</kbd>
+    </div>
+
+    <!-- Nav -->
+    <nav class="header-nav" aria-label="Main navigation">
+      {navItems.map(item => (
+        <a
+          href={item.href}
+          class="nav-link"
+          target={item.external ? '_blank' : undefined}
+          rel={item.external ? 'noopener noreferrer' : undefined}
+        >
+          {item.label}
+          {item.external && (
+            <svg class="ext-icon" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+              <path d="M2 2h8M10 2v8M10 2L4 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+          )}
+        </a>
+      ))}
+      <a
+        href="https://github.com/stevebrownlee/engrams-mcp"
+        class="nav-cta"
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Star on GitHub"
+      >
+        ★ Star
+      </a>
+    </nav>
+
+    <!-- Mobile menu button -->
+    <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Toggle mobile menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</header>
+
+<style>
+  .site-header {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: var(--header-height);
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--color-border);
+    z-index: 100;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .header-inner {
+    display: flex;
+    align-items: center;
+    height: 100%;
+    padding: 0 1.5rem;
+    gap: 1rem;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  /* Logo */
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: .45rem;
+    text-decoration: none;
+    flex-shrink: 0;
+  }
+  .logo-img {
+    /* Fit the image to the navbar height with comfortable padding */
+    height: calc(var(--header-height) - 20px);
+    width: auto;
+    display: block;
+    object-fit: contain;
+  }
+  .logo-text {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--color-text);
+    letter-spacing: -.02em;
+  }
+  .logo:hover .logo-text { color: var(--color-link); }
+
+  /* Search */
+  .search-box {
+    flex: 1;
+    max-width: 360px;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    background: var(--color-bg-code);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: .4rem .75rem;
+    cursor: pointer;
+    transition: border-color .15s, box-shadow .15s;
+    margin-left: 1rem;
+  }
+  .search-box:hover { border-color: var(--maya-blue); box-shadow: 0 0 0 3px rgba(86,203,249,.12); }
+  .search-icon { width: 15px; height: 15px; color: var(--color-text-light); flex-shrink: 0; }
+  .search-placeholder { font-size: .875rem; color: var(--color-text-light); flex: 1; }
+  kbd {
+    font-family: var(--font-mono);
+    font-size: .7rem;
+    background: var(--lavender);
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    padding: .1em .35em;
+    color: var(--color-text-muted);
+  }
+
+  /* Nav */
+  .header-nav {
+    display: flex;
+    align-items: center;
+    gap: .25rem;
+    margin-left: auto;
+    flex-shrink: 0;
+  }
+  .nav-link {
+    display: flex;
+    align-items: center;
+    gap: .2rem;
+    padding: .35rem .65rem;
+    border-radius: var(--radius-sm);
+    font-size: .875rem;
+    font-weight: 500;
+    color: var(--color-text-muted);
+    text-decoration: none;
+    transition: background .15s, color .15s;
+  }
+  .nav-link:hover { background: var(--lavender); color: var(--color-text); text-decoration: none; }
+  .ext-icon { width: 9px; height: 9px; opacity: .5; }
+
+  .nav-cta {
+    margin-left: .5rem;
+    padding: .35rem .9rem;
+    background: linear-gradient(135deg, var(--sky-aqua), var(--maya-blue));
+    color: #fff;
+    font-size: .8125rem;
+    font-weight: 600;
+    border-radius: var(--radius-md);
+    text-decoration: none;
+    transition: opacity .15s, transform .1s;
+    box-shadow: 0 2px 8px rgba(86,203,249,.35);
+  }
+  .nav-cta:hover { opacity: .9; transform: translateY(-1px); text-decoration: none; }
+
+  /* Mobile */
+  .mobile-menu-btn {
+    display: none;
+    flex-direction: column;
+    gap: 4px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: .4rem;
+    margin-left: auto;
+  }
+  .mobile-menu-btn span {
+    display: block;
+    width: 20px; height: 2px;
+    background: var(--color-text-muted);
+    border-radius: 2px;
+    transition: .2s;
+  }
+
+  @media (max-width: 768px) {
+    .search-box { display: none; }
+    .header-nav { display: none; }
+    .mobile-menu-btn { display: flex; }
+  }
+</style>

@@ -1,0 +1,72 @@
+---
+import DocsLayout from '../../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="Batch Operations & Export" description="Bulk log items and export/import your knowledge base to markdown.">
+  <h1>Batch Operations &amp; Export / Import</h1>
+  <p class="lead">
+    Log multiple items in one call, export for backup or team sharing, and import from
+    version-controlled markdown.
+  </p>
+
+  <h2>Batch logging</h2>
+  <pre><code>{`You: "Log these tech stack decisions all at once:
+      - FastAPI for REST API
+      - Pydantic for validation
+      - SQLAlchemy for ORM
+      - Alembic for migrations
+      - pytest for testing"
+
+AI:  Logged 5 decisions:
+     ✓ Decision #24: Use FastAPI for REST API
+     ✓ Decision #25: Use Pydantic for validation
+     ✓ Decision #26: Use SQLAlchemy for ORM
+     ✓ Decision #27: Use Alembic for migrations
+     ✓ Decision #28: Use pytest for testing
+
+     All tagged with "tech_stack".`}</code></pre>
+
+  <h2>Export to markdown</h2>
+  <pre><code>{`You: "Export all project knowledge to markdown"
+
+AI:  Exporting Engrams database to markdown...
+
+     Created ./docs/engrams_export/ with:
+     • decisions.md    (28 decisions)
+     • patterns.md     (8 patterns)
+     • progress.md     (15 tasks)
+     • glossary.md     (12 terms)
+     • relationships.md (all links)
+
+     You can commit this to version control.`}</code></pre>
+
+  <h2>Import from markdown</h2>
+  <pre><code>{`You: "Import the project knowledge from markdown"
+
+AI:  Importing from ./docs/engrams_export/...
+
+     Imported:
+     ✓ 28 decisions
+     ✓ 8 patterns
+     ✓ 15 progress items
+     ✓ 12 glossary terms
+     ✓ All relationships
+
+     Your project memory is fully restored.`}</code></pre>
+
+  <div class="callout tip">
+    <strong>💡 Commit your export to version control.</strong>
+    Exporting and committing your Engrams database as markdown means new team members can
+    restore the full project memory by importing after cloning.
+  </div>
+
+  <h2>MCP tools</h2>
+  <ul>
+    <li><code>batch_log_items</code> — log multiple items of the same type in one call</li>
+    <li><code>export_engrams_to_markdown</code> — export all knowledge to a markdown directory</li>
+    <li><code>import_markdown_to_engrams</code> — restore knowledge from a markdown export</li>
+  </ul>
+</DocsLayout>
+<style>
+  .lead { font-size: 1.125rem; color: var(--color-text-muted); line-height: 1.75; margin-bottom: 1.75rem; }
+</style>

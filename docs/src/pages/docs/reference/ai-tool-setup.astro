@@ -1,0 +1,100 @@
+---
+import DocsLayout from '../../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="AI Tool Setup" description="Step-by-step setup guides for each supported AI coding tool.">
+  <h1>AI Tool Setup</h1>
+  <p class="lead">
+    Detailed configuration guides for each supported AI coding tool.
+    All require the same two steps: add Engrams to the MCP config, then run <code>engrams init</code>.
+  </p>
+
+  <h2>Roo Code</h2>
+  <p>Add to <code>~/.roo/mcp.json</code> or <code>&lt;project&gt;/.roo/mcp.json</code>:</p>
+  <pre><code>{`{
+  "mcpServers": {
+    "engrams": {
+      "command": "uvx",
+      "args": ["--from", "engrams-mcp", "engrams-mcp", "--mode", "stdio"]
+    }
+  }
+}`}</code></pre>
+  <pre><code>engrams init --tool roo</code></pre>
+
+  <h2>Cline</h2>
+  <p>In VS Code, open Settings → Extensions → Cline → MCP Servers and add:</p>
+  <pre><code>{`{
+  "engrams": {
+    "command": "uvx",
+    "args": ["--from", "engrams-mcp", "engrams-mcp", "--mode", "stdio"]
+  }
+}`}</code></pre>
+  <pre><code>engrams init --tool cline</code></pre>
+
+  <h2>Cursor</h2>
+  <p>Add to <code>~/.cursor/mcp.json</code>:</p>
+  <pre><code>{`{
+  "mcpServers": {
+    "engrams": {
+      "command": "uvx",
+      "args": ["--from", "engrams-mcp", "engrams-mcp", "--mode", "stdio"]
+    }
+  }
+}`}</code></pre>
+  <pre><code>engrams init --tool cursor</code></pre>
+
+  <h2>Windsurf</h2>
+  <p>Add to <code>~/.codeium/windsurf/mcp_config.json</code>:</p>
+  <pre><code>{`{
+  "mcpServers": {
+    "engrams": {
+      "command": "uvx",
+      "args": ["--from", "engrams-mcp", "engrams-mcp", "--mode", "stdio"]
+    }
+  }
+}`}</code></pre>
+  <pre><code>engrams init --tool windsurf</code></pre>
+
+  <h2>Claude Code</h2>
+  <p>Add to <code>~/.claude/mcp.json</code>:</p>
+  <pre><code>{`{
+  "mcpServers": {
+    "engrams": {
+      "command": "uvx",
+      "args": ["--from", "engrams-mcp", "engrams-mcp", "--mode", "stdio"]
+    }
+  }
+}`}</code></pre>
+  <pre><code>engrams init --tool claude-code</code></pre>
+  <p>This creates a <code>CLAUDE.md</code> file in your project root with the Engrams strategy.</p>
+
+  <h2>Claude Desktop</h2>
+  <p>Add to <code>~/Library/Application Support/Claude/claude_desktop_config.json</code> (macOS) or <code>%APPDATA%\Claude\claude_desktop_config.json</code> (Windows):</p>
+  <pre><code>{`{
+  "mcpServers": {
+    "engrams": {
+      "command": "uvx",
+      "args": ["--from", "engrams-mcp", "engrams-mcp", "--mode", "stdio"]
+    }
+  }
+}`}</code></pre>
+  <pre><code>engrams init --tool claude-desktop</code></pre>
+  <p>This prints custom instructions to paste into Claude Desktop's Project Instructions field.</p>
+
+  <h2>Any other MCP client</h2>
+  <pre><code>engrams init --tool generic</code></pre>
+  <p>
+    This creates <code>engrams_strategy.md</code> — a tool-agnostic strategy document you can
+    paste into any AI's system prompt or custom instructions field.
+  </p>
+
+  <div class="callout tip">
+    <strong>💡 Restart required.</strong>
+    After modifying your MCP config, restart your IDE or reload the window for the changes
+    to take effect.
+  </div>
+</DocsLayout>
+
+<style>
+  .lead { font-size: 1.125rem; color: var(--color-text-muted); line-height: 1.75; margin-bottom: 1.75rem; }
+</style>
