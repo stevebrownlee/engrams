@@ -1,5 +1,4 @@
 """Cross-feature integration tests."""
-import os
 import json
 import pytest
 
@@ -17,10 +16,6 @@ def as_dict(obj):
     except Exception:
         return json.loads(json.dumps(obj, default=str))
 
-
-@pytest.fixture
-def workspace_id():
-    return os.getcwd()
 
 
 class TestGovernanceWithLogTools:

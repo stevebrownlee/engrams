@@ -70,8 +70,10 @@ test = [
 "Documentation" = "https://engrams.sh/docs"
 
 [project.scripts]
-engrams = "engrams.main:cli_entry_point"
+engrams = "engrams.cli:main"
 engrams-mcp = "engrams.main:cli_entry_point"
+engrams-init = "engrams.init_command:cli_entry_point"
+# Backward-compatibility alias — prefer `engrams dashboard` instead
 engrams-dashboard = "engrams.dashboard.app:main"
 
 # Fixed package discovery for src layout

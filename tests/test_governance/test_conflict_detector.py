@@ -1,14 +1,9 @@
 """Tests for governance conflict detection (Feature 1)."""
-import os
 import pytest
 
 from engrams.governance import conflict_detector
 from engrams.governance import models as gov_models
 
-
-@pytest.fixture
-def workspace_id():
-    return os.getcwd()
 
 
 class TestConflictDetection:

@@ -1,5 +1,5 @@
-import os
 import json
+import pytest
 
 from engrams.db import models
 from engrams.handlers import mcp_handlers as H
@@ -14,8 +14,7 @@ def as_dict(obj):
         return json.loads(json.dumps(obj, default=str))
 
 
-def test_handlers_integration_smoke():
-    workspace_id = os.getcwd()
+def test_handlers_integration_smoke(workspace_id):
 
     # Product Context
     upd_pc = H.handle_update_product_context(

@@ -1,10 +1,14 @@
 """Flask dashboard application for Engrams (Feature 5).
 
-Standalone process — reads the same ``context_portal/context.db`` that the
+Standalone process — reads the same ``engrams/context.db`` that the
 MCP server writes to, but in **read-only** mode.  Start with::
 
-    engrams-dashboard --workspace /path/to/project
-    engrams-dashboard --workspace /path/to/project --enable-chat --ollama-model mistral
+    engrams dashboard
+    engrams dashboard --workspace /path/to/project
+    engrams dashboard --enable-chat --ollama-model mistral
+
+The ``--workspace`` flag is optional; when omitted the current working
+directory is used automatically.
 """
 
 import argparse
@@ -338,14 +342,20 @@ def create_app(
 
 
 def main():
-    """CLI entry point for ``engrams-dashboard``."""
-    parser = argparse.ArgumentParser(description="Engrams Project Knowledge Dashboard")
+    """CLI entry point for ``engrams dashboard`` (also available as ``engrams-dashboard``)."""
+    parser = argparse.ArgumentParser(
+        prog="engrams dashboard",
+        description="Engrams Project Knowledge Dashboard",
+    )
     parser.add_argument(
         "--workspace",
         "-w",
         type=str,
         default=None,
-        help="Path to the workspace (defaults to current directory)",
+        help=(
+            "Path to the workspace root (optional — defaults to the current "
+            "working directory when omitted)"
+        ),
     )
     parser.add_argument(
         "--port",

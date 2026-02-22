@@ -33,11 +33,7 @@ Engrams is an **intelligent project memory system** that helps AI assistants dee
 | **Context** | Project goals, current focus, team agreements |
 | **Custom Data** | Glossaries, specifications, any structured project knowledge |
 
----
-
-## Setup
-
-### MCP Server Configuration
+## MCP Server Setup
 
 Engrams runs as a Model Context Protocol (MCP) server. Configure it in your MCP client's settings file (typically `mcp.json` or in your IDE's MCP configuration). The easiest way to use Engrams is via `uvx`, which automatically manages the Python environment:
 
@@ -60,75 +56,114 @@ Engrams runs as a Model Context Protocol (MCP) server. Configure it in your MCP 
 }
 ```
 
-#### Configuration Options
+## Quick Start
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `--mode` | Communication mode: `stdio` or `http` | `stdio` |
-| `--log-level` | Logging verbosity: `DEBUG`, `INFO`, `WARNING`, `ERROR` | `INFO` |
-| `--workspace_id` | Explicit workspace path (optional - auto-detected if omitted) | Auto-detected |
-| `--port` | Port for HTTP mode | `8000` |
+### 1. Add Custom Instructions
 
-**Note:** Engrams automatically detects your workspace using project indicators (`.git`, `package.json`, `pyproject.toml`, etc.), so you typically don't need to specify `--workspace_id`.
+The `engrams init` command scaffolds the correct strategy file into your project for your AI tool:
 
-#### IDE-Specific Setup
+```bash
+# See all supported tools
+engrams init --list
 
-Add the MCP configuration to your IDE's settings:
+# Initialize for your tool (run from your project root)
+engrams init --tool roo          # → .roo/rules/engrams_strategy
+engrams init --tool cline        # → .clinerules
+engrams init --tool cursor       # → .cursorrules
+engrams init --tool windsurf     # → .windsurfrules
+engrams init --tool claude-code  # → CLAUDE.md
+engrams init --tool claude-desktop  # prints instructions for manual paste
+engrams init --tool generic      # → engrams_strategy.md
+```
 
-- **Roo Code**: Settings → MCP Servers
-- **Cline**: `.cline/cline_mcp_config.json`
-- **Windsurf**: Cascade settings
-- **Cursor**: Settings → MCP Servers
-- **Claude Desktop**: `~/.config/Claude/claude_desktop_config.json` (macOS/Linux) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows)
+### 2. Bootstrap Engrams
 
----
+If you have existing documents in your project, like a `README.md`, or `PROJECT_BRIEF.md` then have a quick conversation with your least expensive model and ask it to import that context into the Engrams database.
+
+For example:
+
+```
+You: Initialize Engrams database by reading the contents of `README.md` file,
+ `docs/ARCHITECTURE.md`, and `docs/GUIDELINES.md`
+
+LLM: [ENGRAMS_ACTIVE] Engrams initialized. architectural patterns stored
+and coding standard guideline decisions recorded.
+
+What would you like to work on?
+```
+
+If you don't have any documents that currently store that information, you can start a conversation with your LLM of choice and start recording decisions _(see Team Governance section below)_.
+
+For example:
+
+```
+You: "The team has decided to use PostgreSQL for the primary database
+     because we need ACID guarantees and complex query support"
+
+LLM: Decision logged to Engrams:
+    Decision #23: Use PostgreSQL for primary database
+    Rationale: ACID guarantees, complex queries, mature ecosystem
+    Tags: database, architecture
+
+You: "We also will be using SQLAlchemy as our ORM. Use it as the default
+      strategy for all database operations"
+
+LLM: Decision logged to Engrams:
+    Decision #24: Use SQLAlchemy for all database operations and data validations
+    Rationale: Greater security, data validation, declarative code
+    Tags: database, orm
+```
+
+### 3. Start Using Engrams
+
+```
+You: Add JWT authentication to the API
+
+
+LLM: I'll help with that. Let me retrieve relevant context...
+
+    Found Decision #7: "Use JWT tokens for stateless auth"
+    Found Pattern #3: "Token validation middleware"
+
+    Based on existing decisions and patterns, I'll implement JWT auth
+    following the established middleware pattern...
+
+    [Implementation follows]
+```
 
 ## Features
 
 ### Structured Context Storage
 
-Store your project knowledge in a structured SQLite database instead of scattered markdown files.
-
-**Purpose**: Provide reliable, queryable storage for all project context with one database per workspace.
-
-**How to use it:**
+Store your project knowledge in a structured SQLite database that is organically used during your conversatsion with an LLM as you are planning, or building, features in your project. As you store more knowledge in Engrams, the less context you need to provide in your initial prompt.
 
 ```
-You: "Log this decision: We're using PostgreSQL for the primary database
-     because we need ACID guarantees and complex query support"
+You: "Implement a new `/medications` endpoint in the API that looks in the
+      request JSON body for a `patient_id` property and returns any meds
+      assigned to that patient. Let's start with authorized GET and POST
+      operations only."
 
-AI: Decision logged to Engrams:
-    Decision #23: Use PostgreSQL for primary database
-    Rationale: ACID guarantees, complex queries, mature ecosystem
-    Tags: database, architecture
-```
-
-**Later, when working on related features:**
-
-```
-You: "I'm implementing the user data persistence layer.
-     What decisions should guide this?"
-
-AI: Found relevant decision:
+LLM: Found relevant decision:
     Decision #23: PostgreSQL is our primary database
+    Decision #24: All operations will be written with SQLAlchemy
+    Decision #7: JWT token authentication
 
-    I'll implement using SQLAlchemy with PostgreSQL...
+    I'll extract the authenticated user from the request body for POST
+    operations so that it can be recorded who is creating the record. The
+    INSERT and SELECT operations will be written with SQLAlchemy
 ```
 
 ---
 
-### Semantic Search & RAG
+### Semantic Search
 
-Vector embeddings enable semantic search - find relevant context by meaning, not just keywords.
+Your LLM finds relevant context by understanding meaning, not just exact keyword matches. Ask about "performance optimization" and it finds decisions about caching, indexing, and query optimization.
 
-**Purpose**: Enable Retrieval Augmented Generation (RAG) so AI agents can access precise, contextually relevant information.
-
-**How to use it:**
 
 ```
 You: "How should I handle caching for better performance?"
 
-AI: Searching for relevant decisions...
+LLM: Searching for relevant decisions...
 
     Found:
     • Decision #8: Use Redis for session caching
@@ -139,24 +174,16 @@ AI: Searching for relevant decisions...
     for session caching with a 24-hour TTL...
 ```
 
-**What you get**: Your AI finds relevant context by understanding meaning, not just exact keyword matches. Ask about "performance optimization" and it finds decisions about caching, indexing, and query optimization.
-
----
-
 ### Team Governance
 
-Two-layer hierarchy (team/individual) with conflict detection and amendment workflows.
-
-**Purpose**: Enforce team standards while allowing individual developers flexibility. Prevent individual decisions from contradicting team-level architectural mandates.
-
-**How to use it:**
+Two-layer hierarchy (team/individual) with conflict detection and amendment workflows. Enforce team standards while allowing individual developers flexibility. Prevent individual decisions from contradicting team-level architectural mandates.
 
 ```
 You: "I want to use MongoDB for the analytics module"
 
-AI: ⚠️ Governance Conflict Detected
+LLM: ⚠️ Governance Conflict Detected
 
-    Your proposal conflicts with Team Decision #5:
+    Your proposal conflicts with Team Decision #23:
     "Standardize on PostgreSQL for all data storage"
     Scope: Core Architecture (Team-level)
 
@@ -168,75 +195,102 @@ AI: ⚠️ Governance Conflict Detected
 ```
 You: "Propose an amendment to allow InfluxDB for time-series metrics"
 
-AI: Amendment proposal created:
+LLM: Amendment proposal created:
     Amendment #2 to Decision #5
     Proposal: Allow InfluxDB for time-series metrics data
     Rationale: PostgreSQL isn't optimized for high-volume time-series
     Status: Pending team review
-
-    Your tech lead will be notified.
 ```
+
+**When you want to store a personal decision:**
+
+```
+You: "When I tell you then I'm ready to create a PR, compare my branch
+      with main and generate a succinct summary of my changes for me to use
+      in the description. Then run `autoflake` in the API to ensure my imports
+      are cleaned, and run `npm run lint -- --fix` and resolve any critical
+      issues that it finds."
+
+LLM: Individual strategy #4 created:
+     Code summarization description generated when you are ready to create
+     your PR. I'll fix any linting errors in the JavaScript code and any
+     obsolete imports in the Python code.
+```
+
 
 ---
 
 ### Codebase Bindings
 
-Link Engrams entities to actual code files using glob patterns.
+Link decisions and patterns to code paths using glob patterns. When AI agents edit files, bound context surfaces automatically — no manual prompting and no loading the entire knowledge base.
 
-**Purpose**: Bridge the gap between "what we decided" and "where it lives in code". Give AI agents spatial awareness of the codebase.
-
-**How to use it:**
+**Bind decisions to code areas once:**
 
 ```
-You: "Bind the rate limiting decision to the middleware implementation
-     in src/api/middleware/rate_limiter.py"
+You: "Bind the SQLAlchemy decision to the data layer, the JWT auth
+      decision to the auth module, and the error handling pattern to
+      all route files"
 
-AI: Binding created:
-    Decision #14 (Rate limiting) → src/api/middleware/rate_limiter.py
-    Relationship: implements
+AI: Bindings created:
+    Decision #24 (SQLAlchemy ORM) → src/db/**/*.py
+    Decision #7 (JWT auth)        → src/auth/**/*.py
+    Pattern #5 (Error handling)   → src/api/routes/**/*.py
 ```
 
-**When working on related code:**
+**Then the context follows the code — automatically:**
 
 ```
-You: "I'm adding a new API endpoint. What patterns should I follow?"
+You: "Add a new route in src/api/routes/medications.py that queries
+      src/db/repositories/medications.py"
 
-AI: Checking code context for src/api/endpoints/...
+AI: Checking context for files being edited...
 
-    Found Decision #14: Rate limiting (1000 req/min)
-    Implementation: src/api/middleware/rate_limiter.py
+    src/api/routes/medications.py is bound to:
+    ✓ Pattern #5: Structured error handling (try/except with AppError)
+    ✓ Decision #7: JWT auth required on all routes
+    ✓ Decision #14: Rate limiting at 1000 req/min
 
-    I'll apply the rate limiting middleware to your new endpoint...
+    src/db/repositories/medications.py is bound to:
+    ✓ Decision #24: Use SQLAlchemy for all DB operations
+    ✓ Decision #23: PostgreSQL is the primary database
+
+    Implementing with SQLAlchemy queries, JWT middleware,
+    rate limiting, and structured error responses...
 ```
+
+Without bindings, you'd need to remind the AI about each of those five decisions in your prompt — or hope it retrieves them all via search. With bindings, touching the file is enough.
 
 ---
 
 ### Context Budgeting
 
-Intelligent token-aware context selection with relevance scoring.
+Intelligent token-aware context selection that works behind the scenes. Instead of loading every decision, pattern, and glossary term into the prompt, Engrams scores each item by relevance and fits only the highest-value context into the AI's token window.
 
-**Purpose**: Fit the most valuable context into your AI's token budget. No more dumping everything and hoping - get precisely ranked, budget-constrained results.
+**Purpose**: Your Engrams database grows over time — 50 decisions, 20 patterns, dozens of glossary terms. Context budgeting ensures the AI loads only what matters for the current task, keeping prompts fast and costs low.
 
-**How to use it:**
+**What it looks like in practice:**
 
 ```
-You: "I need to implement rate limiting for the API.
-     Give me the most relevant context within 4000 tokens"
+You: "Add WebSocket support for real-time notifications"
 
-AI: Retrieving relevant context (4000 token budget)...
+AI: Retrieving project context...
 
-    Top-scored items:
-    ✓ Decision #14: API rate limiting requirements (1000 req/min)
-    ✓ Pattern #8: Redis-based token bucket implementation
-    ✓ Code binding: src/api/middleware/rate_limiter.py
-    ✓ Related decision: Caching strategy with Redis
+    Loaded 6 of 43 Engrams items (budget: 4000 tokens):
+    ✓ Decision #31: Use WebSockets for real-time features
+    ✓ Pattern #8: Event-driven pub/sub architecture
+    ✓ Decision #7: JWT auth (tokens must validate on WS connect)
+    ✓ Decision #19: Redis for pub/sub message brokering
+    ✓ Pattern #12: Connection lifecycle management
+    ✓ Glossary: "notification_channel" schema definition
 
-    Not included (lower relevance):
-    ✗ Decision #22: Database indexing
-    ✗ Pattern #3: Authentication flow
+    Skipped 37 lower-relevance items (database indexing,
+    REST endpoint conventions, deployment configs, etc.)
 
-    I'll implement rate limiting using the token bucket pattern...
+    I'll implement a WebSocket endpoint using the pub/sub
+    pattern with Redis, authenticating via JWT on connect...
 ```
+
+The developer never asked for "relevant context" — the AI requested it transparently. Without budgeting, all 43 items would be loaded into the prompt, burning tokens on database indexing decisions and deployment patterns that have nothing to do with WebSockets.
 
 ---
 
@@ -303,21 +357,24 @@ Browser-based visual explorer with optional local LLM chat.
 **How to use it:**
 
 ```bash
-# Start the dashboard (read-only, localhost only)
-engrams-dashboard --workspace /path/to/project
+# Start the dashboard (auto-detects workspace from current directory)
+cd /path/to/project
+engrams dashboard
+
+# Explicit workspace path
+engrams dashboard --workspace /path/to/project
 
 # With Ollama chat enabled
-engrams-dashboard --workspace /path/to/project \
-                  --enable-chat \
-                  --ollama-model llama3.2
+engrams dashboard --enable-chat --ollama-model llama3.2
 
 # Custom port
-engrams-dashboard --workspace /path/to/project --port 9000
+engrams dashboard --port 9000
 
-# Auto-detect workspace
-cd /path/to/project
-engrams-dashboard
+# Combine flags
+engrams dashboard --workspace /path/to/project --enable-chat --port 9000
 ```
+
+> **Note**: `--workspace` is optional. When omitted, Engrams uses the current working directory automatically. The legacy `engrams-dashboard` command remains available for backward compatibility.
 
 **What you see**:
 - **Overview Dashboard**: Project stats, activity timeline, staleness indicators
@@ -495,70 +552,6 @@ uv pip install -r requirements.txt
 
 ---
 
-## Quick Start
-
-### 1. Configure Your MCP Client
-
-Add Engrams to your MCP settings (see [Installation](#installation) section).
-
-### 2. Add Custom Instructions
-
-Copy the appropriate strategy file for your IDE:
-- **Roo Code**: [`engrams-custom-instructions/roo_code_engrams_strategy`](engrams-custom-instructions/roo_code_engrams_strategy)
-- **Cline**: [`engrams-custom-instructions/cline_engrams_strategy`](engrams-custom-instructions/cline_engrams_strategy)
-- **Windsurf**: [`engrams-custom-instructions/cascade_engrams_strategy`](engrams-custom-instructions/cascade_engrams_strategy)
-- **Generic**: [`engrams-custom-instructions/generic_engrams_strategy`](engrams-custom-instructions/generic_engrams_strategy)
-
-Paste the entire content into your IDE's custom instructions field.
-
-### 3. Bootstrap Your Project (Optional but Recommended)
-
-Create [`projectBrief.md`](projectBrief.md) in your workspace root:
-
-```markdown
-# TaskMaster API
-
-## Purpose
-RESTful API for task management with team collaboration.
-
-## Key Features
-- User authentication (JWT)
-- Task CRUD with assignments
-- Real-time notifications
-- Team workspaces
-
-## Architecture
-- Microservices pattern
-- Event sourcing for task updates
-- PostgreSQL for persistence
-- Redis for caching
-
-## Tech Stack
-Python, FastAPI, PostgreSQL, Redis, Docker
-```
-
-On first initialization, your AI agent will offer to import this into Product Context.
-
-### 4. Start Using Engrams
-
-```
-You: Initialize according to custom instructions
-
-AI: [ENGRAMS_ACTIVE] Engrams initialized. Found projectBrief.md - imported to Product Context.
-    What would you like to work on?
-
-You: Add JWT authentication to the API
-
-AI: I'll help with that. Let me retrieve relevant context...
-
-    Found Decision #7: "Use JWT tokens for stateless auth"
-    Found Pattern #3: "Token validation middleware"
-
-    Based on existing decisions and patterns, I'll implement JWT auth
-    following the established middleware pattern...
-
-    [Implementation follows]
-```
 
 ---
 

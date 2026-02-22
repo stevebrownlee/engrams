@@ -1,13 +1,8 @@
 """Tests for briefing generation (Feature 4)."""
-import os
 import pytest
 
 from engrams.onboarding import briefing
 
-
-@pytest.fixture
-def workspace_id():
-    return os.getcwd()
 
 
 class TestBriefing:

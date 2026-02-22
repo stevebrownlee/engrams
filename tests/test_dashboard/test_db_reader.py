@@ -1,23 +1,14 @@
 """Tests for dashboard read-only database reader (Feature 5)."""
-import os
 import pytest
 
 
 @pytest.fixture
-def workspace_path():
-    return os.getcwd()
-
-
-@pytest.fixture
 def reader(workspace_path):
-    """Create a EngramsReader instance."""
-    try:
-        from engrams.dashboard.db_reader import EngramsReader
-        r = EngramsReader(workspace_path)
-        yield r
-        r.close()
-    except FileNotFoundError:
-        pytest.skip("Engrams database not found in current directory")
+    """Create an EngramsReader instance backed by a fresh temporary DB."""
+    from engrams.dashboard.db_reader import EngramsReader
+    r = EngramsReader(workspace_path)
+    yield r
+    r.close()
 
 
 class TestEngramsReader:

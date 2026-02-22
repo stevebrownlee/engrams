@@ -140,17 +140,28 @@ def verify_binding_pattern(
 
 
 def _glob_to_regex(pattern: str) -> str:
-    """Convert a glob pattern with ** to a regex."""
-    parts = pattern.split("**")
-    regex_parts = []
-    for i, part in enumerate(parts):
-        # Escape the non-glob parts
-        escaped = re.escape(part)
-        # Restore single * (which was escaped to \*)
-        escaped = escaped.replace(r"\*", "[^/]*")
-        # Restore ? (which was escaped to \?)
-        escaped = escaped.replace(r"\?", "[^/]")
-        regex_parts.append(escaped)
-    # Join with .* (any path segments)
-    regex = ".*".join(regex_parts)
-    return f"^{regex}$"
+    """Convert a glob pattern with ** to a regex.
+
+    ``**`` matches zero or more path segments (including none), while ``*``
+    matches any characters within a single path component (no ``/``).
+    """
+    # Normalise separators
+    pattern = pattern.replace("\\", "/")
+
+    # Work segment-by-segment so that ** expansion is unambiguous.
+    segments = pattern.split("/")
+    regex_parts: list[str] = []
+
+    for idx, seg in enumerate(segments):
+        is_last = idx == len(segments) - 1
+        if seg == "**":
+            # Zero or more path segments, each followed by '/'
+            regex_parts.append(r"(?:[^/]+/)*")
+        else:
+            # Escape regex specials, then restore glob wildcards
+            escaped = re.escape(seg)
+            escaped = escaped.replace(r"\*", "[^/]*")
+            escaped = escaped.replace(r"\?", "[^/]")
+            regex_parts.append(escaped if is_last else escaped + "/")
+
+    return "^" + "".join(regex_parts) + "$"

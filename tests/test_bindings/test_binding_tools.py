@@ -1,5 +1,4 @@
 """Tests for code binding MCP tools (Feature 2)."""
-import os
 import json
 import pytest
 
@@ -16,10 +15,6 @@ def as_dict(obj):
     except Exception:
         return json.loads(json.dumps(obj, default=str))
 
-
-@pytest.fixture
-def workspace_id():
-    return os.getcwd()
 
 
 @pytest.fixture
