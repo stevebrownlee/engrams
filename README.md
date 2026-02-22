@@ -550,26 +550,6 @@ uv pip install -r requirements.txt
 # See README "Installation for Developers" section for MCP config
 ```
 
----
-
-
----
-
-## Automatic Workspace Detection
-
-Engrams can automatically detect your project root - no hardcoded paths needed.
-
-**Detection strategy** (priority order):
-1. **Strong indicators**: `.git`, `package.json`, `pyproject.toml`, `Cargo.toml`, `go.mod`, `pom.xml`
-2. **Multiple general indicators**: ≥2 of (README, license, build configs)
-3. **Existing Engrams workspace**: `engrams/` directory present
-4. **Environment variables**: `VSCODE_WORKSPACE_FOLDER`, `ENGRAMS_WORKSPACE`
-5. **Fallback**: Current working directory (with warning)
-
-See [`UNIVERSAL_WORKSPACE_DETECTION.md`](UNIVERSAL_WORKSPACE_DETECTION.md) for full details.
-
----
-
 ## Available MCP Tools
 
 Your AI assistant uses these tools automatically. You don't need to call them directly.
@@ -594,21 +574,21 @@ Your AI assistant uses these tools automatically. You don't need to call them di
 ### Relationships
 - `link_engrams_items`, `get_linked_items`
 
-### Governance (Feature 1)
+### Governance
 - `create_scope`, `get_scopes`
 - `log_governance_rule`, `get_governance_rules`
 - `check_compliance`, `get_scope_amendments`, `review_amendment`
 - `get_effective_context`
 
-### Codebase Bindings (Feature 2)
+### Codebase Bindings
 - `bind_code_to_item`, `get_bindings_for_item`, `get_context_for_files`
 - `verify_bindings`, `get_stale_bindings`, `suggest_bindings`, `unbind_code_from_item`
 
-### Context Budgeting (Feature 3)
+### Context Budgeting
 - `get_relevant_context`, `estimate_context_size`
 - `get_context_budget_config`, `update_context_budget_config`
 
-### Onboarding (Feature 4)
+### Onboarding
 - `get_project_briefing`, `get_briefing_staleness`, `get_section_detail`
 
 ### Utilities
@@ -630,35 +610,6 @@ See full parameter details in the original README or use `get_engrams_schema()`.
 - **[AGENTS.md](AGENTS.md)** - Implementation strategy for Features 1-5
 - **[Custom Instructions](engrams-custom-instructions/)** - IDE-specific strategies
 
----
-
-## Architecture
-
-- **Language**: Python 3.8+
-- **Framework**: FastAPI (MCP server)
-- **Database**: SQLite (one per workspace)
-- **Vector Store**: ChromaDB (semantic search)
-- **Migrations**: Alembic (schema evolution)
-- **Protocol**: Model Context Protocol (STDIO or HTTP)
-
-```
-src/engrams/
-├── main.py                 # Entry point, CLI args
-├── server.py               # FastMCP server, tool registration
-├── db/                     # Database layer
-│   ├── database.py         # SQLite operations
-│   ├── models.py           # Pydantic models
-│   └── migrations/         # Alembic migrations
-├── handlers/               # MCP tool handlers
-├── governance/             # Feature 1: Team governance
-├── bindings/               # Feature 2: Codebase bindings
-├── budgeting/              # Feature 3: Context budgeting
-├── onboarding/             # Feature 4: Project briefings
-└── dashboard/              # Feature 5: Visual explorer
-```
-
----
-
 ## Contributing
 
 We welcome contributions! Please see [`CONTRIBUTING.md`](CONTRIBUTING.md) for:
@@ -673,27 +624,10 @@ We welcome contributions! Please see [`CONTRIBUTING.md`](CONTRIBUTING.md) for:
 
 This project is licensed under the [Apache-2.0 License](LICENSE).
 
----
-
 ## Acknowledgments
 
 - Forked from [GreatScottyMac/context-portal](https://github.com/GreatScottyMac/context-portal) v0.3.13
-- Thanks to [@cipradu](https://github.com/cipradu) for integer-string coercion implementation
-- Built on the [Model Context Protocol](https://modelcontextprotocol.io/)
-
----
 
 ## Support
 
-- **Issues**: [GitHub Issues](https://github.com/yourusername/engrams/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/yourusername/engrams/discussions)
-
----
-
-<div align="center">
-
-**[⬆ Back to Top](#engrams)**
-
-Built with care for better AI-assisted development
-
-</div>
+- **Issues**: [GitHub Issues](https://github.com/stevebrownlee/engrams/issues)
