@@ -1,0 +1,403 @@
+---
+import DocsLayout from '../../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="Markdown vs Engrams" description="Compare markdown-based documentation with Engrams vector database approach for project knowledge management.">
+  <h1>Markdown vs Engrams: Choosing the Right Approach</h1>
+  <p class="lead">
+    Markdown files and the AGENTS.md pattern are excellent for small projects. But as your codebase grows,
+    so does the challenge of keeping knowledge organized, searchable, and relevant. This guide explains
+    when each approach shines — and how to use them together.
+  </p>
+
+  <h2>The Strengths of Markdown</h2>
+  <p>
+    Markdown files have real advantages, especially for small teams and early-stage projects:
+  </p>
+  <ul>
+    <li><strong>Version control friendly.</strong> Markdown lives in Git, so every change is tracked and reviewable.</li>
+    <li><strong>Human-readable.</strong> No special tools needed — open any text editor and read or edit.</li>
+    <li><strong>Low friction.</strong> Create a file, write some notes, commit. No setup required.</li>
+    <li><strong>Portable.</strong> Copy files anywhere. No database to migrate or export.</li>
+    <li><strong>Familiar.</strong> Most developers already know Markdown and Git workflows.</li>
+    <li><strong>Searchable in code editors.</strong> Use Ctrl+Shift+F (or Cmd+Shift+F) to find text across files.</li>
+  </ul>
+
+  <h2>Where Markdown Breaks Down</h2>
+  <p>
+    As projects scale, markdown-based approaches hit real limits:
+  </p>
+
+  <h3>1. Search becomes painful</h3>
+  <p>
+    With 50+ decision documents, finding the right one requires:
+  </p>
+  <ul>
+    <li>Remembering the exact filename or keywords used</li>
+    <li>Manually searching through multiple files</li>
+    <li>Scrolling through long documents to find the relevant section</li>
+    <li>No way to find related decisions unless you manually link them</li>
+  </ul>
+  <p>
+    <strong>Example:</strong> You're building a caching layer and want to know if the team has already
+    decided on Redis vs Memcached. You search for "cache" and get 20 results across different files.
+    Some are about HTTP caching, others about database query caching. You have to read each one.
+  </p>
+
+  <h3>2. Semantic understanding is impossible</h3>
+  <p>
+    Markdown search is keyword-based only. It can't understand meaning:
+  </p>
+  <ul>
+    <li>A decision about "query performance optimization" won't show up when you search for "caching strategy"</li>
+    <li>Related concepts are scattered across files with no automatic connections</li>
+    <li>You can't ask "what patterns help with scalability?" — you have to manually browse</li>
+  </ul>
+
+  <h3>3. Knowledge graph is manual and fragile</h3>
+  <p>
+    Linking decisions together requires:
+  </p>
+  <ul>
+    <li>Manually maintaining cross-references in markdown files</li>
+    <li>Broken links when files are renamed or moved</li>
+    <li>No way to visualize how decisions connect</li>
+    <li>Relationships are one-directional (you have to update both files)</li>
+  </ul>
+
+  <h3>4. Context selection is all-or-nothing</h3>
+  <p>
+    When you ask your AI for help, you either:
+  </p>
+  <ul>
+    <li>Manually copy-paste relevant markdown files into the chat (tedious, error-prone)</li>
+    <li>Let the AI see nothing (and get generic, context-free answers)</li>
+    <li>Paste everything (slow, expensive, noisy)</li>
+  </ul>
+  <p>
+    There's no smart way to say "give me the 3-5 most relevant decisions for this task."
+  </p>
+
+  <h3>5. Governance and consistency are hard to enforce</h3>
+  <p>
+    With markdown files:
+  </p>
+  <ul>
+    <li>No standard format — each file might look different</li>
+    <li>No way to track who made decisions or when</li>
+    <li>Conflicting decisions can exist in different files with no warning</li>
+    <li>No audit trail for compliance or team alignment</li>
+  </ul>
+
+  <h3>6. Scaling creates information overload</h3>
+  <p>
+    As your project grows:
+  </p>
+  <ul>
+    <li>100+ markdown files become hard to navigate</li>
+    <li>Onboarding new team members means "read all these files"</li>
+    <li>Keeping documentation up-to-date becomes a chore</li>
+    <li>Old decisions pile up and become noise</li>
+  </ul>
+
+  <h2>How Engrams Solves These Problems</h2>
+
+  <h3>Semantic search that understands meaning</h3>
+  <p>
+    Engrams uses vector embeddings to understand the <em>meaning</em> of your decisions, not just keywords:
+  </p>
+  <ul>
+    <li>Search for "caching strategy" and find decisions about Redis, Memcached, and HTTP caching</li>
+    <li>Ask "what patterns help with scalability?" and get relevant architectural decisions</li>
+    <li>Find related items even when they use completely different words</li>
+  </ul>
+
+  <h3>Automatic knowledge graph</h3>
+  <p>
+    Engrams lets you explicitly link decisions, patterns, and tasks:
+  </p>
+  <ul>
+    <li>Connect a design decision to the coding patterns that implement it</li>
+    <li>Link a task to the decisions it depends on</li>
+    <li>Visualize how your project knowledge connects</li>
+    <li>Your AI can follow these connections to understand the bigger picture</li>
+  </ul>
+
+  <h3>Smart context selection</h3>
+  <p>
+    When your AI asks Engrams for context, it gets exactly what it needs:
+  </p>
+  <ul>
+    <li>Engrams ranks items by relevance to the current task</li>
+    <li>Only the most useful items are included (fast, affordable)</li>
+    <li>Your AI stays focused and informed</li>
+    <li>See <a href="/docs/features/budgeting">Context Budgeting</a> for details</li>
+  </ul>
+
+  <h3>Structured, consistent knowledge</h3>
+  <p>
+    Engrams enforces structure without being rigid:
+  </p>
+  <ul>
+    <li>Decisions have consistent fields: summary, rationale, tags, timestamps</li>
+    <li>Patterns, tasks, and custom data follow predictable formats</li>
+    <li>Audit trails show who made decisions and when</li>
+    <li>Conflict detection warns when decisions contradict each other</li>
+  </ul>
+
+  <h3>Governance and team alignment</h3>
+  <p>
+    Engrams includes tools for teams:
+  </p>
+  <ul>
+    <li>Scope decisions to specific teams or projects</li>
+    <li>Detect conflicts between decisions</li>
+    <li>Track decision ownership and approval status</li>
+    <li>See <a href="/docs/features/governance">Team Governance</a> for details</li>
+  </ul>
+
+  <h3>Onboarding and knowledge discovery</h3>
+  <p>
+    New team members can quickly understand your project:
+  </p>
+  <ul>
+    <li>Engrams provides a structured briefing of key decisions and patterns</li>
+    <li>The knowledge dashboard visualizes your project's architecture</li>
+    <li>Semantic search helps explore related concepts</li>
+    <li>See <a href="/docs/features/onboarding">Project Onboarding</a> for details</li>
+  </ul>
+
+  <h2>The Hybrid Approach: Markdown + Engrams</h2>
+  <p>
+    You don't have to choose. The best approach combines both:
+  </p>
+
+  <h3>Use markdown for:</h3>
+  <ul>
+    <li><strong>README files</strong> — Quick start guides, setup instructions</li>
+    <li><strong>Architecture diagrams</strong> — Visual overviews in code comments</li>
+    <li><strong>API documentation</strong> — Endpoint specs, request/response examples</li>
+    <li><strong>Runbooks</strong> — Step-by-step deployment or troubleshooting guides</li>
+    <li><strong>Code comments</strong> — Inline explanations of complex logic</li>
+  </ul>
+
+  <h3>Use Engrams for:</h3>
+  <ul>
+    <li><strong>Design decisions</strong> — Why you chose a particular approach</li>
+    <li><strong>Architectural patterns</strong> — Reusable solutions to common problems</li>
+    <li><strong>Project progress</strong> — Tasks, milestones, and status tracking</li>
+    <li><strong>Team knowledge</strong> — Decisions that affect multiple people or projects</li>
+    <li><strong>Context for AI</strong> — Information your AI assistant needs to write good code</li>
+  </ul>
+
+  <h3>How they work together:</h3>
+  <ol>
+    <li>
+      <strong>Markdown is the source of truth for implementation details.</strong>
+      Your README explains how to run the project. Your code comments explain why a function works a certain way.
+    </li>
+    <li>
+      <strong>Engrams is the source of truth for decisions and context.</strong>
+      When you decide to use PostgreSQL instead of MongoDB, you log that decision in Engrams.
+      When you establish a pattern for error handling, you save it as a system pattern.
+    </li>
+    <li>
+      <strong>Your AI uses both.</strong>
+      It reads your README to understand the project structure.
+      It queries Engrams to understand the decisions and patterns that should guide its work.
+    </li>
+    <li>
+      <strong>Engrams can link to markdown files.</strong>
+      A decision in Engrams can reference a specific markdown file or section.
+      A pattern can link to code examples in your repository.
+    </li>
+  </ol>
+
+  <h2>Decision Criteria: When to Use Each</h2>
+
+  <table class="comparison-table">
+    <thead>
+      <tr>
+        <th>Scenario</th>
+        <th>Markdown</th>
+        <th>Engrams</th>
+        <th>Both</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Project size</strong></td>
+        <td>1-5 people, &lt;10 major decisions</td>
+        <td>5+ people, 10+ decisions</td>
+        <td>Growing teams</td>
+      </tr>
+      <tr>
+        <td><strong>Knowledge discovery</strong></td>
+        <td>Manual search, browsing</td>
+        <td>Semantic search, knowledge graph</td>
+        <td>Markdown for reference, Engrams for discovery</td>
+      </tr>
+      <tr>
+        <td><strong>AI context</strong></td>
+        <td>Manual copy-paste</td>
+        <td>Automatic, smart selection</td>
+        <td>Engrams feeds AI, markdown for details</td>
+      </tr>
+      <tr>
+        <td><strong>Governance</strong></td>
+        <td>Informal, Git-based</td>
+        <td>Structured, auditable</td>
+        <td>Engrams for decisions, markdown for processes</td>
+      </tr>
+      <tr>
+        <td><strong>Onboarding</strong></td>
+        <td>"Read these 20 files"</td>
+        <td>Structured briefing, guided discovery</td>
+        <td>Engrams briefing, markdown for details</td>
+      </tr>
+      <tr>
+        <td><strong>Relationships</strong></td>
+        <td>Manual links, fragile</td>
+        <td>Automatic, queryable</td>
+        <td>Engrams for connections, markdown for context</td>
+      </tr>
+      <tr>
+        <td><strong>Version control</strong></td>
+        <td>Full history in Git</td>
+        <td>Database history, export to Git</td>
+        <td>Engrams + Git export for compliance</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Getting Started with Engrams</h2>
+  <p>
+    If you're currently using markdown and want to add Engrams:
+  </p>
+  <ol>
+    <li>
+      <strong>Start small.</strong> Log your most important decisions and patterns first.
+      You don't need to migrate everything at once.
+    </li>
+    <li>
+      <strong>Keep markdown as-is.</strong> Your README, API docs, and code comments stay in Git.
+      Engrams complements them, doesn't replace them.
+    </li>
+    <li>
+      <strong>Use Engrams for AI context.</strong> When you ask your AI for help, it automatically
+      gets the relevant decisions and patterns from Engrams.
+    </li>
+    <li>
+      <strong>Build the knowledge graph gradually.</strong> As you log decisions, link related items.
+      Over time, your knowledge becomes more connected and discoverable.
+    </li>
+    <li>
+      <strong>Export to markdown when needed.</strong> Engrams can export your decisions and patterns
+      to markdown files for sharing, archiving, or version control.
+    </li>
+  </ol>
+
+  <p>
+    See <a href="/docs/getting-started">Getting Started</a> and <a href="/docs/quick-start">Quick Start</a>
+    for installation and setup instructions.
+  </p>
+
+  <h2>Summary</h2>
+  <p>
+    <strong>Markdown is great for:</strong> Small projects, implementation details, version control, portability.
+  </p>
+  <p>
+    <strong>Engrams is great for:</strong> Scaling knowledge, semantic search, AI context, team governance, knowledge discovery.
+  </p>
+  <p>
+    <strong>Together they're powerful:</strong> Markdown for what humans read, Engrams for what AI needs to understand.
+  </p>
+</DocsLayout>
+
+<style>
+  .lead {
+    font-size: 1.125rem;
+    color: var(--color-text-muted);
+    line-height: 1.75;
+    margin-bottom: 1.75rem;
+  }
+
+  h3 {
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
+  }
+
+  ul {
+    margin-bottom: 1rem;
+    padding-left: 1.5rem;
+  }
+
+  li {
+    margin-bottom: 0.5rem;
+    line-height: 1.6;
+  }
+
+  ol {
+    margin-bottom: 1rem;
+    padding-left: 1.5rem;
+  }
+
+  ol li {
+    margin-bottom: 0.75rem;
+  }
+
+  .comparison-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 2rem 0;
+    font-size: 0.95rem;
+  }
+
+  .comparison-table thead {
+    background: var(--color-bg-sidebar);
+    border-bottom: 2px solid var(--color-border);
+  }
+
+  .comparison-table th {
+    padding: 0.75rem;
+    text-align: left;
+    font-weight: 600;
+    color: var(--color-text);
+  }
+
+  .comparison-table td {
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--color-border);
+    line-height: 1.5;
+  }
+
+  .comparison-table tbody tr:hover {
+    background: rgba(86, 203, 249, 0.05);
+  }
+
+  .comparison-table strong {
+    color: var(--color-text);
+  }
+
+  a {
+    color: var(--color-link);
+    text-decoration: none;
+    transition: color 0.15s;
+  }
+
+  a:hover {
+    color: var(--color-accent);
+    text-decoration: underline;
+  }
+
+  @media (max-width: 768px) {
+    .comparison-table {
+      font-size: 0.85rem;
+    }
+
+    .comparison-table th,
+    .comparison-table td {
+      padding: 0.5rem;
+    }
+  }
+</style>

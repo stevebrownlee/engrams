@@ -92,7 +92,7 @@ Uploading engrams-1.0.0.tar.gz
 
 Visit: [https://pypi.org/project/engrams-mcp/](https://pypi.org/project/engrams-mcp/)
 
-**🎉 Your package is now live!**
+**Your package is now live!**
 
 ---
 

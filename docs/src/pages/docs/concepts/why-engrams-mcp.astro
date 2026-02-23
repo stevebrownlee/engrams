@@ -1,0 +1,555 @@
+---
+import DocsLayout from '../../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="Why Engrams as MCP" description="Strategic positioning: why Engrams is the ideal MCP solution for AI coding assistants you can't modify.">
+  <h1>Why Engrams as MCP</h1>
+  <p class="lead">
+    You're using Cursor, Roo Code, Claude Desktop, or Cline. You can't modify these tools. But you need them to
+    understand your project's decisions, patterns, and context. Engrams as an MCP server is the right architectural
+    solution — and it's simpler than building a custom MCP server from scratch.
+  </p>
+
+  <h2>The Core Problem</h2>
+  <p>
+    AI coding assistants are powerful, but they have a critical limitation: <strong>they forget everything between conversations.</strong>
+  </p>
+
+  <h3>What You're Experiencing</h3>
+  <ul>
+    <li>You tell your AI about a decision (e.g., "We use PostgreSQL for the primary database")</li>
+    <li>It works great for that conversation</li>
+    <li>Next session, you have to explain it again</li>
+    <li>Your AI makes suggestions that contradict team standards</li>
+    <li>You spend time correcting the AI instead of building features</li>
+  </ul>
+
+  <h3>Why This Happens</h3>
+  <p>
+    The AI tools you use (Cursor, Roo Code, Claude Desktop) are closed systems. You can't modify them to add persistent memory.
+    You can't inject your project knowledge into their core logic. You're stuck with what the tool provides out of the box.
+  </p>
+
+  <h2>The MCP Solution</h2>
+  <p>
+    The Model Context Protocol (MCP) is a standard that lets you extend AI tools without modifying them.
+    Instead of changing the tool, you add a server that the tool can talk to.
+  </p>
+
+  <h3>How MCP Works</h3>
+  <pre><code>Your AI Tool (Cursor, Roo Code, etc.)
+        ↓
+    [MCP Client]
+        ↓
+    [Network/IPC]
+        ↓
+    [MCP Server] ← Engrams
+        ↓
+    [Your Project Knowledge]</code></pre>
+
+  <p>
+    The AI tool can call tools provided by the MCP server. Engrams provides tools to:
+  </p>
+  <ul>
+    <li>Retrieve relevant decisions and patterns</li>
+    <li>Search your project knowledge semantically</li>
+    <li>Check governance rules and conflicts</li>
+    <li>Get context for specific code files</li>
+    <li>Log new decisions and patterns</li>
+  </ul>
+
+  <h2>Why Engrams, Not a Custom MCP Server?</h2>
+  <p>
+    You could build your own MCP server. But Engrams is better. Here's why:
+  </p>
+
+  <h3>1. Zero Development Overhead</h3>
+  <table class="comparison-table">
+    <thead>
+      <tr>
+        <th>Approach</th>
+        <th>Setup Time</th>
+        <th>Maintenance</th>
+        <th>Features</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Custom MCP Server</strong></td>
+        <td>Days/weeks</td>
+        <td>Ongoing (you own it)</td>
+        <td>Whatever you build</td>
+      </tr>
+      <tr>
+        <td><strong>Engrams</strong></td>
+        <td>5 minutes</td>
+        <td>None (we maintain it)</td>
+        <td>Governance, budgeting, bindings, semantic search, and more</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p>
+    With Engrams, you get a fully-featured MCP server in 5 minutes. No Python code to write, no database schema to design,
+    no tool definitions to implement.
+  </p>
+
+  <h3>2. Pre-Built Features You'd Have to Implement</h3>
+  <p>
+    If you built a custom MCP server, you'd need to implement:
+  </p>
+  <ul>
+    <li><strong>Semantic search:</strong> Vector embeddings, similarity scoring, ranking</li>
+    <li><strong>Context budgeting:</strong> Token-aware selection, relevance scoring, cost optimization</li>
+    <li><strong>Governance:</strong> Team-level rules, conflict detection, amendment workflows</li>
+    <li><strong>Code bindings:</strong> Glob pattern matching, file-to-context mapping</li>
+    <li><strong>Knowledge graph:</strong> Relationship tracking, link traversal</li>
+    <li><strong>Audit trails:</strong> History tracking, compliance logging</li>
+  </ul>
+
+  <p>
+    Engrams has all of this built-in. You don't have to reinvent the wheel.
+  </p>
+
+  <h3>3. Reliability Without Tool Calling</h3>
+  <p>
+    A common concern with MCP servers is: "What if tool calling is unreliable?"
+  </p>
+
+  <p>
+    <strong>Engrams doesn't depend on tool calling reliability.</strong>
+  </p>
+
+  <p>
+    Here's the difference:
+  </p>
+  <ul>
+    <li><strong>Tool-dependent MCP:</strong> The AI must call tools reliably. If it forgets to call a tool or calls it wrong, the system breaks.</li>
+    <li><strong>Engrams:</strong> Engrams provides structured data that the AI consumes. The AI doesn't need to "call" anything — it just reads the data.</li>
+  </ul>
+
+  <p>
+    Think of it this way:
+  </p>
+  <ul>
+    <li><strong>Tool calling:</strong> "AI, please call the `get_decisions` tool to find relevant decisions"</li>
+    <li><strong>Engrams:</strong> "Here are the relevant decisions (automatically selected). Use them."</li>
+  </ul>
+
+  <p>
+    Engrams is a data provider, not a tool executor. This makes it fundamentally more reliable.
+  </p>
+
+  <h2>Security & Trust</h2>
+  <p>
+    Engrams is built on a local-first, zero-trust architecture:
+  </p>
+
+  <h3>Your Data Never Leaves Your Machine</h3>
+  <ul>
+    <li>SQLite database lives in your project workspace</li>
+    <li>No cloud sync, no external APIs, no third-party dependencies</li>
+    <li>Works offline</li>
+    <li>GDPR/HIPAA compliant by design</li>
+  </ul>
+
+  <h3>Structured Data Prevents Prompt Injection</h3>
+  <p>
+    Traditional approaches dump raw text into prompts, which is vulnerable to injection attacks.
+    Engrams provides structured JSON data with clear field boundaries, preventing prompt injection.
+  </p>
+
+  <p>
+    See <a href="/docs/reference/security-model">Security & Trust Model</a> for details.
+  </p>
+
+  <h2>Cost Efficiency</h2>
+  <p>
+    The "$1 per MB" concern is real. Engrams solves it with context budgeting.
+  </p>
+
+  <h3>The Problem</h3>
+  <p>
+    If you dump your entire knowledge base into every prompt, you burn tokens on irrelevant information.
+    With 50+ decisions and 20+ patterns, this gets expensive fast.
+  </p>
+
+  <h3>The Solution</h3>
+  <p>
+    Engrams uses intelligent scoring to select only the most relevant items for each task.
+    This reduces token usage by 60-89% depending on project size.
+  </p>
+
+  <table class="cost-table">
+    <thead>
+      <tr>
+        <th>Project Size</th>
+        <th>Without Budgeting</th>
+        <th>With Engrams</th>
+        <th>Savings</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Medium (50 decisions)</td>
+        <td>$22.50/month</td>
+        <td>$9/month</td>
+        <td>60%</td>
+      </tr>
+      <tr>
+        <td>Large (200+ decisions)</td>
+        <td>$90/month</td>
+        <td>$15/month</td>
+        <td>83%</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p>
+    See <a href="/docs/features/cost-efficiency">Cost Efficiency & Context Budgeting</a> for details.
+  </p>
+
+  <h2>Developer Experience</h2>
+  <p>
+    Engrams is designed for simplicity:
+  </p>
+
+  <h3>Installation (One Line)</h3>
+  <pre><code>{`Add to your MCP client's mcp.json:
+
+{
+  "mcpServers": {
+    "engrams": {
+      "command": "uvx",
+      "args": ["--from", "engrams-mcp", "engrams-mcp", "--mode", "stdio"]
+    }
+  }
+}`}</code></pre>
+
+  <h3>Setup (One Command)</h3>
+  <pre><code>engrams init --tool roo          # or cursor, cline, windsurf, etc.
+
+Creates the right strategy file for your tool automatically.</code></pre>
+
+  <h3>Usage (Natural Language)</h3>
+  <pre><code>You: "The team decided to use PostgreSQL for the primary database"
+
+AI: Decision logged to Engrams.
+
+You: "Add a new API endpoint"
+
+AI: [Engrams automatically provides relevant decisions and patterns]</code></pre>
+
+  <p>
+    No configuration files to edit, no database schemas to design, no Python code to write.
+  </p>
+
+  <h2>Enterprise Readiness</h2>
+  <p>
+    Engrams is production-ready with features for enterprise teams:
+  </p>
+
+  <h3>Team Governance</h3>
+  <ul>
+    <li>Team-level decisions that override individual preferences</li>
+    <li>Conflict detection when decisions contradict</li>
+    <li>Amendment workflows for exceptions</li>
+    <li>Scope hierarchy (team vs. individual)</li>
+  </ul>
+
+  <h3>Audit & Compliance</h3>
+  <ul>
+    <li>Complete audit trails with timestamps</li>
+    <li>Export to markdown for version control</li>
+    <li>Governance rule tracking</li>
+    <li>Amendment history</li>
+  </ul>
+
+  <h3>Knowledge Management</h3>
+  <ul>
+    <li>Semantic search across all project knowledge</li>
+    <li>Knowledge graph visualization</li>
+    <li>Relationship tracking</li>
+    <li>Onboarding briefings for new team members</li>
+  </ul>
+
+  <h2>Comparison: Engrams vs. Alternatives</h2>
+
+  <h3>vs. Manual Copy-Paste</h3>
+  <table class="alt-comparison">
+    <thead>
+      <tr>
+        <th>Aspect</th>
+        <th>Manual Copy-Paste</th>
+        <th>Engrams</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Setup</strong></td>
+        <td>None</td>
+        <td>5 minutes</td>
+      </tr>
+      <tr>
+        <td><strong>Per-request effort</strong></td>
+        <td>High (find and copy files)</td>
+        <td>None (automatic)</td>
+      </tr>
+      <tr>
+        <td><strong>Consistency</strong></td>
+        <td>Low (easy to forget things)</td>
+        <td>High (automatic selection)</td>
+      </tr>
+      <tr>
+        <td><strong>Scalability</strong></td>
+        <td>Poor (gets tedious)</td>
+        <td>Excellent (scales with project)</td>
+      </tr>
+      <tr>
+        <td><strong>Cost</strong></td>
+        <td>High (dump everything)</td>
+        <td>Low (smart selection)</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>vs. Custom MCP Server</h3>
+  <table class="alt-comparison">
+    <thead>
+      <tr>
+        <th>Aspect</th>
+        <th>Custom MCP</th>
+        <th>Engrams</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Setup time</strong></td>
+        <td>Days/weeks</td>
+        <td>5 minutes</td>
+      </tr>
+      <tr>
+        <td><strong>Maintenance</strong></td>
+        <td>You own it</td>
+        <td>We maintain it</td>
+      </tr>
+      <tr>
+        <td><strong>Features</strong></td>
+        <td>Whatever you build</td>
+        <td>Governance, budgeting, bindings, search, and more</td>
+      </tr>
+      <tr>
+        <td><strong>Reliability</strong></td>
+        <td>Depends on your code</td>
+        <td>Battle-tested, production-ready</td>
+      </tr>
+      <tr>
+        <td><strong>Cost</strong></td>
+        <td>Your development time</td>
+        <td>Free (open source)</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>vs. Cloud-Based Solutions</h3>
+  <table class="alt-comparison">
+    <thead>
+      <tr>
+        <th>Aspect</th>
+        <th>Cloud-Based</th>
+        <th>Engrams</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Data location</strong></td>
+        <td>Third-party servers</td>
+        <td>Your machine</td>
+      </tr>
+      <tr>
+        <td><strong>Privacy</strong></td>
+        <td>Depends on provider</td>
+        <td>Complete (local-first)</td>
+      </tr>
+      <tr>
+        <td><strong>Compliance</strong></td>
+        <td>Requires agreements</td>
+        <td>GDPR/HIPAA compliant by design</td>
+      </tr>
+      <tr>
+        <td><strong>Offline support</strong></td>
+        <td>No</td>
+        <td>Yes</td>
+      </tr>
+      <tr>
+        <td><strong>Cost</strong></td>
+        <td>Per-request or subscription</td>
+        <td>Free (one-time setup)</td>
+      </tr>
+      <tr>
+        <td><strong>Prompt injection risk</strong></td>
+        <td>High (text-based)</td>
+        <td>Low (structured data)</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Getting Started</h2>
+  <p>
+    Ready to give your AI a persistent memory?
+  </p>
+
+  <ol>
+    <li>
+      <strong>Install Engrams:</strong> Add to your MCP client's configuration (5 minutes)
+    </li>
+    <li>
+      <strong>Initialize:</strong> Run <code>engrams init --tool [your-tool]</code>
+    </li>
+    <li>
+      <strong>Start logging:</strong> Tell your AI about decisions and patterns
+    </li>
+    <li>
+      <strong>Watch it work:</strong> Your AI automatically retrieves relevant context
+    </li>
+  </ol>
+
+  <p>
+    See <a href="/docs/getting-started">Getting Started</a> for detailed instructions.
+  </p>
+
+  <h2>Summary</h2>
+  <p>
+    Engrams is the ideal MCP solution because:
+  </p>
+  <ul>
+    <li><strong>You can't modify your AI tool:</strong> MCP is the right architectural pattern</li>
+    <li><strong>You don't want to build a custom server:</strong> Engrams is pre-built and battle-tested</li>
+    <li><strong>You need reliability:</strong> Engrams doesn't depend on tool calling</li>
+    <li><strong>You need security:</strong> Local-first, structured data, no prompt injection</li>
+    <li><strong>You need cost efficiency:</strong> Context budgeting reduces token usage by 60-89%</li>
+    <li><strong>You need simplicity:</strong> 5-minute setup, no coding required</li>
+    <li><strong>You need enterprise features:</strong> Governance, audit trails, compliance</li>
+  </ul>
+
+  <p>
+    Engrams is the MCP server for teams that want persistent project memory without the complexity.
+  </p>
+</DocsLayout>
+
+<style>
+  .lead {
+    font-size: 1.125rem;
+    color: var(--color-text-muted);
+    line-height: 1.75;
+    margin-bottom: 1.75rem;
+  }
+
+  h2 {
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+  }
+
+  h3 {
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
+  }
+
+  ul, ol {
+    margin-bottom: 1rem;
+    padding-left: 1.5rem;
+  }
+
+  li {
+    margin-bottom: 0.5rem;
+    line-height: 1.6;
+  }
+
+  pre {
+    background: var(--color-bg-sidebar);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: 1rem;
+    overflow-x: auto;
+    margin: 1rem 0;
+  }
+
+  code {
+    font-family: var(--font-mono);
+    font-size: 0.9rem;
+    color: var(--color-text);
+  }
+
+  .comparison-table,
+  .cost-table,
+  .alt-comparison {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 2rem 0;
+    font-size: 0.95rem;
+  }
+
+  .comparison-table thead,
+  .cost-table thead,
+  .alt-comparison thead {
+    background: var(--color-bg-sidebar);
+    border-bottom: 2px solid var(--color-border);
+  }
+
+  .comparison-table th,
+  .cost-table th,
+  .alt-comparison th {
+    padding: 0.75rem;
+    text-align: left;
+    font-weight: 600;
+    color: var(--color-text);
+  }
+
+  .comparison-table td,
+  .cost-table td,
+  .alt-comparison td {
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--color-border);
+    line-height: 1.5;
+  }
+
+  .comparison-table tbody tr:hover,
+  .cost-table tbody tr:hover,
+  .alt-comparison tbody tr:hover {
+    background: rgba(86, 203, 249, 0.05);
+  }
+
+  .comparison-table strong,
+  .cost-table strong,
+  .alt-comparison strong {
+    color: var(--color-text);
+  }
+
+  a {
+    color: var(--color-link);
+    text-decoration: none;
+    transition: color 0.15s;
+  }
+
+  a:hover {
+    color: var(--color-accent);
+    text-decoration: underline;
+  }
+
+  @media (max-width: 768px) {
+    .comparison-table,
+    .cost-table,
+    .alt-comparison {
+      font-size: 0.85rem;
+    }
+
+    .comparison-table th,
+    .cost-table th,
+    .alt-comparison th,
+    .comparison-table td,
+    .cost-table td,
+    .alt-comparison td {
+      padding: 0.5rem;
+    }
+  }
+</style>

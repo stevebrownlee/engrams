@@ -14,7 +14,7 @@ A governance-aware, context-intelligent development platform built on the Model 
 
 **Forked from** [GreatScottyMac/context-portal](https://github.com/GreatScottyMac/context-portal) v0.3.13
 
-[Features](#features) • [Installation](#installation) • [Quick Start](#quick-start) • [Documentation](#documentation)
+[Features](#features) [Installation](#installation) [Quick Start](#quick-start) [Documentation](#documentation)
 
 
 ---
@@ -166,9 +166,9 @@ You: "How should I handle caching for better performance?"
 LLM: Searching for relevant decisions...
 
     Found:
-    • Decision #8: Use Redis for session caching
-    • Decision #15: Cache invalidation strategy (TTL-based)
-    • Decision #22: Database query optimization with indexes
+    - Decision #8: Use Redis for session caching
+    - Decision #15: Cache invalidation strategy (TTL-based)
+    - Decision #22: Database query optimization with indexes
 
     Based on these decisions, I recommend implementing Redis
     for session caching with a 24-hour TTL...
@@ -181,7 +181,7 @@ Two-layer hierarchy (team/individual) with conflict detection and amendment work
 ```
 You: "I want to use MongoDB for the analytics module"
 
-LLM: ⚠️ Governance Conflict Detected
+LLM: [warning] Governance Conflict Detected
 
     Your proposal conflicts with Team Decision #23:
     "Standardize on PostgreSQL for all data storage"
@@ -246,13 +246,13 @@ You: "Add a new route in src/api/routes/medications.py that queries
 AI: Checking context for files being edited...
 
     src/api/routes/medications.py is bound to:
-    ✓ Pattern #5: Structured error handling (try/except with AppError)
-    ✓ Decision #7: JWT auth required on all routes
-    ✓ Decision #14: Rate limiting at 1000 req/min
+    [check] Pattern #5: Structured error handling (try/except with AppError)
+    [check] Decision #7: JWT auth required on all routes
+    [check] Decision #14: Rate limiting at 1000 req/min
 
     src/db/repositories/medications.py is bound to:
-    ✓ Decision #24: Use SQLAlchemy for all DB operations
-    ✓ Decision #23: PostgreSQL is the primary database
+    [check] Decision #24: Use SQLAlchemy for all DB operations
+    [check] Decision #23: PostgreSQL is the primary database
 
     Implementing with SQLAlchemy queries, JWT middleware,
     rate limiting, and structured error responses...
@@ -276,12 +276,12 @@ You: "Add WebSocket support for real-time notifications"
 AI: Retrieving project context...
 
     Loaded 6 of 43 Engrams items (budget: 4000 tokens):
-    ✓ Decision #31: Use WebSockets for real-time features
-    ✓ Pattern #8: Event-driven pub/sub architecture
-    ✓ Decision #7: JWT auth (tokens must validate on WS connect)
-    ✓ Decision #19: Redis for pub/sub message brokering
-    ✓ Pattern #12: Connection lifecycle management
-    ✓ Glossary: "notification_channel" schema definition
+    [check] Decision #31: Use WebSockets for real-time features
+    [check] Pattern #8: Event-driven pub/sub architecture
+    [check] Decision #7: JWT auth (tokens must validate on WS connect)
+    [check] Decision #19: Redis for pub/sub message brokering
+    [check] Pattern #12: Connection lifecycle management
+    [check] Glossary: "notification_channel" schema definition
 
     Skipped 37 lower-relevance items (database indexing,
     REST endpoint conventions, deployment configs, etc.)
@@ -310,15 +310,15 @@ AI: PROJECT BRIEFING: TaskMaster API
     Purpose: RESTful API for task management with team collaboration
 
     Key Decisions:
-    • PostgreSQL for primary database (ACID guarantees)
-    • JWT tokens for stateless authentication
-    • Redis for session caching
-    • Microservices architecture with event sourcing
+    PostgreSQL for primary database (ACID guarantees)
+    JWT tokens for stateless authentication
+    Redis for session caching
+    Microservices architecture with event sourcing
 
     Current Status:
-    • User authentication: Complete
-    • Task CRUD: In progress
-    • Real-time notifications: Planned
+    User authentication: Complete
+    Task CRUD: In progress
+    Real-time notifications: Planned
 
     Tech Stack: Python, FastAPI, PostgreSQL, Redis, Docker
 ```
@@ -337,13 +337,13 @@ AI: AUTHENTICATION SYSTEM DETAILS
     Implementation: src/auth/middleware.py
 
     Related decisions:
-    • Decision #12: Token refresh strategy (7-day expiry)
-    • Decision #18: CORS policy for token endpoints
+    Decision #12: Token refresh strategy (7-day expiry)
+    Decision #18: CORS policy for token endpoints
 
     Code locations:
-    • src/auth/login.py - Token generation
-    • src/auth/middleware.py - Token validation
-    • src/auth/session.py - Session management
+    src/auth/login.py - Token generation
+    src/auth/middleware.py - Token validation
+    src/auth/session.py - Session management
 ```
 
 ---
@@ -418,20 +418,20 @@ You: "Show me everything related to the authentication decision"
 AI: Linked items for Decision #7 (JWT authentication):
 
     Implements:
-    • Pattern #3: Token validation middleware
-    • Pattern #5: Token refresh strategy
+    Pattern #3: Token validation middleware
+    Pattern #5: Token refresh strategy
 
     Tracks:
-    • Progress #12: Implement JWT endpoints
-    • Progress #18: Add token refresh logic
+    Progress #12: Implement JWT endpoints
+    Progress #18: Add token refresh logic
 
     Related Decisions:
-    • Decision #12: Token expiry (7 days)
-    • Decision #18: CORS policy
+    Decision #12: Token expiry (7 days)
+    Decision #18: CORS policy
 
     Code Bindings:
-    • src/auth/login.py
-    • src/auth/middleware.py
+    src/auth/login.py
+    src/auth/middleware.py
 ```
 
 **Common relationship types**: `implements`, `related_to`, `tracks`, `blocks`, `clarifies`, `depends_on`, `supersedes`, `resolves`
@@ -455,11 +455,11 @@ You: "Log these tech stack decisions all at once:
      - pytest for testing"
 
 AI: Logged 5 decisions:
-    ✓ Decision #24: Use FastAPI for REST API
-    ✓ Decision #25: Use Pydantic for validation
-    ✓ Decision #26: Use SQLAlchemy for ORM
-    ✓ Decision #27: Use Alembic for migrations
-    ✓ Decision #28: Use pytest for testing
+    Decision #24: Use FastAPI for REST API
+    Decision #25: Use Pydantic for validation
+    Decision #26: Use SQLAlchemy for ORM
+    Decision #27: Use Alembic for migrations
+    Decision #28: Use pytest for testing
 
     All tagged with "tech_stack" for easy retrieval.
 ```
@@ -472,11 +472,11 @@ You: "Export all project knowledge to markdown"
 AI: Exporting Engrams database to markdown...
 
     Created ./docs/engrams_export/ with:
-    • decisions.md (28 decisions)
-    • patterns.md (8 patterns)
-    • progress.md (15 tasks)
-    • glossary.md (12 terms)
-    • relationships.md (all links)
+    decisions.md (28 decisions)
+    patterns.md (8 patterns)
+    progress.md (15 tasks)
+    glossary.md (12 terms)
+    relationships.md (all links)
 
     You can commit this to version control.
 ```
@@ -489,11 +489,11 @@ You: "Import the project knowledge from markdown"
 AI: Importing from ./docs/engrams_export/...
 
     Imported:
-    ✓ 28 decisions
-    ✓ 8 patterns
-    ✓ 15 progress items
-    ✓ 12 glossary terms
-    ✓ All relationships
+    28 decisions
+    8 patterns
+    15 progress items
+    12 glossary terms
+    All relationships
 
     Your project memory is fully restored.
 ```

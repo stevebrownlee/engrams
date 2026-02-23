@@ -17,15 +17,15 @@ AI:  PROJECT BRIEFING: TaskMaster API
      Purpose: RESTful API for task management with team collaboration
 
      Key Decisions:
-     • PostgreSQL for primary database (ACID guarantees)
-     • JWT tokens for stateless authentication
-     • Redis for session caching
-     • Microservices architecture with event sourcing
+     - PostgreSQL for primary database (ACID guarantees)
+     - JWT tokens for stateless authentication
+     - Redis for session caching
+     - Microservices architecture with event sourcing
 
      Current Status:
-     • User authentication: Complete
-     • Task CRUD: In progress
-     • Real-time notifications: Planned
+     - User authentication: Complete
+     - Task CRUD: In progress
+     - Real-time notifications: Planned
 
      Tech Stack: Python, FastAPI, PostgreSQL, Redis, Docker`}</code></pre>
 
@@ -41,13 +41,13 @@ AI:  AUTHENTICATION SYSTEM DETAILS
      Implementation: src/auth/middleware.py
 
      Related decisions:
-     • Decision #12: Token refresh strategy (7-day expiry)
-     • Decision #18: CORS policy for token endpoints
+     - Decision #12: Token refresh strategy (7-day expiry)
+     - Decision #18: CORS policy for token endpoints
 
      Code locations:
-     • src/auth/login.py     — Token generation
-     • src/auth/middleware.py — Token validation
-     • src/auth/session.py   — Session management`}</code></pre>
+     src/auth/login.py     — Token generation
+     src/auth/middleware.py — Token validation
+     src/auth/session.py   — Session management`}</code></pre>
 
   <h2>Briefing staleness</h2>
   <p>
