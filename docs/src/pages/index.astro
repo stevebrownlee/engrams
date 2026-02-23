@@ -1,5 +1,5 @@
 ---
-import '../styles/global.css';
+import "../styles/global.css";
 
 const canonicalURL = new URL(Astro.url.pathname, Astro.site);
 ---
@@ -9,24 +9,41 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Engrams – A governance-aware, context-intelligent memory platform built on MCP. Help AI agents deeply understand your software projects." />
+    <meta
+      name="description"
+      content="Engrams – Persistent project memory for AI coding assistants. Your AI remembers decisions, patterns, and progress across every session."
+    />
     <link rel="canonical" href={canonicalURL} />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>Engrams – Enhanced Memory & Knowledge Platform</title>
   </head>
   <body class="home-body">
-
     <!-- ── Header ── -->
     <header class="home-header">
       <div class="hdr-inner">
         <a href="/" class="logo">
-          <span class="logo-mark">⬡</span>
+          <span class="logo-mark"
+            ><img
+              src="/engram.png"
+              alt=""
+              class="logo-img"
+              aria-hidden="true"
+            /></span
+          >
           <span class="logo-text">Engrams</span>
         </a>
         <nav class="hdr-nav">
           <a href="/docs/getting-started">Docs</a>
-          <a href="https://github.com/stevebrownlee/engrams-mcp" target="_blank" rel="noopener">GitHub</a>
-          <a href="https://pypi.org/project/engrams-mcp/" target="_blank" rel="noopener">PyPI</a>
+          <a
+            href="https://github.com/stevebrownlee/engrams"
+            target="_blank"
+            rel="noopener">GitHub</a
+          >
+          <a
+            href="https://pypi.org/project/engrams-mcp/"
+            target="_blank"
+            rel="noopener">PyPI</a
+          >
         </nav>
       </div>
     </header>
@@ -39,15 +56,17 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
         <div class="blob blob-3"></div>
       </div>
       <div class="hero-content">
-        <div class="hero-badge">Model Context Protocol · v1.0.3</div>
+        <div class="hero-badge">Open Source · v1.0.3</div>
         <h1 class="hero-title">
           AI memory that<br />
           <span class="gradient-text">actually works.</span>
         </h1>
         <p class="hero-subtitle">
-          Engrams is a governance-aware, context-intelligent memory platform built on MCP.
-          Give your AI agents structured, searchable, and automatically surfaced project knowledge —
-          without burning every token on context.
+          AI coding assistants forget everything between conversations. Engrams
+          fixes that. It gives tools like Cursor, Roo Code, and Claude a
+          persistent memory of your project — the decisions you've made, the
+          patterns you follow, and where you left off — so you stop repeating
+          yourself.
         </p>
         <div class="hero-actions">
           <a href="/docs/getting-started" class="btn-primary">Get started →</a>
@@ -55,7 +74,10 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
         </div>
 
         <div class="hero-code">
-          <div class="code-bar"><span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span><span class="filename">mcp.json</span></div>
+          <div class="code-bar">
+            <span class="dot red"></span><span class="dot yellow"></span><span
+              class="dot green"></span><span class="filename">mcp.json</span>
+          </div>
           <pre><code>{`{
   "mcpServers": {
     "engrams": {
@@ -72,23 +94,51 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
     <!-- ── Feature Cards ── -->
     <section class="features">
       <div class="features-inner">
-        <h2 class="section-heading">Everything your AI needs to know your project</h2>
+        <h2 class="section-heading">
+          What Engrams remembers for you
+        </h2>
 
         <div class="feature-grid">
-          {[
-            { icon: '🧠', title: 'Structured Memory', desc: 'Store decisions, patterns, progress, and custom data in a queryable SQLite knowledge graph.' },
-            { icon: '🔍', title: 'Semantic Search', desc: 'Vector embeddings enable meaning-aware retrieval — not just keyword matching.' },
-            { icon: '⚖️', title: 'Team Governance', desc: 'Two-layer scope hierarchy prevents individual choices from contradicting team-level architecture.' },
-            { icon: '🔗', title: 'Codebase Bindings', desc: 'Bind decisions to file paths. When AI edits a file, the right context surfaces automatically.' },
-            { icon: '💰', title: 'Context Budgeting', desc: 'Token-aware scoring loads only the most relevant items — keeping costs low as your knowledge base grows.' },
-            { icon: '📊', title: 'Knowledge Dashboard', desc: 'Browser-based explorer with interactive D3 graph visualization and optional local Ollama chat.' },
-          ].map(f => (
-            <div class="feature-card">
-              <span class="feature-icon">{f.icon}</span>
-              <h3>{f.title}</h3>
-              <p>{f.desc}</p>
-            </div>
-          ))}
+          {
+            [
+              {
+                icon: "🧠",
+                title: "Structured Memory",
+                desc: "Save the important stuff — architectural decisions, design patterns, task progress, and project notes — all organised and easy to find.",
+              },
+              {
+                icon: "🔍",
+                title: "Smart Search",
+                desc: "Search by meaning, not just exact words. Ask about \"caching strategy\" and find decisions about Redis, TTL, and query performance — because Engrams understands what you mean.",
+              },
+              {
+                icon: "⚖️",
+                title: "Team Governance",
+                desc: "Set team-wide rules — like \"always use PostgreSQL\" — that every contributor's AI respects. Individual preferences stay flexible within the team's boundaries.",
+              },
+              {
+                icon: "🔗",
+                title: "Codebase Bindings",
+                desc: "Link decisions to specific files and folders. When your AI opens a file, the relevant context shows up automatically — no prompting needed.",
+              },
+              {
+                icon: "💰",
+                title: "Context Budgeting",
+                desc: "As your project grows, Engrams doesn't dump everything into the prompt. It picks only the most relevant items so you keep costs down and responses fast.",
+              },
+              {
+                icon: "📊",
+                title: "Knowledge Dashboard",
+                desc: "See all your project knowledge in a visual, browser-based dashboard. Explore how decisions, patterns, and tasks connect to each other.",
+              },
+            ].map((f) => (
+              <div class="feature-card">
+                <span class="feature-icon">{f.icon}</span>
+                <h3>{f.title}</h3>
+                <p>{f.desc}</p>
+              </div>
+            ))
+          }
         </div>
       </div>
     </section>
@@ -98,9 +148,17 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
       <div class="tools-inner">
         <h2 class="section-heading">Works with your favourite AI tools</h2>
         <div class="tool-chips">
-          {['Roo Code', 'Cline', 'Cursor', 'Windsurf', 'Claude Code', 'Claude Desktop', 'Any MCP client'].map(t => (
-            <span class="chip">{t}</span>
-          ))}
+          {
+            [
+              "Roo Code",
+              "Cline",
+              "Cursor",
+              "Windsurf",
+              "Claude Code",
+              "Claude Desktop",
+              "Any MCP client",
+            ].map((t) => <span class="chip">{t}</span>)
+          }
         </div>
       </div>
     </section>
@@ -109,16 +167,19 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
     <section class="cta-section">
       <div class="cta-inner">
         <h2>Ready to give your AI a memory?</h2>
-        <p>Add Engrams to any MCP client in under 60 seconds.</p>
+        <p>Set up Engrams in your favourite AI coding tool in under a minute.</p>
         <a href="/docs/installation" class="btn-primary">Read the docs →</a>
       </div>
     </section>
 
     <footer class="home-footer">
       <span>© {new Date().getFullYear()} Engrams · Apache-2.0 License</span>
-      <a href="https://github.com/stevebrownlee/engrams-mcp" target="_blank" rel="noopener">GitHub</a>
+      <a
+        href="https://github.com/stevebrownlee/engrams-mcp"
+        target="_blank"
+        rel="noopener">GitHub</a
+      >
     </footer>
-
   </body>
 </html>
 
@@ -131,156 +192,385 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
     margin: 0;
   }
 
+  .logo img {
+    height: calc(var(--header-height) - 20px);
+    width: auto;
+    display: block;
+    object-fit: contain;
+  }
+
   /* ── Header ── */
   .home-header {
-    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-    background: rgba(255,255,255,.9);
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    background: rgba(255, 255, 255, 0.9);
     backdrop-filter: blur(10px);
     border-bottom: 1px solid var(--color-border);
     height: var(--header-height);
   }
   .hdr-inner {
-    max-width: 1100px; margin: 0 auto;
-    display: flex; align-items: center; height: 100%;
-    padding: 0 1.5rem; gap: 2rem;
+    max-width: 1100px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    height: 100%;
+    padding: 0 1.5rem;
+    gap: 2rem;
   }
-  .logo { display: flex; align-items: center; gap: .4rem; text-decoration: none; }
-  .logo-mark { font-size: 1.4rem; color: var(--sky-aqua); }
-  .logo-text { font-size: 1.1rem; font-weight: 700; color: var(--color-text); }
-  .hdr-nav { display: flex; gap: 1.5rem; margin-left: auto; }
-  .hdr-nav a { font-size: .875rem; font-weight: 500; color: var(--color-text-muted); text-decoration: none; }
-  .hdr-nav a:hover { color: var(--color-link); }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    text-decoration: none;
+  }
+  .logo-mark {
+    font-size: 1.4rem;
+    color: var(--sky-aqua);
+  }
+  .logo-text {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--color-text);
+  }
+  .hdr-nav {
+    display: flex;
+    gap: 1.5rem;
+    margin-left: auto;
+  }
+  .hdr-nav a {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-text-muted);
+    text-decoration: none;
+  }
+  .hdr-nav a:hover {
+    color: var(--color-link);
+  }
 
   /* ── Hero ── */
   .hero {
-    position: relative; overflow: hidden;
+    position: relative;
+    overflow: hidden;
     padding: calc(var(--header-height) + 4rem) 1.5rem 5rem;
-    display: flex; justify-content: center;
+    display: flex;
+    justify-content: center;
     background: linear-gradient(160deg, #f0f8ff 0%, #faf8fd 50%, #fff5f8 100%);
   }
-  .hero-bg { position: absolute; inset: 0; pointer-events: none; }
-  .blob {
-    position: absolute; border-radius: 50%;
-    filter: blur(80px); opacity: .35;
+  .hero-bg {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
   }
-  .blob-1 { width: 500px; height: 500px; background: var(--sky-aqua);    top: -100px; left: -80px; }
-  .blob-2 { width: 400px; height: 400px; background: var(--pastel-petal); top: 60px;  right: -60px; }
-  .blob-3 { width: 300px; height: 300px; background: var(--lavender);     bottom: 0;  left: 40%; }
+  .blob {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.35;
+  }
+  .blob-1 {
+    width: 500px;
+    height: 500px;
+    background: var(--sky-aqua);
+    top: -100px;
+    left: -80px;
+  }
+  .blob-2 {
+    width: 400px;
+    height: 400px;
+    background: var(--pastel-petal);
+    top: 60px;
+    right: -60px;
+  }
+  .blob-3 {
+    width: 300px;
+    height: 300px;
+    background: var(--lavender);
+    bottom: 0;
+    left: 40%;
+  }
 
   .hero-content {
-    position: relative; z-index: 1;
-    max-width: 780px; width: 100%;
-    display: flex; flex-direction: column; align-items: center; text-align: center;
+    position: relative;
+    z-index: 1;
+    max-width: 780px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
   }
   .hero-badge {
-    display: inline-flex; align-items: center;
-    background: rgba(86,203,249,.15); color: #2070a0;
-    border: 1px solid rgba(86,203,249,.35);
-    border-radius: 999px; font-size: .8rem; font-weight: 600;
-    padding: .25rem .8rem; margin-bottom: 1.5rem;
-    letter-spacing: .04em;
+    display: inline-flex;
+    align-items: center;
+    background: rgba(86, 203, 249, 0.15);
+    color: #2070a0;
+    border: 1px solid rgba(86, 203, 249, 0.35);
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 0.25rem 0.8rem;
+    margin-bottom: 1.5rem;
+    letter-spacing: 0.04em;
   }
   .hero-title {
-    font-size: clamp(2.4rem, 6vw, 4rem); font-weight: 800;
-    line-height: 1.1; margin-bottom: 1.25rem;
+    font-size: clamp(2.4rem, 6vw, 4rem);
+    font-weight: 800;
+    line-height: 1.1;
+    margin-bottom: 1.25rem;
     color: var(--color-text);
   }
   .gradient-text {
-    background: linear-gradient(135deg, var(--sky-aqua), var(--maya-blue) 40%, var(--pastel-petal));
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background: linear-gradient(
+      135deg,
+      var(--sky-aqua),
+      var(--maya-blue) 40%,
+      var(--pastel-petal)
+    );
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
     background-clip: text;
   }
   .hero-subtitle {
-    font-size: 1.125rem; color: var(--color-text-muted);
-    max-width: 580px; margin-bottom: 2rem; line-height: 1.7;
+    font-size: 1.125rem;
+    color: var(--color-text-muted);
+    max-width: 580px;
+    margin-bottom: 2rem;
+    line-height: 1.7;
   }
-  .hero-actions { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; margin-bottom: 2.5rem; }
+  .hero-actions {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-bottom: 2.5rem;
+  }
 
   .btn-primary {
-    display: inline-flex; align-items: center;
+    display: inline-flex;
+    align-items: center;
     background: linear-gradient(135deg, var(--sky-aqua), var(--maya-blue));
-    color: #fff; font-weight: 600; font-size: .9375rem;
-    padding: .65rem 1.5rem; border-radius: var(--radius-md);
-    text-decoration: none; box-shadow: 0 4px 15px rgba(86,203,249,.4);
-    transition: opacity .15s, transform .12s;
+    color: #fff;
+    font-weight: 600;
+    font-size: 0.9375rem;
+    padding: 0.65rem 1.5rem;
+    border-radius: var(--radius-md);
+    text-decoration: none;
+    box-shadow: 0 4px 15px rgba(86, 203, 249, 0.4);
+    transition:
+      opacity 0.15s,
+      transform 0.12s;
   }
-  .btn-primary:hover { opacity: .9; transform: translateY(-2px); text-decoration: none; }
+  .btn-primary:hover {
+    opacity: 0.9;
+    transform: translateY(-2px);
+    text-decoration: none;
+  }
   .btn-secondary {
-    display: inline-flex; align-items: center;
-    background: #fff; color: var(--color-text); font-weight: 600; font-size: .9375rem;
-    padding: .65rem 1.5rem; border-radius: var(--radius-md); border: 1.5px solid var(--color-border);
-    text-decoration: none; transition: border-color .15s, transform .12s;
+    display: inline-flex;
+    align-items: center;
+    background: #fff;
+    color: var(--color-text);
+    font-weight: 600;
+    font-size: 0.9375rem;
+    padding: 0.65rem 1.5rem;
+    border-radius: var(--radius-md);
+    border: 1.5px solid var(--color-border);
+    text-decoration: none;
+    transition:
+      border-color 0.15s,
+      transform 0.12s;
   }
-  .btn-secondary:hover { border-color: var(--maya-blue); transform: translateY(-2px); text-decoration: none; }
+  .btn-secondary:hover {
+    border-color: var(--maya-blue);
+    transform: translateY(-2px);
+    text-decoration: none;
+  }
 
   /* Hero code block */
   .hero-code {
-    width: 100%; max-width: 520px;
-    background: #1a2035; border-radius: var(--radius-lg);
-    overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,.18);
-    border: 1px solid rgba(255,255,255,.06);
+    width: 100%;
+    max-width: 520px;
+    background: #1a2035;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.18);
+    border: 1px solid rgba(255, 255, 255, 0.06);
     text-align: left;
   }
   .code-bar {
-    background: #141929; padding: .55rem 1rem;
-    display: flex; align-items: center; gap: .4rem;
+    background: #141929;
+    padding: 0.55rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
   }
-  .dot { width: 10px; height: 10px; border-radius: 50%; }
-  .dot.red    { background: #ff5f57; }
-  .dot.yellow { background: #ffbd2e; }
-  .dot.green  { background: #28ca41; }
-  .filename { font-size: .75rem; color: #6b7590; margin-left: .4rem; font-family: var(--font-mono); }
-  .hero-code pre { background: transparent; margin: 0; padding: 1.25rem 1.5rem; font-size: .825rem; line-height: 1.65; }
-  .hero-code pre code { color: #c9d3e8; }
+  .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+  }
+  .dot.red {
+    background: #ff5f57;
+  }
+  .dot.yellow {
+    background: #ffbd2e;
+  }
+  .dot.green {
+    background: #28ca41;
+  }
+  .filename {
+    font-size: 0.75rem;
+    color: #6b7590;
+    margin-left: 0.4rem;
+    font-family: var(--font-mono);
+  }
+  .hero-code pre {
+    background: transparent;
+    margin: 0;
+    padding: 1.25rem 1.5rem;
+    font-size: 0.825rem;
+    line-height: 1.65;
+  }
+  .hero-code pre code {
+    color: #c9d3e8;
+  }
 
   /* ── Features ── */
-  .features { padding: 5rem 1.5rem; background: #fff; }
-  .features-inner { max-width: 1050px; margin: 0 auto; }
+  .features {
+    padding: 5rem 1.5rem;
+    background: #fff;
+  }
+  .features-inner {
+    max-width: 1050px;
+    margin: 0 auto;
+  }
   .section-heading {
-    text-align: center; font-size: 1.875rem; font-weight: 700;
-    margin-bottom: 2.5rem; color: var(--color-text);
+    text-align: center;
+    font-size: 1.875rem;
+    font-weight: 700;
+    margin-bottom: 2.5rem;
+    color: var(--color-text);
   }
   .feature-grid {
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 1.25rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+    gap: 1.25rem;
   }
   .feature-card {
     background: var(--color-bg);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-lg);
     padding: 1.5rem;
-    transition: box-shadow .2s, transform .2s;
+    transition:
+      box-shadow 0.2s,
+      transform 0.2s;
   }
-  .feature-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
-  .feature-icon { font-size: 1.75rem; display: block; margin-bottom: .6rem; }
-  .feature-card h3 { font-size: 1rem; font-weight: 700; margin-bottom: .4rem; margin-top: 0; }
-  .feature-card p  { font-size: .875rem; color: var(--color-text-muted); margin: 0; line-height: 1.6; }
+  .feature-card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+  }
+  .feature-icon {
+    font-size: 1.75rem;
+    display: block;
+    margin-bottom: 0.6rem;
+  }
+  .feature-card h3 {
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 0.4rem;
+    margin-top: 0;
+  }
+  .feature-card p {
+    font-size: 0.875rem;
+    color: var(--color-text-muted);
+    margin: 0;
+    line-height: 1.6;
+  }
 
   /* ── Tools ── */
-  .tools-section { padding: 4rem 1.5rem; background: var(--lavender); }
-  .tools-inner { max-width: 860px; margin: 0 auto; text-align: center; }
-  .tool-chips { display: flex; flex-wrap: wrap; gap: .6rem; justify-content: center; margin-top: 1.5rem; }
-  .chip {
-    background: #fff; border: 1.5px solid var(--powder-blue);
-    border-radius: 999px; padding: .4rem 1rem;
-    font-size: .8125rem; font-weight: 600; color: var(--color-text-muted);
-    transition: border-color .15s, color .15s;
+  .tools-section {
+    padding: 4rem 1.5rem;
+    background: var(--lavender);
   }
-  .chip:hover { border-color: var(--sky-aqua); color: var(--color-text); }
+  .tools-inner {
+    max-width: 860px;
+    margin: 0 auto;
+    text-align: center;
+  }
+  .tool-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    justify-content: center;
+    margin-top: 1.5rem;
+  }
+  .chip {
+    background: #fff;
+    border: 1.5px solid var(--powder-blue);
+    border-radius: 999px;
+    padding: 0.4rem 1rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    transition:
+      border-color 0.15s,
+      color 0.15s;
+  }
+  .chip:hover {
+    border-color: var(--sky-aqua);
+    color: var(--color-text);
+  }
 
   /* ── CTA ── */
-  .cta-section { padding: 5rem 1.5rem; background: linear-gradient(135deg, var(--sky-aqua) 0%, var(--maya-blue) 60%, var(--pastel-petal) 100%); }
-  .cta-inner { max-width: 600px; margin: 0 auto; text-align: center; }
-  .cta-inner h2 { color: #fff; font-size: 2rem; margin-bottom: .75rem; }
-  .cta-inner p  { color: rgba(255,255,255,.85); font-size: 1.1rem; margin-bottom: 2rem; }
-  .cta-section .btn-primary { background: #fff; color: var(--color-text); box-shadow: 0 4px 20px rgba(0,0,0,.15); }
+  .cta-section {
+    padding: 5rem 1.5rem;
+    background: linear-gradient(
+      135deg,
+      var(--sky-aqua) 0%,
+      var(--maya-blue) 60%,
+      var(--pastel-petal) 100%
+    );
+  }
+  .cta-inner {
+    max-width: 600px;
+    margin: 0 auto;
+    text-align: center;
+  }
+  .cta-inner h2 {
+    color: #fff;
+    font-size: 2rem;
+    margin-bottom: 0.75rem;
+  }
+  .cta-inner p {
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 1.1rem;
+    margin-bottom: 2rem;
+  }
+  .cta-section .btn-primary {
+    background: #fff;
+    color: var(--color-text);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  }
 
   /* ── Footer ── */
   .home-footer {
-    background: #fff; border-top: 1px solid var(--color-border);
+    background: #fff;
+    border-top: 1px solid var(--color-border);
     padding: 1.25rem 1.5rem;
-    display: flex; justify-content: space-between; align-items: center;
-    font-size: .85rem; color: var(--color-text-muted);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.85rem;
+    color: var(--color-text-muted);
   }
-  .home-footer a { color: var(--color-text-muted); text-decoration: none; }
-  .home-footer a:hover { color: var(--color-link); }
+  .home-footer a {
+    color: var(--color-text-muted);
+    text-decoration: none;
+  }
+  .home-footer a:hover {
+    color: var(--color-link);
+  }
 </style>

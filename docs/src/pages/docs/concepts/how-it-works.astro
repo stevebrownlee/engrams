@@ -5,78 +5,81 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
 <DocsLayout title="How Engrams Works" description="Architecture and design of the Engrams memory platform.">
   <h1>How Engrams Works</h1>
   <p class="lead">
-    Engrams sits between your AI agent and your project. It stores, indexes, and retrieves structured
-    knowledge so your AI always has the right context — without you asking for it.
+    Every time you start a new chat with your AI assistant, it has no memory of your previous conversations.
+    Engrams changes that. It quietly sits alongside your AI tool, remembering your project decisions,
+    design patterns, and progress — and automatically provides the right information when it's needed.
   </p>
 
-  <h2>The core loop</h2>
+  <h2>How a typical interaction works</h2>
   <ol>
-    <li><strong>You talk to your AI.</strong> "Add a /users endpoint."</li>
-    <li><strong>The AI calls Engrams tools</strong> to retrieve relevant decisions, patterns, and progress items.</li>
-    <li><strong>Engrams scores and returns</strong> the most relevant items within the configured token budget.</li>
-    <li><strong>The AI generates a response</strong> grounded in your actual project decisions.</li>
-    <li><strong>New knowledge is logged</strong> back into Engrams as the session progresses.</li>
+    <li><strong>You ask your AI something.</strong> For example: "Add a /users endpoint."</li>
+    <li><strong>Your AI checks with Engrams</strong> to see if there are any relevant decisions, patterns, or notes about this area of the project.</li>
+    <li><strong>Engrams picks the best matches</strong> — only the most useful items, so the response stays fast and affordable.</li>
+    <li><strong>Your AI writes code informed by real project context</strong> — not generic guesses.</li>
+    <li><strong>New decisions get saved.</strong> As you work, Engrams records what you decide so it's there next time.</li>
   </ol>
 
   <h2>Storage</h2>
   <p>
-    Each project gets its own <strong>SQLite database</strong> at
-    <code>&lt;project-root&gt;/context_portal/context.db</code>.
-    Data is never shared between projects. The database is created automatically on first use.
+    Each project gets its own local database stored in a <code>context_portal/</code> folder at your project root.
+    Your data is never shared between projects, and the database is created automatically the first time you use Engrams.
   </p>
 
   <h2>Workspace detection</h2>
   <p>
-    Engrams detects the active project automatically using a priority-ordered list of project
-    indicators: <code>.git</code>, <code>package.json</code>, <code>pyproject.toml</code>,
-    <code>Cargo.toml</code>, and others. You never need to pass a workspace path manually.
+    Engrams figures out which project you're working in automatically by looking for common project
+    files like <code>.git</code>, <code>package.json</code>, <code>pyproject.toml</code>, or <code>Cargo.toml</code>.
+    You never need to tell it where your project lives.
   </p>
 
-  <h2>Communication modes</h2>
+  <h2>How Engrams connects to your AI tool</h2>
   <table>
-    <thead><tr><th>Mode</th><th>How it works</th><th>Best for</th></tr></thead>
+    <thead><tr><th>Mode</th><th>What it does</th><th>Best for</th></tr></thead>
     <tbody>
       <tr>
-        <td><strong>stdio</strong></td>
-        <td>Direct inter-process communication via stdin/stdout</td>
-        <td>Local IDE extensions (Roo, Cline, Cursor, Windsurf)</td>
+        <td><strong>Local (stdio)</strong></td>
+        <td>Runs directly alongside your AI tool as a local process</td>
+        <td>IDE extensions like Roo Code, Cline, Cursor, and Windsurf</td>
       </tr>
       <tr>
-        <td><strong>HTTP</strong></td>
-        <td>FastAPI server on a configurable port (default 8000)</td>
-        <td>Remote clients, multiple agents sharing one server</td>
+        <td><strong>Network (HTTP)</strong></td>
+        <td>Runs as a web server that clients can connect to</td>
+        <td>Remote setups, or multiple people sharing one Engrams instance</td>
       </tr>
     </tbody>
   </table>
+  <p>Most users will use <strong>Local (stdio)</strong> — it's the default and requires no extra configuration.</p>
 
-  <h2>Vector embeddings & semantic search</h2>
+  <h2>Smart search (semantic search)</h2>
   <p>
-    When you log a decision or pattern, Engrams generates a <strong>vector embedding</strong>
-    using <code>sentence-transformers</code> and stores it in ChromaDB. When your AI searches for
-    "caching strategy", it finds decisions about Redis, TTL, and query indexes — because Engrams
-    understands <em>meaning</em>, not just words.
+    When you save a decision or pattern, Engrams also creates a compact representation of its
+    <em>meaning</em>. Later, when your AI searches for something like "caching strategy," Engrams can
+    find related items — even if they use completely different words, like "Redis configuration"
+    or "query performance." This is called <strong>semantic search</strong>, and it's what makes Engrams
+    feel like it actually understands your project.
   </p>
 
-  <h2>Full-text search (FTS)</h2>
+  <h2>Keyword search</h2>
   <p>
-    In addition to semantic search, Engrams maintains SQLite FTS5 virtual tables for decisions,
-    custom data, and glossary items. FTS is fast and requires no embedding lookup — ideal for
-    exact or partial keyword matches.
+    Engrams also supports fast, traditional keyword search. If you know the exact term you're
+    looking for — like a specific library name or error message — keyword search finds it
+    instantly without any extra processing.
   </p>
 
   <h2>The knowledge graph</h2>
   <p>
-    Entities (decisions, patterns, progress items, custom data) can be explicitly linked via
-    <code>link_engrams_items</code>. These relationships form a queryable graph that lets your AI
-    navigate from a decision to the patterns that implement it, or from a task to the decisions
-    it depends on.
+    Your project knowledge isn't isolated facts — it's all connected. Engrams lets you link
+    related items together. For example, you can connect a design decision to the coding patterns
+    that implement it, or link a task to the decisions it depends on. Your AI can follow these
+    connections to understand the bigger picture.
   </p>
 
   <h2>Context budgeting</h2>
   <p>
-    As your knowledge base grows, loading everything into every prompt becomes expensive. Engrams'
-    budgeting system scores each item by relevance to the current query and loads only the
-    highest-value items within a configurable token limit. See
+    As your project grows, you might have hundreds of saved decisions and patterns. Loading all
+    of them into every AI conversation would be slow and expensive. Engrams solves this by ranking
+    items by how relevant they are to your current question and only including the most useful
+    ones. The result: fast, focused, affordable responses. See
     <a href="/docs/features/budgeting">Context Budgeting</a> for details.
   </p>
 </DocsLayout>

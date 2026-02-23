@@ -8,10 +8,10 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
   </div>
   <h1>Introduction</h1>
   <p class="lead">
-    Engrams is a <strong>governance-aware, context-intelligent memory platform</strong> built on the
-    <a href="/docs/concepts/mcp">Model Context Protocol (MCP)</a>. It transforms how AI agents
-    understand and work with your projects by providing structured memory, intelligent context
-    retrieval, and visual knowledge exploration.
+    Engrams gives your AI coding assistant a <strong>persistent memory</strong>. Instead of forgetting
+    everything between sessions, your AI remembers the decisions you've made, the patterns
+    you follow, and the progress you've tracked — and brings up the right information
+    exactly when it's needed.
   </p>
 
   <div class="callout tip">
@@ -22,14 +22,15 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
 
   <h2>What problem does Engrams solve?</h2>
   <p>
-    AI coding assistants are powerful — but they forget everything between sessions. You end up
-    re-explaining your tech stack, your architectural decisions, and your coding conventions in
-    every single conversation. The larger your project grows, the worse this gets.
+    Have you ever had to remind your AI assistant — again — that your project uses a
+    specific framework, or that you already decided on a certain database? AI coding
+    tools are powerful, but they start every conversation with a blank slate. The bigger
+    your project gets, the more time you spend catching your AI up.
   </p>
   <p>
-    Engrams gives your AI a <em>persistent, queryable project memory</em>. Instead of loading
-    your entire codebase into the context window, Engrams surfaces only what's relevant to the
-    current task — automatically.
+    Engrams fixes this. It gives your AI a long-term memory for your project. When you
+    make a decision, Engrams saves it. Next time your AI needs that context, it's already
+    there — automatically. No copy-pasting, no re-explaining.
   </p>
 
   <h2>Stored knowledge types</h2>
@@ -40,47 +41,47 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
     <tbody>
       <tr>
         <td><strong>Decisions</strong></td>
-        <td>Architectural &amp; implementation choices with rationale</td>
-        <td>"Use PostgreSQL — we need ACID guarantees"</td>
+        <td>Choices you've made and why</td>
+        <td>"Use PostgreSQL for the database — it handles complex queries better"</td>
       </tr>
       <tr>
         <td><strong>Progress</strong></td>
-        <td>Tasks, sub-tasks, and their statuses</td>
-        <td>TODO / IN_PROGRESS / DONE</td>
+        <td>What's done, what's in progress, what's next</td>
+        <td>TODO → IN_PROGRESS → DONE</td>
       </tr>
       <tr>
         <td><strong>Patterns</strong></td>
-        <td>Recurring design or architectural patterns</td>
-        <td>"JWT validation middleware"</td>
+        <td>Repeatable approaches your team follows</td>
+        <td>"All API responses use the same error format"</td>
       </tr>
       <tr>
         <td><strong>Context</strong></td>
-        <td>Project goals, current focus, team agreements</td>
-        <td>Product context &amp; active context</td>
+        <td>The big picture — project goals, current focus</td>
+        <td>What the project is about and what you're working on now</td>
       </tr>
       <tr>
         <td><strong>Custom Data</strong></td>
-        <td>Glossaries, specs, any structured project knowledge</td>
-        <td>Domain glossary terms</td>
+        <td>Anything else worth remembering</td>
+        <td>Glossary terms, internal specs, style guides</td>
       </tr>
     </tbody>
   </table>
 
   <h2>Key capabilities</h2>
   <ul>
-    <li><strong>Semantic search</strong> — find context by meaning, not keyword</li>
-    <li><strong>Codebase bindings</strong> — link decisions to file paths; context follows the code</li>
-    <li><strong>Context budgeting</strong> — token-aware selection keeps costs low as your knowledge base grows</li>
-    <li><strong>Team governance</strong> — enforce team-level architectural mandates with a two-scope hierarchy</li>
-    <li><strong>Knowledge Dashboard</strong> — browser-based explorer with D3 graph visualization</li>
-    <li><strong>Export / Import</strong> — markdown export for version control and team sharing</li>
+    <li><strong>Smart search</strong> — find relevant decisions even if you use different words</li>
+    <li><strong>Codebase links</strong> — connect decisions to specific files so context appears when your AI opens them</li>
+    <li><strong>Cost control</strong> — only the most relevant items are included, so your AI stays fast and affordable</li>
+    <li><strong>Team rules</strong> — set project-wide standards that every contributor's AI respects</li>
+    <li><strong>Visual dashboard</strong> — explore your project knowledge in an interactive browser-based view</li>
+    <li><strong>Export / Import</strong> — save your knowledge as markdown files you can version-control and share</li>
   </ul>
 
   <h2>Architecture overview</h2>
   <p>
-    Engrams runs as an MCP server alongside your AI tool. Your IDE extension (Roo Code, Cline,
-    Cursor, Windsurf, etc.) communicates with Engrams over stdio or HTTP. Each project gets its
-    own isolated SQLite database in a <code>context_portal/</code> directory at the project root.
+    Engrams runs quietly alongside your AI coding tool. It works with popular tools like Roo Code,
+    Cline, Cursor, and Windsurf. Each project gets its own private database stored in a
+    <code>context_portal/</code> folder at your project root — your data stays local and separate.
   </p>
 
   <div class="arch-diagram" aria-label="Architecture diagram">
