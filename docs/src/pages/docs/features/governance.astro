@@ -26,6 +26,121 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
     </tbody>
   </table>
 
+  <h2>Recording a team-level decision</h2>
+  <p>
+    Team decisions are recorded by first creating a team scope (if one doesn't exist) and then
+    logging a governance rule under that scope. Any AI with access to the Engrams MCP server will
+    enforce the rule automatically from that point forward.
+  </p>
+  <pre><code>{`You: "Record a team decision: all data storage must use PostgreSQL.
+       This is a hard block — no exceptions without a formal amendment."
+
+AI:  I'll create a team scope and record that as a governance rule.
+
+     Scope created: "Core Architecture" (team)
+     Governance rule logged:
+       Rule #23 — "Standardize on PostgreSQL for all data storage"
+       Scope: Core Architecture (Team-level)
+       Enforcement: hard_block
+       Tags: database, architecture
+
+     Any proposal that conflicts with this rule will be blocked until
+     the team approves a formal amendment.`}</code></pre>
+  <p>
+    Under the hood this calls <code>create_scope</code> (once, if the scope is new) and then
+    <code>log_governance_rule</code> with the chosen enforcement level.
+  </p>
+
+  <h2>Enforcement levels</h2>
+  <p>
+    Every governance rule carries one of three enforcement levels. Choose the level that matches
+    how strictly the rule should be applied.
+  </p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Level</th>
+        <th>What the AI does</th>
+        <th>When to use it</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>hard_block</code></td>
+        <td>Stops the work entirely and requires an explicit amendment before proceeding.</td>
+        <td>Non-negotiable standards — security policies, licensing requirements, core architecture mandates.</td>
+      </tr>
+      <tr>
+        <td><code>soft_warn</code></td>
+        <td>Raises a visible warning and asks for acknowledgement, but allows the developer to proceed.</td>
+        <td>Strong preferences the team usually follows but that may have legitimate exceptions (e.g. preferred libraries, naming conventions).</td>
+      </tr>
+      <tr>
+        <td><code>allow_with_flag</code></td>
+        <td>Permits the action and silently records a flag in the context so the deviation is visible in reviews and reports.</td>
+        <td>Advisory guidelines or emerging best practices where awareness matters but blocking would be counterproductive.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>hard_block example</h3>
+  <pre><code>{`You: "Record a team rule: never store credentials in source code.
+       Enforcement: hard_block."
+
+AI:  Governance rule logged:
+     Rule #7 — "No credentials in source code"
+     Scope: Security (Team-level)
+     Enforcement: hard_block
+
+---
+
+You: "Add the DB password directly to config.py for now."
+
+AI:  ⛔ Governance Conflict — hard_block
+
+     Rule #7: "No credentials in source code"
+     Scope: Security (Team-level)
+
+     This action is blocked. Please use environment variables or a
+     secrets manager. Would you like to propose a formal amendment?`}</code></pre>
+
+  <h3>soft_warn example</h3>
+  <pre><code>{`You: "Record a team rule: prefer React Query for all server-state fetching.
+       Enforcement: soft_warn."
+
+AI:  Governance rule logged:
+     Rule #14 — "Prefer React Query for server-state management"
+     Scope: Frontend (Team-level)
+     Enforcement: soft_warn
+
+---
+
+You: "Fetch the user list with useEffect and useState."
+
+AI:  ⚠️ Governance Advisory
+
+     Rule #14: "Prefer React Query for server-state management"
+
+     The team prefers React Query here. Proceeding with useEffect/useState
+     is allowed, but consider refactoring later. Continue anyway?`}</code></pre>
+
+  <h3>allow_with_flag example</h3>
+  <pre><code>{`You: "Record a team guideline: prefer named exports over default exports.
+       Enforcement: allow_with_flag."
+
+AI:  Governance rule logged:
+     Rule #31 — "Prefer named exports"
+     Scope: Code Style (Team-level)
+     Enforcement: allow_with_flag
+
+---
+
+You: "Add a default export to this utility module."
+
+AI:  (Proceeding — deviation from Rule #31 "Prefer named exports" has been
+     flagged in the active context for visibility in code review.)`}</code></pre>
+
   <h2>Conflict detection</h2>
   <pre><code>{`You: "I want to use MongoDB for the analytics module"
 

@@ -37,9 +37,6 @@ try:
     from .bindings import models as binding_models
     from .budgeting import models as budget_models
     from .core import exceptions  # For custom exceptions if FastMCP doesn't map them
-    from .core.backward_compat import (  # Backward compatibility helpers
-        detect_and_migrate_old_conport,
-    )
     from .core.workspace_detector import (  # Import workspace detection
         WorkspaceDetector,
         resolve_workspace_id,
@@ -55,7 +52,6 @@ except ImportError:
     from src.engrams.bindings import models as binding_models
     from src.engrams.budgeting import models as budget_models
     from src.engrams.core import exceptions
-    from src.engrams.core.backward_compat import detect_and_migrate_old_conport
     from src.engrams.core.workspace_detector import (
         WorkspaceDetector,
         resolve_workspace_id,
@@ -3696,13 +3692,6 @@ def main_logic(sys_args=None):
             log.info("Workspace detection details: %s", detection_info)
 
         log.info("Effective workspace ID: %s", effective_workspace_id)
-
-        # Perform automatic migration from ConPort to Engrams if needed
-        if effective_workspace_id:
-            try:
-                detect_and_migrate_old_conport(effective_workspace_id)
-            except Exception as e:  # pylint: disable=broad-exception-caught
-                log.warning("Engrams migration check failed (non-fatal): %s", e)
 
         # Pre-warm the database connection to trigger one-time initialization (e.g., migrations)
         # before the MCP transport starts. This prevents timeouts on the client's first tool call.

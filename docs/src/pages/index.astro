@@ -62,41 +62,19 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
           <span class="gradient-text">actually works.</span>
         </h1>
         <p class="hero-subtitle">
-          AI coding assistants forget everything between conversations. Engrams
-          fixes that. As an MCP server, it gives tools like Cursor, Roo Code, and Claude
-          persistent memory of your project — the decisions you've made, the
-          patterns you follow, and where you left off — so you stop repeating
-          yourself.
+          AI coding assistants forget everything between conversations, and
+          don't enable teams to share decisions and strategies.
         </p>
-        <div class="hero-actions">
-          <a href="/docs/getting-started" class="btn-primary">Get started →</a>
-          <a href="/docs/quick-start" class="btn-secondary">Quick Start</a>
-        </div>
-
-        <div class="hero-code">
-          <div class="code-bar">
-            <span class="dot red"></span><span class="dot yellow"></span><span
-              class="dot green"></span><span class="filename">mcp.json</span>
-          </div>
-          <pre><code>{`{
-  "mcpServers": {
-    "engrams": {
-      "command": "uvx",
-      "args": ["--from", "engrams-mcp", "engrams-mcp",
-               "--mode", "stdio"]
-    }
-  }
-}`}</code></pre>
-        </div>
+        <p class="hero-subtitle">
+          Engrams fixes that.
+        </p>
       </div>
     </section>
 
     <!-- ── Feature Cards ── -->
     <section class="features">
       <div class="features-inner">
-        <h2 class="section-heading">
-          What Engrams remembers for you
-        </h2>
+        <h2 class="section-heading">What Engrams remembers for you</h2>
 
         <div class="feature-grid">
           {
@@ -109,7 +87,7 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
               {
                 icon: "",
                 title: "Smart Search",
-                desc: "Search by meaning, not just exact words. Ask about \"caching strategy\" and find decisions about Redis, TTL, and query performance — because Engrams understands what you mean.",
+                desc: 'Search by meaning, not just exact words. Ask about "caching strategy" and find decisions about Redis, TTL, and query performance — because Engrams understands what you mean.',
               },
               {
                 icon: "",
@@ -143,44 +121,67 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
       </div>
     </section>
 
-    <!-- ── Supported Tools ── -->
-    <section class="tools-section">
-      <div class="tools-inner">
-        <h2 class="section-heading">Works with your favourite AI tools</h2>
-        <div class="tool-chips">
-          {
-            [
-              "Roo Code",
-              "Cline",
-              "Cursor",
-              "Windsurf",
-              "Claude Code",
-              "Claude Desktop",
-              "Any MCP client",
-            ].map((t) => <span class="chip">{t}</span>)
-          }
+    <section class="hero" style="display:block; padding: 3rem 1.5rem;">
+      <div class="hero-actions">
+        <a href="/docs/getting-started" class="btn-primary">Get started →</a>
+        <a href="/docs/quick-start" class="btn-secondary">Quick Start</a>
+      </div>
+
+      <div class="hero-code" style="margin: 0 auto;">
+        <div class="code-bar">
+          <span class="dot red"></span><span class="dot yellow"></span><span
+            class="dot green"></span><span class="filename">mcp.json</span>
         </div>
+        <pre><code>{`{
+  "mcpServers": {
+    "engrams": {
+      "command": "uvx",
+      "args": ["--from", "engrams-mcp", "engrams-mcp",
+               "--mode", "stdio"]
+    }
+  }
+}`}</code></pre>
       </div>
     </section>
-
-    <!-- ── CTA ── -->
-    <section class="cta-section">
-      <div class="cta-inner">
-        <h2>Ready to give your AI a memory?</h2>
-        <p>Set up Engrams in your favourite AI coding tool in under a minute.</p>
-        <a href="/docs/installation" class="btn-primary">Read the docs →</a>
-      </div>
-    </section>
-
-    <footer class="home-footer">
-      <span>© {new Date().getFullYear()} Engrams · Apache-2.0 License</span>
-      <a
-        href="https://github.com/stevebrownlee/engrams-mcp"
-        target="_blank"
-        rel="noopener">GitHub</a
-      >
-    </footer>
   </body>
+
+  <!-- ── Supported Tools ── -->
+  <section class="tools-section">
+    <div class="tools-inner">
+      <h2 class="section-heading">Works with your favourite AI tools</h2>
+      <div class="tool-chips">
+        {
+          [
+            "Roo Code",
+            "Cline",
+            "Cursor",
+            "Windsurf",
+            "Claude Code",
+            "Claude Desktop",
+            "Any MCP client",
+          ].map((t) => <span class="chip">{t}</span>)
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- ── CTA ── -->
+  <section class="cta-section">
+    <div class="cta-inner">
+      <h2>Ready to give your AI a memory?</h2>
+      <p>Set up Engrams in your favourite AI coding tool in under a minute.</p>
+      <a href="/docs/installation" class="btn-primary">Read the docs →</a>
+    </div>
+  </section>
+
+  <footer class="home-footer">
+    <span>© {new Date().getFullYear()} Engrams · Apache-2.0 License</span>
+    <a
+      href="https://github.com/stevebrownlee/engrams-mcp"
+      target="_blank"
+      rel="noopener">GitHub</a
+    >
+  </footer>
 </html>
 
 <style>
@@ -254,7 +255,7 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
   .hero {
     position: relative;
     overflow: hidden;
-    padding: calc(var(--header-height) + 4rem) 1.5rem 5rem;
+    padding: calc(var(--header-height) + 4rem) 1.5rem 1rem;
     display: flex;
     justify-content: center;
     background: linear-gradient(160deg, #f0f8ff 0%, #faf8fd 50%, #fff5f8 100%);
@@ -440,7 +441,7 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
 
   /* ── Features ── */
   .features {
-    padding: 5rem 1.5rem;
+    padding: 1rem 1.5rem 5rem 1.5rem;
     background: #fff;
   }
   .features-inner {
