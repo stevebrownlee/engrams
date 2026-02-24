@@ -2,12 +2,12 @@
 import DocsLayout from '../../../layouts/DocsLayout.astro';
 ---
 
-<DocsLayout title="Cost Efficiency & Context Budgeting" description="How Engrams reduces token costs through intelligent context selection and budgeting strategies.">
-  <h1>Cost Efficiency & Context Budgeting</h1>
+<DocsLayout title="Cost Efficiency" description="How Engrams reduces token costs through intelligent context selection.">
+  <h1>Cost Efficiency</h1>
   <p class="lead">
     As your project grows, so does your knowledge base. Without smart context selection, you'd dump everything into
-    every prompt — burning tokens on irrelevant information. Engrams solves this with context budgeting: intelligent,
-    token-aware selection that keeps costs down while keeping your AI informed.
+    every prompt — burning tokens on irrelevant information. Engrams solves this with intelligent, relevance-based
+    selection that keeps costs down while keeping your AI informed.
   </p>
 
   <h2>The "$1 per MB" Problem</h2>
@@ -42,19 +42,13 @@ AI: [Loads entire Engrams database]
 
     But only 5-10 items are actually relevant to the task!</code></pre>
 
-  <h2>How Context Budgeting Works</h2>
-  <p>
-    Engrams uses intelligent scoring to select only the most relevant items for each task.
-  </p>
-
   <h3>The Smart Approach (Efficient)</h3>
   <pre><code>You: "Add a new API endpoint"
 
-AI: [Engrams context budgeting activates]
+AI: [Engrams relevance selection activates]
     1. Semantic search: Find items related to "API endpoint"
     2. Relevance scoring: Rank by relevance to the task
-    3. Token budgeting: Select top items within token limit
-    4. Load only what matters:
+    3. Load only what matters:
        - Decision #7: JWT authentication
        - Decision #14: Rate limiting
        - Pattern #3: Error handling
@@ -109,21 +103,6 @@ AI: [Engrams context budgeting activates]
     </tbody>
   </table>
 
-  <h3>Token Budget Allocation</h3>
-  <p>
-    You set a token budget (default: 4,000 tokens for context). Engrams fills it intelligently:
-  </p>
-  <pre><code>Token Budget: 4,000 tokens
-
-Allocation:
-├── Team-level decisions (mandatory)     → 800 tokens
-├── Relevant patterns                    → 1,200 tokens
-├── Relevant individual decisions        → 1,000 tokens
-├── Glossary terms                       → 600 tokens
-└── Relationships (if space)             → 400 tokens
-
-Total: 4,000 tokens (exactly at budget)</code></pre>
-
   <h2>Real-World Cost Comparison</h2>
   <p>
     Let's compare costs for a realistic project over one month:
@@ -139,23 +118,10 @@ Total: 4,000 tokens (exactly at budget)</code></pre>
     <li>5 requests per session (50 requests/day)</li>
   </ul>
 
-  <h3>Cost Without Budgeting</h3>
+  <h3>Cost Without Smart Selection</h3>
   <pre><code>Approach: Dump entire database into every prompt
 
 Per request:
-  - All 50 decisions: ~200 tokens
-  - All 20 patterns: ~150 tokens
-  - All 100+ glossary terms: ~300 tokens
-  - Full knowledge graph: ~100 tokens
-  - Total context: ~750 tokens
-  - Cost per request: 750 × $0.003/1K = $0.00225
-
-Daily cost: 50 requests × $0.00225 = $0.1125
-Monthly cost: $0.1125 × 30 = $3.38
-
-Wait, that seems cheap. Let's recalculate with realistic token counts...
-
-Actually, with full context:
   - 50 decisions (full text): ~2,000 tokens
   - 20 patterns (full text): ~1,500 tokens
   - 100+ glossary terms: ~1,000 tokens
@@ -166,14 +132,14 @@ Actually, with full context:
 Daily cost: 50 requests × $0.015 = $0.75
 Monthly cost: $0.75 × 30 = $22.50</code></pre>
 
-  <h3>Cost With Engrams Budgeting</h3>
-  <pre><code>Approach: Smart context selection with 4,000 token budget
+  <h3>Cost With Engrams Smart Selection</h3>
+  <pre><code>Approach: Relevance-ranked context selection
 
 Per request:
   - Semantic search finds relevant items
   - Scoring ranks by relevance
-  - Budget fills with top items only
-  - Average context: ~2,000 tokens (50% of budget)
+  - Only top items included
+  - Average context: ~2,000 tokens
   - Cost per request: 2,000 × $0.003/1K = $0.006
 
 Daily cost: 50 requests × $0.006 = $0.30
@@ -189,8 +155,8 @@ Savings: $22.50 - $9.00 = $13.50/month (60% reduction)</code></pre>
     <thead>
       <tr>
         <th>Project Size</th>
-        <th>Without Budgeting</th>
-        <th>With Budgeting</th>
+        <th>Without Smart Selection</th>
+        <th>With Smart Selection</th>
         <th>Savings</th>
       </tr>
     </thead>
@@ -223,45 +189,13 @@ Savings: $22.50 - $9.00 = $13.50/month (60% reduction)</code></pre>
   </table>
 
   <p>
-    <strong>Key insight:</strong> As your project grows, context budgeting saves more money because irrelevant items
-    are filtered out, not because the budget shrinks.
+    <strong>Key insight:</strong> As your project grows, smart selection saves more money because irrelevant items
+    are filtered out.
   </p>
-
-  <h2>Token Estimation & Forecasting</h2>
-  <p>
-    Engrams provides tools to estimate and forecast your token usage:
-  </p>
-
-  <h3>Estimate Context Size</h3>
-  <pre><code>engrams estimate-context --task "Add JWT authentication"
-
-Estimated context:
-├── Semantic matches: 8 items (~1,200 tokens)
-├── Tag matches: 3 items (~400 tokens)
-├── Code bindings: 2 items (~300 tokens)
-├── Glossary terms: 5 items (~200 tokens)
-└── Total: ~2,100 tokens
-
-Cost per request: $0.0063
-Recommended budget: 4,000 tokens (plenty of room)</code></pre>
-
-  <h3>Forecast Monthly Costs</h3>
-  <pre><code>engrams forecast-costs --requests-per-day 50 --days 30
-
-Forecast:
-├── Average context per request: 2,100 tokens
-├── Daily cost: $0.315
-├── Monthly cost: $9.45
-├── Yearly cost: $113.40
-
-Comparison:
-├── Without budgeting: $270/year
-├── With budgeting: $113/year
-└── Annual savings: $157</code></pre>
 
   <h2>Optimization Strategies</h2>
   <p>
-    Here are practical ways to optimize your context budgeting:
+    Here are practical ways to get the most relevant context at the lowest cost:
   </p>
 
   <h3>1. Use Code Bindings</h3>
@@ -288,29 +222,7 @@ Tags: ["caching", "performance", "infrastructure"]
 Now searching for "persistence" finds the PostgreSQL decision.
 Searching for "performance" finds the Redis decision.</code></pre>
 
-  <h3>3. Archive Old Decisions</h3>
-  <p>
-    Mark decisions as "archived" so they don't clutter searches:
-  </p>
-  <pre><code>engrams archive-decision 15 --reason "Superseded by Decision #42"
-
-Archived decisions:
-- Don't appear in semantic search results
-- Don't count toward token budget
-- Still available if you search explicitly
-- Maintain audit trail</code></pre>
-
-  <h3>4. Adjust Budget by Task Type</h3>
-  <p>
-    Different tasks need different amounts of context:
-  </p>
-  <pre><code>engrams set-budget --task-type "bug-fix" --tokens 2000
-engrams set-budget --task-type "new-feature" --tokens 4000
-engrams set-budget --task-type "refactor" --tokens 3000
-
-Now Engrams automatically uses the right budget for each task.</code></pre>
-
-  <h3>5. Use Glossaries Efficiently</h3>
+  <h3>3. Use Glossaries Efficiently</h3>
   <p>
     Glossary terms are cheap (low token count) but valuable. Use them for:
   </p>
@@ -348,7 +260,7 @@ Now Engrams automatically uses the right budget for each task.</code></pre>
         <td>Low (all or nothing)</td>
       </tr>
       <tr>
-        <td><strong>Engrams Budgeting</strong></td>
+        <td><strong>Engrams Smart Selection</strong></td>
         <td>5 minutes</td>
         <td>$9.00 (50 decisions)</td>
         <td>Excellent (costs stay flat)</td>
@@ -364,18 +276,12 @@ Now Engrams automatically uses the right budget for each task.</code></pre>
     </tbody>
   </table>
 
-  <h2>FAQ: Cost & Budgeting Questions</h2>
+  <h2>FAQ: Cost Questions</h2>
 
-  <h3>Q: Does context budgeting reduce the quality of AI responses?</h3>
+  <h3>Q: Does smart context selection reduce the quality of AI responses?</h3>
   <p>
     <strong>A:</strong> No. The scoring algorithm prioritizes relevance, so you get the most important context.
     In fact, less noise often leads to better responses because the AI isn't distracted by irrelevant information.
-  </p>
-
-  <h3>Q: What if the budget is too small and important context gets cut off?</h3>
-  <p>
-    <strong>A:</strong> Engrams always includes team-level decisions (governance rules). If you're hitting the budget limit,
-    you can increase it or use code bindings to be more selective about what loads.
   </p>
 
   <h3>Q: Can I see what context was actually loaded for a request?</h3>
@@ -389,28 +295,25 @@ Now Engrams automatically uses the right budget for each task.</code></pre>
     <strong>A:</strong> No. Embeddings are generated locally (using Ollama) and cached. There's no per-request cost.
   </p>
 
-  <h3>Q: What if I want to include everything for a specific task?</h3>
+  <h3>Q: How is Engrams different from a RAG system?</h3>
   <p>
-    <strong>A:</strong> You can override the budget for a single request:
-  </p>
-  <pre><code>engrams get-context --task "Audit all decisions" --budget unlimited</code></pre>
-
-  <h3>Q: How does Engrams compare to RAG systems?</h3>
-  <p>
-    <strong>A:</strong> Engrams is a specialized RAG system optimized for project knowledge. It includes features
-    (governance, bindings, budgeting) that general RAG systems don't have. It's also simpler to set up and use.
+    <strong>A:</strong> Engrams is a project memory and governance platform, not a document retrieval pipeline.
+    While it uses semantic search under the hood, what it actually provides is structured, linked project knowledge —
+    decisions, patterns, progress, governance rules — that grows with your team and enforces standards.
+    General RAG pipelines don't have governance, bindings, or the MCP-native tooling that makes Engrams
+    work seamlessly inside your AI coding assistant.
   </p>
 
   <h2>Summary</h2>
   <p>
-    Context budgeting is Engrams' answer to the "$1 per MB" problem:
+    Smart context selection is Engrams' answer to the "$1 per MB" problem:
   </p>
   <ul>
     <li><strong>Smart selection:</strong> Only relevant items are included</li>
     <li><strong>Cost reduction:</strong> 60-89% savings depending on project size</li>
     <li><strong>Scaling benefits:</strong> Larger projects save more money</li>
     <li><strong>No quality loss:</strong> Better focus, better responses</li>
-    <li><strong>Flexible optimization:</strong> Code bindings, tags, budgets, archiving</li>
+    <li><strong>Flexible optimization:</strong> Code bindings, tags, and strategic tagging</li>
   </ul>
   <p>
     With Engrams, your AI stays informed without burning tokens on irrelevant context.
