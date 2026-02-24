@@ -65,8 +65,8 @@ test = [
 
 [project.urls]
 "Homepage" = "https://engrams.sh"
-"Bug Reports" = "https://github.com/stevebrownlee/engrams-mcp/issues"
-"Source" = "https://github.com/stevebrownlee/engrams-mcp"
+"Bug Reports" = "https://github.com/stevebrownlee/engrams/issues"
+"Source" = "https://github.com/stevebrownlee/engrams"
 "Documentation" = "https://engrams.sh/docs"
 
 [project.scripts]
