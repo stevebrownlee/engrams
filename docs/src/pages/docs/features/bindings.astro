@@ -12,8 +12,109 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
 
   <h2>Why bindings?</h2>
   <p>
-    Without bindings, you'd need to remind your AI about each relevant decision in every prompt.
-    With bindings, <em>touching the file is enough</em>.
+    Without bindings, getting the right context to an AI agent requires a choice between two
+    bad options: load your entire knowledge base into every prompt (expensive and noisy), or
+    manually remind the agent of relevant decisions every time you start a task (tedious and
+    easy to forget). Bindings solve both problems. They create a permanent map between your
+    project's knowledge and your project's code — so the right context surfaces automatically,
+    and only when it's needed.
+  </p>
+
+  <h2>Cost savings</h2>
+  <p>
+    The difference in token usage between a project with and without bindings compounds quickly
+    as the knowledge base grows.
+  </p>
+  <table>
+    <thead>
+      <tr>
+        <th>Scenario</th>
+        <th>Without Bindings</th>
+        <th>With Bindings</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Project has 60 decisions</td>
+        <td>~12,000 tokens loaded per session</td>
+        <td>~800 tokens for the 4–6 relevant to the files being touched</td>
+      </tr>
+      <tr>
+        <td>Creating a new API route</td>
+        <td>AI searches broadly; retrieves ~15 items "to be safe"</td>
+        <td><code>get_context_for_files</code> returns exactly the decisions bound to <code>src/api/routes/**/*.py</code></td>
+      </tr>
+      <tr>
+        <td>Junior dev touches a config file</td>
+        <td>Gets overwhelmed with unrelated DB and auth decisions</td>
+        <td>Gets only the 2 decisions bound to <code>src/config/**/*.py</code></td>
+      </tr>
+      <tr>
+        <td>20-step coding session</td>
+        <td>200,000+ tokens consumed on knowledge-base context</td>
+        <td>15,000–20,000 tokens — same session, ~90% reduction</td>
+      </tr>
+    </tbody>
+  </table>
+  <p>
+    Beyond direct API cost, a leaner context window means the AI can hold more of the actual
+    task in focus — fewer decisions get quietly dropped as the window fills up on long sessions.
+  </p>
+
+  <h2>How it works</h2>
+  <p>
+    Maya has been the lead backend developer on her team's healthcare API for two years. In that
+    time, the team has made dozens of hard-won decisions — some after painful production incidents,
+    some after long architecture debates. They're all logged in Engrams: HIPAA logging rules, the
+    repository pattern requirement, JWT role-checking, UTC date formats, structured error shapes.
+  </p>
+  <p>
+    One afternoon, she spends twenty minutes setting up bindings. No code, just mapping:
+  </p>
+  <pre><code>{`Maya: "Bind decision 7 and pattern 5 to all route files under src/api/routes.
+       Bind decisions 24 and 23 to everything under src/db.
+       Bind decisions 23 and 31 to all model files."
+
+AI:   Bindings created:
+      D-7  (JWT auth)              → src/api/routes/**/*.py
+      SP-5 (Structured errors)     → src/api/routes/**/*.py
+      D-24 (Repository pattern)    → src/db/**/*.py
+      D-23 (UTC datetimes)         → src/db/**/*.py
+      D-23 (UTC datetimes)         → src/models/**/*.py
+      D-31 (No PII in repr/str)    → src/models/**/*.py`}</code></pre>
+  <p>
+    Each binding uses a glob pattern. <code>src/api/routes/**/*.py</code> means every Python file
+    nested under that directory — including files that don't exist yet. She doesn't touch these
+    again. The bindings are set.
+  </p>
+  <hr />
+  <p>
+    Three weeks later, Alex joins the team. It's his first day. His first task: <em>add an
+    endpoint to retrieve a patient's recent appointments.</em>
+  </p>
+  <p>
+    He opens his AI coding assistant and types: <em>"Create <code>src/api/routes/appointments.py</code>
+    with a GET endpoint that returns a patient's appointments from the database."</em>
+  </p>
+  <p>
+    Before writing a single line of code, his AI agent identifies the files it's going to create
+    and touch. It calls <code>get_context_for_files</code> with those paths. Maya's bindings activate:
+  </p>
+  <pre><code>{`src/api/routes/appointments.py is bound to:
+  D-7:  JWT required; check that the requesting user has access to this patient's records
+  SP-5: All errors must use {"error": "...", "code": "...", "request_id": "..."}
+
+src/db/repositories/appointments.py is bound to:
+  D-24: All queries go through Repository classes — no direct ORM calls in routes
+  D-23: All datetime fields must be stored and returned as UTC ISO 8601`}</code></pre>
+  <p>
+    The agent writes an endpoint with JWT validation, role checking, a repository-pattern DB call,
+    UTC-formatted dates, and structured error responses.
+  </p>
+  <p>
+    Alex didn't know any of those rules. He didn't read the architecture docs. He didn't ask Maya.
+    The bindings carried two years of institutional knowledge directly into his first pull request —
+    automatically, silently, and at a fraction of the token cost of loading the full knowledge base.
   </p>
 
   <h2>Creating bindings</h2>
@@ -25,24 +126,6 @@ AI:  Bindings created:
      Decision #24 (SQLAlchemy ORM) → src/db/**/*.py
      Decision #7  (JWT auth)       → src/auth/**/*.py
      Pattern #5  (Error handling)  → src/api/routes/**/*.py`}</code></pre>
-
-  <h2>Context follows the code</h2>
-  <pre><code>{`You: "Add a new route in src/api/routes/medications.py that
-      queries src/db/repositories/medications.py"
-
-AI:  Checking context for files being edited...
-
-     src/api/routes/medications.py is bound to:
-     Pattern #5: Structured error handling
-     Decision #7: JWT auth required on all routes
-     Decision #14: Rate limiting at 1000 req/min
-
-     src/db/repositories/medications.py is bound to:
-     Decision #24: Use SQLAlchemy for all DB operations
-     Decision #23: PostgreSQL is the primary database
-
-     Implementing with SQLAlchemy queries, JWT middleware,
-     rate limiting, and structured error responses...`}</code></pre>
 
   <h2>Binding management</h2>
   <p>
@@ -64,4 +147,9 @@ AI:  Checking context for files being edited...
 </DocsLayout>
 <style>
   .lead { font-size: 1.125rem; color: var(--color-text-muted); line-height: 1.75; margin-bottom: 1.75rem; }
+  table { width: 100%; border-collapse: collapse; margin: 1.5rem 0 2rem; font-size: 0.9rem; }
+  th { text-align: left; padding: 0.6rem 1rem; background: var(--color-surface-alt, #f5f5f5); border-bottom: 2px solid var(--color-border, #e0e0e0); }
+  td { padding: 0.6rem 1rem; border-bottom: 1px solid var(--color-border, #e0e0e0); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  hr { margin: 2rem 0; border: none; border-top: 1px solid var(--color-border, #e0e0e0); }
 </style>
