@@ -49,17 +49,15 @@ AI:  Retrieving project context...
     View and update the budget configuration using the MCP tools:
   </p>
   <pre><code>{`# View current config
-get_context_budget_config
+manage_budget_config
 
-# Update the token budget (example: increase to 8000 tokens)
-update_context_budget_config({ "max_tokens": 8000 })`}</code></pre>
+# Update scoring weights
+manage_budget_config({ "weights": "{\\"recency\\": 0.8}" })`}</code></pre>
 
   <h2>MCP tools</h2>
   <ul>
-    <li><code>get_relevant_context</code> — retrieve scored, budget-aware context</li>
-    <li><code>estimate_context_size</code> — estimate token usage before loading</li>
-    <li><code>get_context_budget_config</code> — view current budget settings</li>
-    <li><code>update_context_budget_config</code> — adjust budget and scoring weights</li>
+    <li><code>get_relevant_context</code> — retrieve scored, budget-aware context (set <code>dry_run=True</code> to preview token estimates)</li>
+    <li><code>manage_budget_config</code> — view or update scoring weights (omit weights to read, provide to update)</li>
   </ul>
 </DocsLayout>
 <style>

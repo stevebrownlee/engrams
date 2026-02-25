@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "engrams-mcp"
-version = "1.0.3"
+version = "1.1.0"
 authors = [
     {name = "Scott McLeod", email = "contextportal@gmail.com"},
     {name = "Steve Brownlee", email = "steve@stevebrownlee.com"},

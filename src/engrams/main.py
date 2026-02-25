@@ -156,7 +156,7 @@ app = FastAPI(title="Engrams MCP Server Wrapper", version=ENGRAMS_VERSION)
 
 @engrams_mcp.tool(
     name="get_product_context",
-    description="Retrieves the overall project goals, features, and architecture.",
+    description="Retrieves the stored high-level product context (project goals, features, architecture) as a single JSON object. Use this for the persistent 'what is this project' definition — NOT for current work focus (use get_active_context), NOT for governance-scoped merged view (use get_effective_context), NOT for token-budgeted task context (use get_relevant_context), and NOT for structured onboarding briefings (use get_project_briefing). Returns: {content: {...}, version: int, updated_at: string}.",
     annotations=ToolAnnotations(
         title="Get Product Context",
         readOnlyHint=True,
@@ -164,7 +164,7 @@ app = FastAPI(title="Engrams MCP Server Wrapper", version=ENGRAMS_VERSION)
 )
 async def tool_get_product_context(
     workspace_id: Annotated[
-        str, Field(description="Identifier for the workspace (e.g., absolute path)")
+        str, Field(description="The absolute path to the workspace directory (e.g. '/home/user/myproject'). Used to locate the Engrams database for this workspace.")
     ],
 ) -> Dict[str, Any]:
     """
@@ -196,9 +196,7 @@ async def tool_get_product_context(
 
 @engrams_mcp.tool(
     name="update_product_context",
-    description="Updates the product context. Accepts full `content` (object) or "
-    "`patch_content` (object) for partial updates "
-    "(use `__DELETE__` as a value in patch to remove a key).",
+    description="Overwrites or patches the persistent product context (project goals, features, architecture). Provide content for full replacement OR patch_content for partial merge (set a key to '__DELETE__' to remove it). Only one of content/patch_content may be provided. Precondition: use get_product_context first if you need to preserve existing keys. Returns: the updated context object with new version number.",
     annotations=ToolAnnotations(
         title="Update Product Context",
         destructiveHint=True,
@@ -206,18 +204,18 @@ async def tool_get_product_context(
 )
 async def tool_update_product_context(
     workspace_id: Annotated[
-        str, Field(description="Identifier for the workspace (e.g., absolute path)")
+        str, Field(description="The absolute path to the workspace directory (e.g. '/home/user/myproject'). Used to locate the Engrams database for this workspace.")
     ],
     content: Annotated[
         Optional[Dict[str, Any]],
         Field(
-            description="The full new context content as a dictionary. Overwrites existing."
+            default=None, description="Full replacement content object. If provided, completely replaces existing content. Mutually exclusive with patch_content — provide only one."
         ),
     ] = None,
     patch_content: Annotated[
         Optional[Dict[str, Any]],
         Field(
-            description="A dictionary of changes to apply to the existing context (add/update keys)."
+            default=None, description="Partial update dict. Only specified keys are changed. Set a key's value to '__DELETE__' to remove that key. Mutually exclusive with content — provide only one."
         ),
     ] = None,
 ) -> Dict[str, Any]:
@@ -271,7 +269,7 @@ async def tool_update_product_context(
 
 @engrams_mcp.tool(
     name="get_active_context",
-    description="Retrieves the current working focus, recent changes, and open issues.",
+    description="Retrieves the session-level active context: current work focus, open issues, and recent changes. This is the 'what am I working on right now' state — mutable and frequently updated. For the persistent project definition, use get_product_context instead. For governance-scoped merged view, use get_effective_context. Returns: {content: {...}, version: int, updated_at: string}.",
     annotations=ToolAnnotations(
         title="Get Active Context",
         readOnlyHint=True,
@@ -279,7 +277,7 @@ async def tool_update_product_context(
 )
 async def tool_get_active_context(
     workspace_id: Annotated[
-        str, Field(description="Identifier for the workspace (e.g., absolute path)")
+        str, Field(description="The absolute path to the workspace directory (e.g. '/home/user/myproject'). Used to locate the Engrams database for this workspace.")
     ],
 ) -> Dict[str, Any]:
     """
@@ -310,9 +308,7 @@ async def tool_get_active_context(
 
 @engrams_mcp.tool(
     name="update_active_context",
-    description="Updates the active context. Accepts full `content` (object) or "
-    "`patch_content` (object) for partial updates "
-    "(use `__DELETE__` as a value in patch to remove a key).",
+    description="Overwrites or patches the session-level active context (current focus, open issues, recent changes). Provide content for full replacement OR patch_content for partial merge (set a key to '__DELETE__' to remove it). Only one of content/patch_content may be provided. Call get_active_context first if you need to preserve existing keys. Returns: the updated active context with new version number.",
     annotations=ToolAnnotations(
         title="Update Active Context",
         destructiveHint=True,
@@ -320,18 +316,18 @@ async def tool_get_active_context(
 )
 async def tool_update_active_context(
     workspace_id: Annotated[
-        str, Field(description="Identifier for the workspace (e.g., absolute path)")
+        str, Field(description="The absolute path to the workspace directory (e.g. '/home/user/myproject'). Used to locate the Engrams database for this workspace.")
     ],
     content: Annotated[
         Optional[Dict[str, Any]],
         Field(
-            description="The full new context content as a dictionary. Overwrites existing."
+            default=None, description="Full replacement content object. If provided, completely replaces existing content. Mutually exclusive with patch_content — provide only one."
         ),
     ] = None,
     patch_content: Annotated[
         Optional[Dict[str, Any]],
         Field(
-            description="A dictionary of changes to apply to the existing context (add/update keys)."
+            default=None, description="Partial update dict. Only specified keys are changed. Set a key's value to '__DELETE__' to remove that key. Mutually exclusive with content — provide only one."
         ),
     ] = None,
 ) -> Dict[str, Any]:
@@ -382,7 +378,7 @@ async def tool_update_active_context(
 
 @engrams_mcp.tool(
     name="log_decision",
-    description="Logs an architectural or implementation decision.",
+    description="Creates a new architectural or implementation decision record. Use this to persist a decision that was just made — NOT to search existing decisions (use get_decisions or search_decisions_fts). Accepts summary (required), rationale, implementation_details, and tags. Optionally assign to a governance scope. Returns: {id: int, summary, rationale, tags, created_at, ...}. For logging multiple decisions at once, use batch_log_items with item_type='decision'.",
     annotations=ToolAnnotations(
         title="Log Decision",
         destructiveHint=False,
@@ -390,7 +386,7 @@ async def tool_update_active_context(
 )
 async def tool_log_decision(
     workspace_id: Annotated[
-        str, Field(description="Identifier for the workspace (e.g., absolute path)")
+        str, Field(description="The absolute path to the workspace directory (e.g. '/home/user/myproject'). Used to locate the Engrams database for this workspace.")
     ],
     summary: Annotated[
         str, Field(min_length=1, description="A concise summary of the decision")
@@ -456,7 +452,7 @@ async def tool_log_decision(
 
 @engrams_mcp.tool(
     name="get_decisions",
-    description="Retrieves logged decisions.",
+    description="Lists decisions, filtered by tags or ordered by recency. Use when you want to browse/filter decisions by tag or retrieve the N most recent. For keyword search across decision text, use search_decisions_fts instead. For natural-language conceptual search across ALL entity types, use semantic_search_engrams. For task-relevant context within a token budget, use get_relevant_context. Returns: [{id, summary, rationale, tags, created_at, ...}].",
     annotations=ToolAnnotations(
         title="Get Decisions",
         readOnlyHint=True,
@@ -464,7 +460,7 @@ async def tool_log_decision(
 )
 async def tool_get_decisions(
     workspace_id: Annotated[
-        str, Field(description="Identifier for the workspace (e.g., absolute path)")
+        str, Field(description="The absolute path to the workspace directory (e.g. '/home/user/myproject'). Used to locate the Engrams database for this workspace.")
     ],
     ctx: Context,
     limit: Annotated[
@@ -534,7 +530,7 @@ async def tool_get_decisions(
 
 @engrams_mcp.tool(
     name="search_decisions_fts",
-    description="Full-text search across decision fields (summary, rationale, details, tags).",
+    description="Keyword search across decision text (summary, rationale, implementation_details, tags) using SQLite FTS. Use when you have specific keywords to match. For tag-based filtering without keywords, use get_decisions. For conceptual/semantic search, use semantic_search_engrams. Returns: [{id, summary, rationale, tags, ...}] ranked by FTS relevance.",
     annotations=ToolAnnotations(
         title="Search Decisions",
         readOnlyHint=True,
@@ -542,7 +538,7 @@ async def tool_get_decisions(
 )
 async def tool_search_decisions_fts(
     workspace_id: Annotated[
-        str, Field(description="Identifier for the workspace (e.g., absolute path)")
+        str, Field(description="The absolute path to the workspace directory (e.g. '/home/user/myproject'). Used to locate the Engrams database for this workspace.")
     ],
     query_term: Annotated[
         str, Field(min_length=1, description="The term to search for in decisions.")
@@ -594,7 +590,7 @@ async def tool_search_decisions_fts(
 
 @engrams_mcp.tool(
     name="log_progress",
-    description="Logs a progress entry or task status.",
+    description="Creates a new progress/task entry with a status (TODO, IN_PROGRESS, DONE, etc.). Use this when a task begins or a new sub-task is defined. To update an existing entry's status, use update_progress instead. Supports parent_id for subtask hierarchy and linked_item_type/linked_item_id to auto-link to a decision or pattern. Returns: {id: int, description, status, parent_id, created_at, ...}.",
     annotations=ToolAnnotations(
         title="Log Progress",
         destructiveHint=False,
@@ -602,10 +598,10 @@ async def tool_search_decisions_fts(
 )
 async def tool_log_progress(
     workspace_id: Annotated[
-        str, Field(description="Identifier for the workspace (e.g., absolute path)")
+        str, Field(description="The absolute path to the workspace directory (e.g. '/home/user/myproject'). Used to locate the Engrams database for this workspace.")
     ],
     status: Annotated[
-        str, Field(description="Current status (e.g., 'TODO', 'IN_PROGRESS', 'DONE')")
+        str, Field(description="Task status. Valid values: 'TODO', 'IN_PROGRESS', 'DONE', 'BLOCKED', 'CANCELLED'.")
     ],
     description: Annotated[
         str, Field(min_length=1, description="Description of the progress or task")
@@ -701,7 +697,7 @@ async def tool_log_progress(
 
 @engrams_mcp.tool(
     name="get_progress",
-    description="Retrieves progress entries.",
+    description="Lists progress/task entries, optionally filtered by status (e.g., 'IN_PROGRESS') or parent_id (for subtasks). Returns most recent first. Use to review task statuses or find pending work. For updating a specific entry, use update_progress. Returns: [{id, description, status, parent_id, created_at, ...}].",
     annotations=ToolAnnotations(
         title="Get Progress",
         readOnlyHint=True,
@@ -709,7 +705,7 @@ async def tool_log_progress(
 )
 async def tool_get_progress(
     workspace_id: Annotated[
-        str, Field(description="Identifier for the workspace (e.g., absolute path)")
+        str, Field(description="The absolute path to the workspace directory (e.g. '/home/user/myproject'). Used to locate the Engrams database for this workspace.")
     ],
     ctx: Context,
     status_filter: Annotated[
@@ -767,7 +763,7 @@ async def tool_get_progress(
 
 @engrams_mcp.tool(
     name="update_progress",
-    description="Updates an existing progress entry.",
+    description="Modifies an existing progress entry by its ID. Use to change status (e.g., IN_PROGRESS → DONE), update description, or reassign parent_id. At least one field must be provided. Precondition: obtain progress_id from get_progress first. Returns: the updated progress entry.",
     annotations=ToolAnnotations(
         title="Update Progress",
         destructiveHint=False,
@@ -775,7 +771,7 @@ async def tool_get_progress(
 )
 async def tool_update_progress(
     workspace_id: Annotated[
-        str, Field(description="Identifier for the workspace (e.g., absolute path)")
+        str, Field(description="The absolute path to the workspace directory (e.g. '/home/user/myproject'). Used to locate the Engrams database for this workspace.")
     ],
     progress_id: Annotated[
         Union[int, str], Field(description="The ID of the progress entry to update.")
@@ -783,7 +779,7 @@ async def tool_update_progress(
     ctx: Context,
     status: Annotated[
         Optional[str],
-        Field(description="New status (e.g., 'TODO', 'IN_PROGRESS', 'DONE')"),
+        Field(description="Task status. Valid values: 'TODO', 'IN_PROGRESS', 'DONE', 'BLOCKED', 'CANCELLED'."),
     ] = None,
     description: Annotated[
         Optional[str],
@@ -851,59 +847,8 @@ async def tool_update_progress(
 
 
 @engrams_mcp.tool(
-    name="delete_progress_by_id",
-    description="Deletes a progress entry by its ID.",
-    annotations=ToolAnnotations(
-        title="Delete Progress",
-        destructiveHint=True,
-    ),
-)
-async def tool_delete_progress_by_id(
-    workspace_id: Annotated[
-        str, Field(description="Identifier for the workspace (e.g., absolute path)")
-    ],
-    progress_id: Annotated[
-        Union[int, str], Field(description="The ID of the progress entry to delete.")
-    ],
-    ctx: Context,
-) -> Dict[str, Any]:
-    """
-    Deletes a progress entry by its ID.
-
-    Args:
-        workspace_id: The identifier for the workspace.
-        progress_id: The ID of the progress entry to delete.
-        ctx: The MCP context.
-
-    Returns:
-        A dictionary confirming the deletion.
-    """
-    try:
-        _ = ctx
-        pydantic_args = models.DeleteProgressByIdArgs(
-            workspace_id=workspace_id, progress_id=int(progress_id)
-        )
-        return mcp_handlers.handle_delete_progress_by_id(pydantic_args)
-    except exceptions.ContextPortalError as e:  # Specific app errors
-        log.error("Error in delete_progress_by_id handler: %s", e)
-        raise
-    # No specific ValueError expected from this model's validation
-    except Exception as e:  # Catch-all for other unexpected errors
-        log.error(
-            "Unexpected error processing args for delete_progress_by_id: %s. "
-            "Args: workspace_id=%s, progress_id=%s",
-            e,
-            workspace_id,
-            progress_id,
-        )
-        raise exceptions.ContextPortalError(
-            f"Server error processing delete_progress_by_id: {type(e).__name__} - {e}"
-        )
-
-
-@engrams_mcp.tool(
     name="log_system_pattern",
-    description="Logs or updates a system/coding pattern.",
+    description="Creates or updates a named system/coding pattern (e.g., 'Repository Pattern', 'Error Handling Strategy'). The name field is the unique identifier — if a pattern with the same name already exists, it will be updated. Use for recording architectural patterns, conventions, or reusable approaches. Returns: {id, name, description, tags, created_at, ...}.",
     annotations=ToolAnnotations(
         title="Log System Pattern",
         destructiveHint=False,
@@ -911,7 +856,7 @@ async def tool_delete_progress_by_id(
 )
 async def tool_log_system_pattern(
     workspace_id: Annotated[
-        str, Field(description="Identifier for the workspace (e.g., absolute path)")
+        str, Field(description="The absolute path to the workspace directory (e.g. '/home/user/myproject'). Used to locate the Engrams database for this workspace.")
     ],
     name: Annotated[
         str, Field(min_length=1, description="Unique name for the system pattern")
@@ -974,7 +919,7 @@ async def tool_log_system_pattern(
 
 @engrams_mcp.tool(
     name="get_system_patterns",
-    description="Retrieves system patterns.",
+    description="Lists system/coding patterns, optionally filtered by tags. Returns most recent first. Use to review established patterns or find patterns by tag. There is no FTS search for patterns — for keyword search across patterns, use semantic_search_engrams with filter_item_types=['system_pattern']. Returns: [{id, name, description, tags, created_at, ...}].",
     annotations=ToolAnnotations(
         title="Get System Patterns",
         readOnlyHint=True,
@@ -982,7 +927,7 @@ async def tool_log_system_pattern(
 )
 async def tool_get_system_patterns(
     workspace_id: Annotated[
-        str, Field(description="Identifier for the workspace (e.g., absolute path)")
+        str, Field(description="The absolute path to the workspace directory (e.g. '/home/user/myproject'). Used to locate the Engrams database for this workspace.")
     ],
     ctx: Context,
     limit: Annotated[
@@ -1052,8 +997,7 @@ async def tool_get_system_patterns(
 
 @engrams_mcp.tool(
     name="log_custom_data",
-    description="Stores/updates a custom key-value entry under a category. "
-    "Value is JSON-serializable.",
+    description="Stores or updates a custom key-value entry organized by category. Use for any structured data not covered by decisions, progress, or patterns (e.g., glossary terms under category 'ProjectGlossary', config settings under 'critical_settings', meeting notes, technical specs). The (category, key) pair is the unique identifier — existing entries are overwritten. Value can be any JSON-serializable type. Returns: {category, key, value, created_at}.",
     annotations=ToolAnnotations(
         title="Log Custom Data",
         destructiveHint=False,
@@ -1061,7 +1005,7 @@ async def tool_get_system_patterns(
 )
 async def tool_log_custom_data(
     workspace_id: Annotated[
-        str, Field(description="Identifier for the workspace (e.g., absolute path)")
+        str, Field(description="The absolute path to the workspace directory (e.g. '/home/user/myproject'). Used to locate the Engrams database for this workspace.")
     ],
     category: Annotated[
         str, Field(min_length=1, description="Category for the custom data")
@@ -1129,7 +1073,7 @@ async def tool_log_custom_data(
 
 @engrams_mcp.tool(
     name="get_custom_data",
-    description="Retrieves custom data.",
+    description="Retrieves custom data entries by exact category and/or key lookup. Provide category alone to list all entries in that category, or both category+key for a specific entry. Omit both to list all custom data. For keyword search across custom data values, use search_custom_data_value_fts. For glossary-specific search, use search_project_glossary_fts. Returns: [{category, key, value, created_at, ...}].",
     annotations=ToolAnnotations(
         title="Get Custom Data",
         readOnlyHint=True,
@@ -1137,7 +1081,7 @@ async def tool_log_custom_data(
 )
 async def tool_get_custom_data(
     workspace_id: Annotated[
-        str, Field(description="Identifier for the workspace (e.g., absolute path)")
+        str, Field(description="The absolute path to the workspace directory (e.g. '/home/user/myproject'). Used to locate the Engrams database for this workspace.")
     ],
     ctx: Context,
     category: Annotated[Optional[str], Field(description="Filter by category")] = None,
@@ -1181,119 +1125,8 @@ async def tool_get_custom_data(
 
 
 @engrams_mcp.tool(
-    name="delete_custom_data",
-    description="Deletes a specific custom data entry.",
-    annotations=ToolAnnotations(
-        title="Delete Custom Data",
-        destructiveHint=True,
-    ),
-)
-async def tool_delete_custom_data(
-    workspace_id: Annotated[
-        str, Field(description="Identifier for the workspace (e.g., absolute path)")
-    ],
-    category: Annotated[
-        str, Field(min_length=1, description="Category of the data to delete")
-    ],
-    key: Annotated[str, Field(min_length=1, description="Key of the data to delete")],
-    ctx: Context,
-) -> Dict[str, Any]:
-    """
-    Deletes a custom data entry.
-
-    Args:
-        workspace_id: The identifier for the workspace.
-        category: The category of the data.
-        key: The key of the data.
-        ctx: The MCP context.
-
-    Returns:
-        A dictionary confirming the deletion.
-    """
-    try:
-        _ = ctx
-        pydantic_args = models.DeleteCustomDataArgs(
-            workspace_id=workspace_id, category=category, key=key
-        )
-        return mcp_handlers.handle_delete_custom_data(pydantic_args)
-    except exceptions.ContextPortalError as e:
-        log.error("Error in delete_custom_data handler: %s", e)
-        raise
-    except Exception as e:
-        log.error(
-            "Error processing args for delete_custom_data: %s. "
-            "Args: workspace_id=%s, category='%s', key='%s'",
-            e,
-            workspace_id,
-            category,
-            key,
-        )
-        raise exceptions.ContextPortalError(
-            f"Server error processing delete_custom_data: {type(e).__name__}"
-        )
-
-
-@engrams_mcp.tool(
-    name="search_project_glossary_fts",
-    description="Full-text search within the 'ProjectGlossary' custom data category.",
-    annotations=ToolAnnotations(
-        title="Search Glossary",
-        readOnlyHint=True,
-    ),
-)
-async def tool_search_project_glossary_fts(
-    workspace_id: Annotated[
-        str, Field(description="Identifier for the workspace (e.g., absolute path)")
-    ],
-    query_term: Annotated[
-        str, Field(min_length=1, description="The term to search for in the glossary.")
-    ],
-    ctx: Context,
-    limit: Annotated[
-        Optional[Union[int, str]],
-        Field(default=10, description="Maximum number of search results to return."),
-    ] = 10,
-) -> List[Dict[str, Any]]:
-    """
-    Searches the project glossary.
-
-    Args:
-        workspace_id: The identifier for the workspace.
-        query_term: The term to search for.
-        ctx: The MCP context.
-        limit: Optional maximum number of results to return.
-
-    Returns:
-        A list of dictionaries containing the matching glossary entries.
-    """
-    try:
-        _ = ctx
-        pydantic_args = models.SearchProjectGlossaryArgs(
-            workspace_id=workspace_id,
-            query_term=query_term,
-            limit=int(limit) if limit is not None else None,
-        )
-        return mcp_handlers.handle_search_project_glossary_fts(pydantic_args)
-    except exceptions.ContextPortalError as e:
-        log.error("Error in search_project_glossary_fts handler: %s", e)
-        raise
-    except Exception as e:
-        log.error(
-            "Error processing args for search_project_glossary_fts: %s. "
-            "Args: workspace_id=%s, query_term='%s', limit=%s",
-            e,
-            workspace_id,
-            query_term,
-            limit,
-        )
-        raise exceptions.ContextPortalError(
-            f"Server error processing search_project_glossary_fts: {type(e).__name__}"
-        )
-
-
-@engrams_mcp.tool(
     name="export_engrams_to_markdown",
-    description="Exports Engrams data to markdown files.",
+    description="Exports ALL Engrams data (decisions, patterns, progress, custom data, contexts, links) to a directory of markdown files for backup, sharing, or version control. Output goes to output_path (default: ./engrams_export/). The exported format is compatible with import_markdown_to_engrams for round-tripping. Returns: {exported_path, file_count, entity_counts}.",
     annotations=ToolAnnotations(
         title="Export to Markdown",
         destructiveHint=False,
@@ -1301,7 +1134,7 @@ async def tool_search_project_glossary_fts(
 )
 async def tool_export_engrams_to_markdown(
     workspace_id: Annotated[
-        str, Field(description="Identifier for the workspace (e.g., absolute path)")
+        str, Field(description="The absolute path to the workspace directory (e.g. '/home/user/myproject'). Used to locate the Engrams database for this workspace.")
     ],
     ctx: Context,
     output_path: Annotated[
@@ -1347,7 +1180,7 @@ async def tool_export_engrams_to_markdown(
 
 @engrams_mcp.tool(
     name="import_markdown_to_engrams",
-    description="Imports data from markdown files into Engrams.",
+    description="Imports Engrams data from a directory of markdown files previously created by export_engrams_to_markdown. Reads from input_path (default: ./engrams_export/). WARNING: may overwrite existing data if IDs conflict. Use for restoring backups or migrating between workspaces. Precondition: files must follow the export format. Returns: {imported_path, entity_counts, errors}.",
     annotations=ToolAnnotations(
         title="Import from Markdown",
         destructiveHint=True,
@@ -1355,7 +1188,7 @@ async def tool_export_engrams_to_markdown(
 )
 async def tool_import_markdown_to_engrams(
     workspace_id: Annotated[
-        str, Field(description="Identifier for the workspace (e.g., absolute path)")
+        str, Field(description="The absolute path to the workspace directory (e.g. '/home/user/myproject'). Used to locate the Engrams database for this workspace.")
     ],
     ctx: Context,
     input_path: Annotated[
@@ -1402,8 +1235,7 @@ async def tool_import_markdown_to_engrams(
 
 @engrams_mcp.tool(
     name="link_engrams_items",
-    description="Creates a relationship link between two Engrams items, "
-    "explicitly building out the project knowledge graph.",
+    description="Creates a directional relationship link between two Engrams items (e.g., a decision 'implements' a pattern, a progress entry 'tracks' a decision). Builds the project knowledge graph. Common relationship_types: 'implements', 'related_to', 'tracks', 'blocks', 'clarifies', 'depends_on', 'derived_from'. Item types: 'decision', 'system_pattern', 'progress_entry', 'custom_data'. Returns: {link_id, source_item_type, source_item_id, target_item_type, target_item_id, relationship_type}.",
     annotations=ToolAnnotations(
         title="Link Items",
         destructiveHint=False,
@@ -1411,13 +1243,13 @@ async def tool_import_markdown_to_engrams(
 )
 async def tool_link_engrams_items(
     workspace_id: Annotated[
-        str, Field(description="Identifier for the workspace (e.g., absolute path)")
+        str, Field(description="The absolute path to the workspace directory (e.g. '/home/user/myproject'). Used to locate the Engrams database for this workspace.")
     ],
-    source_item_type: Annotated[str, Field(description="Type of the source item")],
+    source_item_type: Annotated[str, Field(description="Item type for the source. Valid values: 'decision', 'system_pattern', 'progress_entry', 'custom_data'.")],
     source_item_id: Annotated[str, Field(description="ID or key of the source item")],
-    target_item_type: Annotated[str, Field(description="Type of the target item")],
+    target_item_type: Annotated[str, Field(description="Item type for the target. Valid values: 'decision', 'system_pattern', 'progress_entry', 'custom_data'.")],
     target_item_id: Annotated[str, Field(description="ID or key of the target item")],
-    relationship_type: Annotated[str, Field(description="Nature of the link")],
+    relationship_type: Annotated[str, Field(description="The type of relationship. Common values: 'implements', 'related_to', 'tracks', 'blocks', 'clarifies', 'depends_on', 'derived_from'.")],
     ctx: Context,
     description: Annotated[
         Optional[str], Field(description="Optional description for the link")
@@ -1470,7 +1302,7 @@ async def tool_link_engrams_items(
 
 @engrams_mcp.tool(
     name="get_linked_items",
-    description="Retrieves items linked to a specific item.",
+    description="Retrieves all knowledge graph links for a specific item (both outgoing and incoming). Use to explore relationships around a decision, pattern, progress entry, or custom data item. Optionally filter by relationship_type or linked_item_type. Returns: [{link_id, source_item_type, source_item_id, target_item_type, target_item_id, relationship_type, description, ...}]. For creating new links, use link_engrams_items.",
     annotations=ToolAnnotations(
         title="Get Linked Items",
         readOnlyHint=True,
@@ -1478,7 +1310,7 @@ async def tool_link_engrams_items(
 )
 async def tool_get_linked_items(
     workspace_id: Annotated[
-        str, Field(description="Identifier for the workspace (e.g., absolute path)")
+        str, Field(description="The absolute path to the workspace directory (e.g. '/home/user/myproject'). Used to locate the Engrams database for this workspace.")
     ],
     item_type: Annotated[
         str, Field(description="Type of the item to find links for (e.g., 'decision')")
@@ -1544,7 +1376,7 @@ async def tool_get_linked_items(
 
 @engrams_mcp.tool(
     name="search_custom_data_value_fts",
-    description="Full-text search across all custom data values, categories, and keys.",
+    description="Keyword search across ALL custom data entries (values, categories, and keys) using SQLite FTS. Optionally narrow results to a single category with category_filter. Use when you have specific keywords to find in custom data. For exact category+key lookup without search, use get_custom_data. For glossary-only search, use search_project_glossary_fts. For conceptual search across all entity types, use semantic_search_engrams. Returns: [{category, key, value, ...}] ranked by FTS relevance.",
     annotations=ToolAnnotations(
         title="Search Custom Data",
         readOnlyHint=True,
@@ -1552,7 +1384,7 @@ async def tool_get_linked_items(
 )
 async def tool_search_custom_data_value_fts(
     workspace_id: Annotated[
-        str, Field(description="Identifier for the workspace (e.g., absolute path)")
+        str, Field(description="The absolute path to the workspace directory (e.g. '/home/user/myproject'). Used to locate the Engrams database for this workspace.")
     ],
     query_term: Annotated[
         str,
@@ -1615,8 +1447,7 @@ async def tool_search_custom_data_value_fts(
 
 @engrams_mcp.tool(
     name="batch_log_items",
-    description="Logs multiple items of the same type "
-    "(e.g., decisions, progress entries) in a single call.",
+    description="Logs multiple items of the SAME type in a single call, reducing round-trips. Supported item_types: 'decision', 'progress_entry', 'system_pattern', 'custom_data'. Each item in the items list is a dict with the same fields as the corresponding single-item log tool (e.g., log_decision args). Use when you have 2+ items of the same type to log. Returns: {logged_count, item_type, results: [...]}.",
     annotations=ToolAnnotations(
         title="Batch Log Items",
         destructiveHint=False,
@@ -1624,13 +1455,12 @@ async def tool_search_custom_data_value_fts(
 )
 async def tool_batch_log_items(
     workspace_id: Annotated[
-        str, Field(description="Identifier for the workspace (e.g., absolute path)")
+        str, Field(description="The absolute path to the workspace directory (e.g. '/home/user/myproject'). Used to locate the Engrams database for this workspace.")
     ],
     item_type: Annotated[
         str,
         Field(
-            description="Type of items to log "
-            "(e.g., 'decision', 'progress_entry', 'system_pattern', 'custom_data')"
+            description="Type of items to batch-log. Valid values: 'decision', 'progress_entry', 'system_pattern', 'custom_data'."
         ),
     ],
     items: Annotated[
@@ -1680,7 +1510,7 @@ async def tool_batch_log_items(
 
 @engrams_mcp.tool(
     name="get_item_history",
-    description="Retrieves version history for Product or Active Context.",
+    description="Retrieves version history for Product Context or Active Context ONLY (not decisions, progress, or other entity types). Use to review past versions, audit when changes were made, or recover a previous state. Filter by timestamp range or specific version number. item_type must be 'product_context' or 'active_context'. Returns: [{version, content, updated_at, ...}] ordered most recent first.",
     annotations=ToolAnnotations(
         title="Get Item History",
         readOnlyHint=True,
@@ -1688,11 +1518,11 @@ async def tool_batch_log_items(
 )
 async def tool_get_item_history(
     workspace_id: Annotated[
-        str, Field(description="Identifier for the workspace (e.g., absolute path)")
+        str, Field(description="The absolute path to the workspace directory (e.g. '/home/user/myproject'). Used to locate the Engrams database for this workspace.")
     ],
     item_type: Annotated[
         str,
-        Field(description="Type of the item: 'product_context' or 'active_context'"),
+        Field(description="Type of context to retrieve history for. Valid values: 'product_context', 'active_context'."),
     ],
     ctx: Context,
     limit: Annotated[
@@ -1764,144 +1594,122 @@ async def tool_get_item_history(
 
 
 @engrams_mcp.tool(
-    name="delete_decision_by_id",
-    description="Deletes a decision by its ID.",
+    name="delete_item",
+    description="Permanently deletes an Engrams item. For decisions, patterns, and progress entries: provide item_type and item_id (numeric). For custom data: provide item_type='custom_data' with category and key. Destructive and irreversible. Returns: {status: 'deleted', item_type, ...}.",
     annotations=ToolAnnotations(
-        title="Delete Decision",
+        title="Delete Item",
         destructiveHint=True,
     ),
 )
-async def tool_delete_decision_by_id(
+async def tool_delete_item(
     workspace_id: Annotated[
-        str, Field(description="Identifier for the workspace (e.g., absolute path)")
+        str, Field(description="The absolute path to the workspace directory (e.g. '/home/user/myproject'). Used to locate the Engrams database for this workspace.")
     ],
-    decision_id: Annotated[
-        Union[int, str], Field(description="The ID of the decision to delete.")
+    item_type: Annotated[
+        str,
+        Field(description="Type of item to delete. Valid values: 'decision', 'system_pattern', 'progress_entry', 'custom_data'."),
     ],
-    ctx: Context,
+    item_id: Annotated[
+        Optional[Union[int, str]],
+        Field(description="Numeric ID of the item (required for decision, system_pattern, progress_entry)"),
+    ] = None,
+    category: Annotated[
+        Optional[str],
+        Field(description="Category of custom data (required when item_type='custom_data')"),
+    ] = None,
+    key: Annotated[
+        Optional[str],
+        Field(description="Key of custom data (required when item_type='custom_data')"),
+    ] = None,
+    ctx: Optional[Context] = None,
 ) -> Dict[str, Any]:
     """
-    Deletes a decision by its ID.
+    Permanently deletes an Engrams item by type and identifier.
 
     Args:
         workspace_id: The identifier for the workspace.
-        decision_id: The ID of the decision to delete.
+        item_type: Type of item ('decision', 'system_pattern', 'progress_entry', 'custom_data').
+        item_id: Numeric ID (required for ID-based types).
+        category: Category (required for custom_data).
+        key: Key (required for custom_data).
         ctx: The MCP context.
 
     Returns:
         A dictionary confirming the deletion.
     """
     try:
-        _ = ctx
-        pydantic_args = models.DeleteDecisionByIdArgs(
-            workspace_id=workspace_id, decision_id=int(decision_id)
-        )
-        return mcp_handlers.handle_delete_decision_by_id(pydantic_args)
-    except Exception as e:
-        log.error(
-            "Error processing args for delete_decision_by_id: %s. "
-            "Args: workspace_id=%s, decision_id=%s",
-            e,
-            workspace_id,
-            decision_id,
-        )
-        raise exceptions.ContextPortalError(
-            f"Server error processing delete_decision_by_id: {type(e).__name__}"
-        )
+        if ctx is not None:
+            _ = ctx
 
+        # Validate parameters based on item_type
+        if item_type == "decision":
+            if item_id is None:
+                raise exceptions.ToolArgumentError(
+                    "item_id is required when item_type='decision'"
+                )
+            pydantic_args = models.DeleteDecisionByIdArgs(
+                workspace_id=workspace_id, decision_id=int(item_id)
+            )
+            return mcp_handlers.handle_delete_decision_by_id(pydantic_args)
 
-@engrams_mcp.tool(
-    name="delete_system_pattern_by_id",
-    description="Deletes a system pattern by its ID.",
-    annotations=ToolAnnotations(
-        title="Delete System Pattern",
-        destructiveHint=True,
-    ),
-)
-async def tool_delete_system_pattern_by_id(
-    workspace_id: Annotated[
-        str, Field(description="Identifier for the workspace (e.g., absolute path)")
-    ],
-    pattern_id: Annotated[
-        Union[int, str], Field(description="The ID of the system pattern to delete.")
-    ],
-    ctx: Context,
-) -> Dict[str, Any]:
-    """
-    Deletes a system pattern by its ID.
+        elif item_type == "system_pattern":
+            if item_id is None:
+                raise exceptions.ToolArgumentError(
+                    "item_id is required when item_type='system_pattern'"
+                )
+            pydantic_args = models.DeleteSystemPatternByIdArgs(
+                workspace_id=workspace_id, pattern_id=int(item_id)
+            )
+            return mcp_handlers.handle_delete_system_pattern_by_id(pydantic_args)
 
-    Args:
-        workspace_id: The identifier for the workspace.
-        pattern_id: The ID of the system pattern to delete.
-        ctx: The MCP context.
+        elif item_type == "progress_entry":
+            if item_id is None:
+                raise exceptions.ToolArgumentError(
+                    "item_id is required when item_type='progress_entry'"
+                )
+            pydantic_args = models.DeleteProgressByIdArgs(
+                workspace_id=workspace_id, progress_id=int(item_id)
+            )
+            return mcp_handlers.handle_delete_progress_by_id(pydantic_args)
 
-    Returns:
-        A dictionary confirming the deletion.
-    """
-    try:
-        _ = ctx
-        pydantic_args = models.DeleteSystemPatternByIdArgs(
-            workspace_id=workspace_id, pattern_id=int(pattern_id)
-        )
-        return mcp_handlers.handle_delete_system_pattern_by_id(pydantic_args)
-    except Exception as e:
-        log.error(
-            "Error processing args for delete_system_pattern_by_id: %s. "
-            "Args: workspace_id=%s, pattern_id=%s",
-            e,
-            workspace_id,
-            pattern_id,
-        )
-        raise exceptions.ContextPortalError(
-            f"Server error processing delete_system_pattern_by_id: {type(e).__name__}"
-        )
+        elif item_type == "custom_data":
+            if category is None or key is None:
+                raise exceptions.ToolArgumentError(
+                    "Both category and key are required when item_type='custom_data'"
+                )
+            pydantic_args = models.DeleteCustomDataArgs(
+                workspace_id=workspace_id, category=category, key=key
+            )
+            return mcp_handlers.handle_delete_custom_data(pydantic_args)
 
+        else:
+            raise exceptions.ToolArgumentError(
+                f"Unknown item_type '{item_type}'. Valid types: decision, system_pattern, progress_entry, custom_data"
+            )
 
-@engrams_mcp.tool(
-    name="get_engrams_schema",
-    description="Retrieves the schema of available Engrams tools and their arguments.",
-    annotations=ToolAnnotations(
-        title="Get Schema",
-        readOnlyHint=True,
-    ),
-)
-async def tool_get_engrams_schema(
-    workspace_id: Annotated[
-        str, Field(description="Identifier for the workspace (e.g., absolute path)")
-    ],
-    ctx: Context,
-) -> Dict[str, Dict[str, Any]]:
-    """
-    Retrieves the Engrams tool schema.
-
-    Args:
-        workspace_id: The identifier for the workspace.
-        ctx: The MCP context.
-
-    Returns:
-        A dictionary containing the tool schema.
-    """
-    try:
-        _ = ctx
-        pydantic_args = models.GetEngramsSchemaArgs(workspace_id=workspace_id)
-        return mcp_handlers.handle_get_engrams_schema(pydantic_args)
     except exceptions.ContextPortalError as e:
-        log.error("Error in get_engrams_schema handler: %s", e)
+        log.error("Error in delete_item handler: %s", e)
         raise
     except Exception as e:
         log.error(
-            "Error processing args for get_engrams_schema: %s. Args: workspace_id=%s",
+            "Error processing args for delete_item: %s. "
+            "Args: workspace_id=%s, item_type='%s', item_id=%s, category='%s', key='%s'",
             e,
             workspace_id,
+            item_type,
+            item_id,
+            category,
+            key,
         )
         raise exceptions.ContextPortalError(
-            f"Server error processing get_engrams_schema: {type(e).__name__}"
+            f"Server error processing delete_item: {type(e).__name__}"
         )
+
 
 
 @engrams_mcp.tool(
     name="get_recent_activity_summary",
-    description="Provides a summary of recent Engrams activity (new/updated items).",
+    description="Returns a digest of recently created or updated items across all entity types, ideal for session start catch-up. Specify a time window via hours_ago (e.g., 24) OR since_timestamp (not both). Limits results per entity type via limit_per_type (default 5). Use at session start to understand what changed since last interaction. NOT for searching — use search tools for that. Returns: {decisions: [...], progress: [...], patterns: [...], custom_data: [...], summary_period, ...}.",
     annotations=ToolAnnotations(
         title="Get Activity Summary",
         readOnlyHint=True,
@@ -1909,7 +1717,7 @@ async def tool_get_engrams_schema(
 )
 async def tool_get_recent_activity_summary(
     workspace_id: Annotated[
-        str, Field(description="Identifier for the workspace (e.g., absolute path)")
+        str, Field(description="The absolute path to the workspace directory (e.g. '/home/user/myproject'). Used to locate the Engrams database for this workspace.")
     ],
     ctx: Context,
     hours_ago: Annotated[
@@ -1989,7 +1797,7 @@ async def tool_get_recent_activity_summary(
 
 @engrams_mcp.tool(
     name="semantic_search_engrams",
-    description="Performs a semantic search across Engrams data.",
+    description="Natural-language conceptual search across ALL Engrams entity types (decisions, patterns, progress, custom data) using vector embeddings. Use when you have a conceptual query that keyword search would miss (e.g., 'how do we handle authentication failures' instead of exact keywords). Requires sentence-transformers to be installed. Optionally filter by item types, tags, or custom data categories. For exact keyword matching on decisions, use search_decisions_fts. For exact keyword matching on custom data, use search_custom_data_value_fts. Returns: [{item_type, item_id, content_summary, similarity_score, ...}] ranked by semantic similarity.",
     annotations=ToolAnnotations(
         title="Semantic Search",
         readOnlyHint=True,
@@ -1997,7 +1805,7 @@ async def tool_get_recent_activity_summary(
 )
 async def tool_semantic_search_engrams(
     workspace_id: Annotated[
-        str, Field(description="Identifier for the workspace (e.g., absolute path)")
+        str, Field(description="The absolute path to the workspace directory (e.g. '/home/user/myproject'). Used to locate the Engrams database for this workspace.")
     ],
     query_text: Annotated[
         str,
@@ -2097,65 +1905,13 @@ async def tool_semantic_search_engrams(
         )
 
 
-@engrams_mcp.tool(
-    name="get_workspace_detection_info",
-    description="Provides detailed information about workspace detection "
-    "for debugging and verification.",
-    annotations=ToolAnnotations(
-        title="Get Workspace Info",
-        readOnlyHint=True,
-    ),
-)
-async def tool_get_workspace_detection_info(
-    ctx: Context,
-    start_path: Annotated[
-        Optional[str],
-        Field(
-            description="Starting directory for detection analysis (default: current directory)"
-        ),
-    ] = None,
-) -> Dict[str, Any]:
-    """
-    MCP tool for getting workspace detection information.
-    This tool helps debug workspace detection issues and verify the detection process.
-
-    Args:
-        ctx: The MCP context.
-        start_path: Optional starting path for detection.
-
-    Returns:
-        A dictionary containing detection info.
-    """
-    try:
-        _ = ctx
-        detector = WorkspaceDetector(start_path)
-        detection_info = detector.get_detection_info()
-
-        # Add additional runtime information
-        detection_info.update(
-            {
-                "server_version": ENGRAMS_VERSION,
-                "detection_timestamp": datetime.now().isoformat(),
-                "auto_detection_available": True,
-                "mcp_context_workspace": detector.detect_from_mcp_context(),
-            }
-        )
-
-        return detection_info
-    except Exception as e:  # pylint: disable=broad-exception-caught
-        log.error("Error in get_workspace_detection_info: %s", e)
-        raise exceptions.ContextPortalError(
-            f"Server error getting workspace detection info: {type(e).__name__} - {e}"
-        )
-
 
 # --- Governance Tools (Feature 1) ---
 
 
 @engrams_mcp.tool(
     name="create_scope",
-    description="Create a team or individual governance scope. "
-    "Requires scope_type ('team' or 'individual'), scope_name, and created_by.",
+    description="Creates a new governance scope (container for rules and items). Two types: 'team' (shared rules all members must follow) or 'individual' (personal scope under a team, set parent_scope_id). This is the first step in setting up governance — you must create scopes before logging rules. Returns: {id, scope_type, scope_name, created_by, parent_scope_id, created_at}. To list existing scopes, use get_scopes.",
     annotations=ToolAnnotations(
         title="Create Scope",
         destructiveHint=False,
@@ -2163,10 +1919,10 @@ async def tool_get_workspace_detection_info(
 )
 async def tool_create_scope(
     workspace_id: Annotated[
-        str, Field(description="Identifier for the workspace (e.g., absolute path)")
+        str, Field(description="The absolute path to the workspace directory (e.g. '/home/user/myproject'). Used to locate the Engrams database for this workspace.")
     ],
     scope_type: Annotated[
-        str, Field(description="Type of scope: 'team' or 'individual'")
+        str, Field(description="Type of governance scope. Valid values: 'team' (shared rules) or 'individual' (personal scope under a team, set parent_scope_id).")
     ],
     scope_name: Annotated[
         str, Field(min_length=1, description="Human-readable name for the scope")
@@ -2222,7 +1978,7 @@ async def tool_create_scope(
 
 @engrams_mcp.tool(
     name="get_scopes",
-    description="List all governance scopes in the workspace, optionally filtered by type.",
+    description="Lists all governance scopes in the workspace, optionally filtered by scope_type ('team' or 'individual'). Use to discover existing scopes before creating rules, checking compliance, or assigning items to scopes. Returns: [{id, scope_type, scope_name, parent_scope_id, created_by, ...}]. To create a new scope, use create_scope.",
     annotations=ToolAnnotations(
         title="Get Scopes",
         readOnlyHint=True,
@@ -2230,7 +1986,7 @@ async def tool_create_scope(
 )
 async def tool_get_scopes(
     workspace_id: Annotated[
-        str, Field(description="Identifier for the workspace (e.g., absolute path)")
+        str, Field(description="The absolute path to the workspace directory (e.g. '/home/user/myproject'). Used to locate the Engrams database for this workspace.")
     ],
     scope_type: Annotated[
         Optional[str],
@@ -2269,9 +2025,7 @@ async def tool_get_scopes(
 
 @engrams_mcp.tool(
     name="log_governance_rule",
-    description="Create a governance rule for a scope. "
-    "Rules define enforcement behavior (hard_block, soft_warn, allow_with_flag) "
-    "for specific entity types.",
+    description="Creates an enforcement rule within a governance scope. Rules define what is blocked or warned for specific entity types. rule_type controls enforcement: 'hard_block' (prevents action), 'soft_warn' (allows with warning), 'allow_with_flag' (allows but flags for review). rule_definition supports: blocked_tags, required_tags, blocked_keywords, required_keywords. Precondition: the scope_id must exist (use create_scope or get_scopes first). Returns: {id, scope_id, rule_type, entity_type, rule_definition, ...}. To check an item against rules, use check_compliance.",
     annotations=ToolAnnotations(
         title="Log Governance Rule",
         destructiveHint=False,
@@ -2279,7 +2033,7 @@ async def tool_get_scopes(
 )
 async def tool_log_governance_rule(
     workspace_id: Annotated[
-        str, Field(description="Identifier for the workspace (e.g., absolute path)")
+        str, Field(description="The absolute path to the workspace directory (e.g. '/home/user/myproject'). Used to locate the Engrams database for this workspace.")
     ],
     scope_id: Annotated[
         int,
@@ -2290,7 +2044,7 @@ async def tool_log_governance_rule(
     rule_type: Annotated[
         str,
         Field(
-            description="Enforcement type: 'hard_block', 'soft_warn', or 'allow_with_flag'"
+            description="Enforcement behavior. Valid values: 'hard_block' (prevents action), 'soft_warn' (allows with warning), 'allow_with_flag' (allows but flags for review)."
         ),
     ],
     entity_type: Annotated[
@@ -2357,7 +2111,7 @@ async def tool_log_governance_rule(
 
 @engrams_mcp.tool(
     name="get_governance_rules",
-    description="Retrieve active governance rules for a scope, optionally filtered by entity type.",
+    description="Lists the active governance rules for a specific scope, optionally filtered by entity_type (e.g., 'decision', 'system_pattern'). Use to review what rules exist BEFORE logging items, or to understand why a compliance check flagged something. Requires scope_id. To check a specific item against these rules, use check_compliance instead. Returns: [{id, scope_id, rule_type, entity_type, rule_definition, description, ...}].",
     annotations=ToolAnnotations(
         title="Get Governance Rules",
         readOnlyHint=True,
@@ -2365,7 +2119,7 @@ async def tool_log_governance_rule(
 )
 async def tool_get_governance_rules(
     workspace_id: Annotated[
-        str, Field(description="Identifier for the workspace (e.g., absolute path)")
+        str, Field(description="The absolute path to the workspace directory (e.g. '/home/user/myproject'). Used to locate the Engrams database for this workspace.")
     ],
     scope_id: Annotated[
         int, Field(description="Scope to get rules for (references context_scopes.id)")
@@ -2412,8 +2166,7 @@ async def tool_get_governance_rules(
 
 @engrams_mcp.tool(
     name="check_compliance",
-    description="Manually check an item against team governance rules. "
-    "Returns conflict details and enforcement actions.",
+    description="Evaluates a specific existing item (by item_type and item_id) against all applicable governance rules. Use AFTER an item is logged to verify compliance, or as a pre-check during the governance gate. Returns conflict details: {has_conflict: bool, conflicts: [...], action: 'block'|'warn'|'allow', warnings: [...]}. For listing rules without checking a specific item, use get_governance_rules. For checking rules BEFORE creating an item, simulate by reviewing get_governance_rules for the relevant scope.",
     annotations=ToolAnnotations(
         title="Check Compliance",
         readOnlyHint=True,
@@ -2421,7 +2174,7 @@ async def tool_get_governance_rules(
 )
 async def tool_check_compliance(
     workspace_id: Annotated[
-        str, Field(description="Identifier for the workspace (e.g., absolute path)")
+        str, Field(description="The absolute path to the workspace directory (e.g. '/home/user/myproject'). Used to locate the Engrams database for this workspace.")
     ],
     item_type: Annotated[
         str,
@@ -2465,7 +2218,7 @@ async def tool_check_compliance(
 
 @engrams_mcp.tool(
     name="get_scope_amendments",
-    description="List proposed scope amendments, optionally filtered by status or scope.",
+    description="Lists proposed changes (amendments) to governance scopes, optionally filtered by status ('proposed', 'under_review', 'accepted', 'rejected') or scope_id. Amendments are change requests that require review before taking effect. To accept or reject an amendment, use review_amendment. Returns: [{id, scope_id, status, proposed_changes, proposed_by, ...}].",
     annotations=ToolAnnotations(
         title="Get Scope Amendments",
         readOnlyHint=True,
@@ -2473,7 +2226,7 @@ async def tool_check_compliance(
 )
 async def tool_get_scope_amendments(
     workspace_id: Annotated[
-        str, Field(description="Identifier for the workspace (e.g., absolute path)")
+        str, Field(description="The absolute path to the workspace directory (e.g. '/home/user/myproject'). Used to locate the Engrams database for this workspace.")
     ],
     status: Annotated[
         Optional[str],
@@ -2519,7 +2272,7 @@ async def tool_get_scope_amendments(
 
 @engrams_mcp.tool(
     name="review_amendment",
-    description="Accept or reject a proposed scope amendment.",
+    description="Accepts or rejects a proposed governance scope amendment. Precondition: the amendment must exist and be in a reviewable state — use get_scope_amendments to find amendment IDs. status must be 'accepted' or 'rejected'. reviewed_by identifies the reviewer. Returns: {amendment_id, status, reviewed_by, reviewed_at}.",
     annotations=ToolAnnotations(
         title="Review Amendment",
         destructiveHint=True,
@@ -2527,7 +2280,7 @@ async def tool_get_scope_amendments(
 )
 async def tool_review_amendment(
     workspace_id: Annotated[
-        str, Field(description="Identifier for the workspace (e.g., absolute path)")
+        str, Field(description="The absolute path to the workspace directory (e.g. '/home/user/myproject'). Used to locate the Engrams database for this workspace.")
     ],
     amendment_id: Annotated[int, Field(description="ID of the amendment to review")],
     status: Annotated[
@@ -2582,8 +2335,7 @@ async def tool_review_amendment(
 
 @engrams_mcp.tool(
     name="get_effective_context",
-    description="Retrieve merged team + individual context for a developer. "
-    "Returns team-scope items first (taking precedence) followed by individual-scope items.",
+    description="Retrieves the merged governance view for a specific individual scope: team-level items (taking precedence) layered with individual-scope items. Use when a developer needs to see all applicable decisions, patterns, and rules combining their team's and their own scopes. Requires an individual scope_id (not team). For raw product/active context without governance, use get_product_context or get_active_context. Returns: {team_items: {...}, individual_items: {...}, merged_decisions: [...], merged_patterns: [...], ...}.",
     annotations=ToolAnnotations(
         title="Get Effective Context",
         readOnlyHint=True,
@@ -2591,7 +2343,7 @@ async def tool_review_amendment(
 )
 async def tool_get_effective_context(
     workspace_id: Annotated[
-        str, Field(description="Identifier for the workspace (e.g., absolute path)")
+        str, Field(description="The absolute path to the workspace directory (e.g. '/home/user/myproject'). Used to locate the Engrams database for this workspace.")
     ],
     scope_id: Annotated[
         int, Field(description="Individual scope ID to get effective context for")
@@ -2633,8 +2385,7 @@ async def tool_get_effective_context(
 
 @engrams_mcp.tool(
     name="bind_code_to_item",
-    description="Create a code binding between a Engrams entity and file patterns. "
-    "binding_type must be one of: 'implements', 'governed_by', 'tests', 'documents', 'configures'.",
+    description="Creates a code binding linking an Engrams entity (decision, pattern, etc.) to file paths via glob patterns (e.g., 'src/auth/**/*.py'). binding_type defines the relationship: 'implements' (code implements this decision), 'governed_by' (code is governed by this rule), 'tests' (test files for this item), 'documents' (docs for this item), 'configures' (config files for this item). Optional symbol_pattern narrows to specific functions/classes. For AI-suggested bindings based on entity content, use suggest_bindings first. Returns: {id, item_type, item_id, file_pattern, binding_type, ...}.",
     annotations=ToolAnnotations(
         title="Bind Code to Item",
         destructiveHint=False,
@@ -2642,7 +2393,7 @@ async def tool_get_effective_context(
 )
 async def tool_bind_code_to_item(
     workspace_id: Annotated[
-        str, Field(description="Identifier for the workspace (e.g., absolute path)")
+        str, Field(description="The absolute path to the workspace directory (e.g. '/home/user/myproject'). Used to locate the Engrams database for this workspace.")
     ],
     item_type: Annotated[
         str,
@@ -2658,7 +2409,7 @@ async def tool_bind_code_to_item(
     binding_type: Annotated[
         str,
         Field(
-            description="Nature of the binding: 'implements', 'governed_by', 'tests', 'documents', 'configures'"
+            description="Relationship between the entity and the code. Valid values: 'implements' (code implements this entity), 'governed_by' (code is governed by this rule), 'tests' (test files), 'documents' (doc files), 'configures' (config files)."
         ),
     ],
     symbol_pattern: Annotated[
@@ -2723,7 +2474,7 @@ async def tool_bind_code_to_item(
 
 @engrams_mcp.tool(
     name="get_bindings_for_item",
-    description="Get all code bindings for a Engrams entity.",
+    description="Lists all code bindings attached to a specific Engrams entity (by item_type and item_id). Use to see which files are associated with a decision or pattern. This is entity→files lookup. For the reverse direction (files→entities), use get_context_for_files. Returns: [{id, file_pattern, symbol_pattern, binding_type, confidence, last_verified, ...}].",
     annotations=ToolAnnotations(
         title="Get Bindings for Item",
         readOnlyHint=True,
@@ -2731,7 +2482,7 @@ async def tool_bind_code_to_item(
 )
 async def tool_get_bindings_for_item(
     workspace_id: Annotated[
-        str, Field(description="Identifier for the workspace (e.g., absolute path)")
+        str, Field(description="The absolute path to the workspace directory (e.g. '/home/user/myproject'). Used to locate the Engrams database for this workspace.")
     ],
     item_type: Annotated[
         str,
@@ -2775,8 +2526,7 @@ async def tool_get_bindings_for_item(
 
 @engrams_mcp.tool(
     name="get_context_for_files",
-    description="Given file paths being edited, return all Engrams entities bound to those paths. "
-    "This is the key retrieval tool for codebase-context bridging.",
+    description="Given file paths being edited, returns ALL Engrams entities (decisions, patterns, etc.) bound to those paths. This is the primary files→entities lookup for codebase-context bridging — call this when an agent opens or modifies files to discover relevant project knowledge. For the reverse direction (entity→files), use get_bindings_for_item. Optionally filter by binding_type. Returns: {entities_by_type: {decisions: [...], patterns: [...]}, total_count: int}.",
     annotations=ToolAnnotations(
         title="Get Context for Files",
         readOnlyHint=True,
@@ -2784,7 +2534,7 @@ async def tool_get_bindings_for_item(
 )
 async def tool_get_context_for_files(
     workspace_id: Annotated[
-        str, Field(description="Identifier for the workspace (e.g., absolute path)")
+        str, Field(description="The absolute path to the workspace directory (e.g. '/home/user/myproject'). Used to locate the Engrams database for this workspace.")
     ],
     file_paths: Annotated[
         List[str],
@@ -2834,8 +2584,7 @@ async def tool_get_context_for_files(
 
 @engrams_mcp.tool(
     name="verify_bindings",
-    description="Check which bindings still match actual files in the workspace. "
-    "Omit item_type and item_id to verify all bindings.",
+    description="Validates code bindings against the actual filesystem — checks which file_pattern globs still match real files. Omit item_type and item_id to verify ALL bindings workspace-wide. Updates last_verified timestamps. Use periodically or after major refactors. For finding bindings that are already known to be stale, use get_stale_bindings instead (cheaper, no filesystem scan). Returns: {verified_count, valid: [...], broken: [...], ...}.",
     annotations=ToolAnnotations(
         title="Verify Bindings",
         readOnlyHint=False,
@@ -2843,8 +2592,16 @@ async def tool_get_context_for_files(
 )
 async def tool_verify_bindings(
     workspace_id: Annotated[
-        str, Field(description="Identifier for the workspace (e.g., absolute path)")
+        str, Field(description="The absolute path to the workspace directory (e.g. '/home/user/myproject'). Used to locate the Engrams database for this workspace.")
     ],
+    mode: Annotated[
+        str,
+        Field(description="Check mode. 'full': scans filesystem to verify bindings match real files (slower). 'staleness': lists bindings not verified recently or that failed last check (faster, no filesystem scan)."),
+    ] = "full",
+    days_stale: Annotated[
+        int,
+        Field(description="Only used when mode='staleness': days since last verification to consider stale"),
+    ] = 30,
     item_type: Annotated[
         Optional[str],
         Field(
@@ -2859,10 +2616,12 @@ async def tool_verify_bindings(
     ] = None,
 ) -> Dict[str, Any]:
     """
-    Verifies which bindings still match actual files.
+    Verifies code binding health with two modes: full filesystem check or staleness check.
 
     Args:
         workspace_id: The identifier for the workspace.
+        mode: 'full' for filesystem verification or 'staleness' for timestamp-only check.
+        days_stale: Days threshold for staleness (only used when mode='staleness').
         item_type: Optional entity type filter.
         item_id: Optional entity ID filter.
 
@@ -2870,20 +2629,37 @@ async def tool_verify_bindings(
         A dictionary with verification results for each binding.
     """
     try:
-        args = binding_models.VerifyBindingsArgs(
-            workspace_id=workspace_id,
-            item_type=item_type,
-            item_id=item_id,
-        )
-        return mcp_handlers.handle_verify_bindings(args)
+        if mode == "full":
+            args = binding_models.VerifyBindingsArgs(
+                workspace_id=workspace_id,
+                item_type=item_type,
+                item_id=item_id,
+            )
+            return mcp_handlers.handle_verify_bindings(args)
+        elif mode == "staleness":
+            args = binding_models.GetStaleBindingsArgs(
+                workspace_id=workspace_id,
+                days_stale=days_stale,
+            )
+            stale_bindings = mcp_handlers.handle_get_stale_bindings(args)
+            return {
+                "status": "success",
+                "stale": stale_bindings,
+                "stale_count": len(stale_bindings),
+            }
+        else:
+            raise exceptions.ToolArgumentError(
+                f"Invalid mode '{mode}'. Must be 'full' or 'staleness'."
+            )
     except exceptions.ContextPortalError as e:
         log.error("Error in verify_bindings handler: %s", e)
         raise
     except Exception as e:
         log.error(
-            "Error processing args for verify_bindings: %s. Args: workspace_id=%s, item_type='%s', item_id=%s",
+            "Error processing args for verify_bindings: %s. Args: workspace_id=%s, mode='%s', item_type='%s', item_id=%s",
             e,
             workspace_id,
+            mode,
             item_type,
             item_id,
         )
@@ -2893,57 +2669,8 @@ async def tool_verify_bindings(
 
 
 @engrams_mcp.tool(
-    name="get_stale_bindings",
-    description="Return bindings that haven't been verified recently or failed verification.",
-    annotations=ToolAnnotations(
-        title="Get Stale Bindings",
-        readOnlyHint=True,
-    ),
-)
-async def tool_get_stale_bindings(
-    workspace_id: Annotated[
-        str, Field(description="Identifier for the workspace (e.g., absolute path)")
-    ],
-    days_stale: Annotated[
-        int,
-        Field(description="Number of days since last verification to consider stale"),
-    ] = 30,
-) -> List[Dict[str, Any]]:
-    """
-    Gets bindings not verified within the specified number of days.
-
-    Args:
-        workspace_id: The identifier for the workspace.
-        days_stale: Days threshold for staleness.
-
-    Returns:
-        A list of stale binding dictionaries.
-    """
-    try:
-        args = binding_models.GetStaleBindingsArgs(
-            workspace_id=workspace_id,
-            days_stale=days_stale,
-        )
-        return mcp_handlers.handle_get_stale_bindings(args)
-    except exceptions.ContextPortalError as e:
-        log.error("Error in get_stale_bindings handler: %s", e)
-        raise
-    except Exception as e:
-        log.error(
-            "Error processing args for get_stale_bindings: %s. Args: workspace_id=%s, days_stale=%s",
-            e,
-            workspace_id,
-            days_stale,
-        )
-        raise exceptions.ContextPortalError(
-            f"Server error processing get_stale_bindings: {type(e).__name__}"
-        )
-
-
-@engrams_mcp.tool(
     name="suggest_bindings",
-    description="Analyze a Engrams entity's text content and suggest likely file patterns "
-    "based on references to paths, modules, or technologies.",
+    description="Analyzes an Engrams entity's text content (summary, rationale, description) and suggests likely file glob patterns based on references to paths, modules, or technologies. Use before bind_code_to_item to get AI-assisted binding suggestions. Does NOT create bindings — review suggestions and call bind_code_to_item to create them. Returns: {suggestions: [{file_pattern, confidence, reason}, ...]}.",
     annotations=ToolAnnotations(
         title="Suggest Bindings",
         readOnlyHint=True,
@@ -2951,7 +2678,7 @@ async def tool_get_stale_bindings(
 )
 async def tool_suggest_bindings(
     workspace_id: Annotated[
-        str, Field(description="Identifier for the workspace (e.g., absolute path)")
+        str, Field(description="The absolute path to the workspace directory (e.g. '/home/user/myproject'). Used to locate the Engrams database for this workspace.")
     ],
     item_type: Annotated[
         str,
@@ -2995,7 +2722,7 @@ async def tool_suggest_bindings(
 
 @engrams_mcp.tool(
     name="unbind_code_from_item",
-    description="Remove a code binding by its ID.",
+    description="Permanently removes a code binding by its numeric binding_id. Destructive and irreversible. Precondition: obtain binding_id from get_bindings_for_item or verify_bindings. Returns: {status: 'deleted', binding_id: int}.",
     annotations=ToolAnnotations(
         title="Unbind Code from Item",
         destructiveHint=True,
@@ -3003,7 +2730,7 @@ async def tool_suggest_bindings(
 )
 async def tool_unbind_code_from_item(
     workspace_id: Annotated[
-        str, Field(description="Identifier for the workspace (e.g., absolute path)")
+        str, Field(description="The absolute path to the workspace directory (e.g. '/home/user/myproject'). Used to locate the Engrams database for this workspace.")
     ],
     binding_id: Annotated[int, Field(description="ID of the code binding to remove")],
 ) -> Dict[str, Any]:
@@ -3043,9 +2770,7 @@ async def tool_unbind_code_from_item(
 
 @engrams_mcp.tool(
     name="get_relevant_context",
-    description="Get budget-optimized relevant context for a task. "
-    "Scores all Engrams entities by relevance and returns the optimal subset "
-    "that fits within the specified token budget.",
+    description="Returns the OPTIMAL subset of ALL Engrams entities (decisions, patterns, progress, custom data) that fit within a token budget, scored by 7 relevance factors. This is the highest-level retrieval tool — use it when you need task-relevant context but don't know exactly which entities matter. Requires task_description and token_budget. Set dry_run=True to preview entity counts and token estimates without retrieving content (replaces estimate_context_size). For browsing/filtering specific entity types, use get_decisions, get_progress, etc. For keyword search, use the FTS tools. For a human-readable project briefing, use get_project_briefing instead. Returns: {selected_entities: [...], scores: [...], tokens_used, tokens_budget, excluded: [...]} OR when dry_run=True: {entity_counts, format_estimates, recommended_budgets}.",
     annotations=ToolAnnotations(
         title="Get Relevant Context",
         readOnlyHint=True,
@@ -3053,7 +2778,7 @@ async def tool_unbind_code_from_item(
 )
 async def tool_get_relevant_context(
     workspace_id: Annotated[
-        str, Field(description="Identifier for the workspace (e.g., absolute path)")
+        str, Field(description="The absolute path to the workspace directory (e.g. '/home/user/myproject'). Used to locate the Engrams database for this workspace.")
     ],
     task_description: Annotated[
         str,
@@ -3066,6 +2791,10 @@ async def tool_get_relevant_context(
         Union[int, str],
         Field(description="Maximum token budget for the returned context"),
     ],
+    dry_run: Annotated[
+        bool,
+        Field(description="If True, return entity counts and token estimates only (replaces estimate_context_size)"),
+    ] = False,
     profile: Annotated[
         Optional[str],
         Field(
@@ -3097,6 +2826,7 @@ async def tool_get_relevant_context(
         workspace_id: The identifier for the workspace.
         task_description: Description of the current task.
         token_budget: Maximum token budget.
+        dry_run: If True, return size estimates only without entity content.
         profile: Scoring profile name.
         file_paths: Optional files being edited.
         scope_id: Optional scope ID for filtering.
@@ -3104,18 +2834,29 @@ async def tool_get_relevant_context(
 
     Returns:
         A dictionary with selected entities, scores, token usage, and excluded items.
+        Or when dry_run=True: entity counts, token estimates, and recommended budgets.
     """
     try:
-        args = budget_models.GetRelevantContextArgs(
-            workspace_id=workspace_id,
-            task_description=task_description,
-            token_budget=int(token_budget),
-            profile=profile,
-            file_paths=file_paths,
-            scope_id=int(scope_id) if scope_id is not None else None,
-            format=format,
-        )
-        return mcp_handlers.handle_get_relevant_context(args)
+        if dry_run:
+            # Route to estimate handler when dry_run=True
+            args = budget_models.EstimateContextSizeArgs(
+                workspace_id=workspace_id,
+                task_description=task_description,
+                profile=profile,
+            )
+            return mcp_handlers.handle_estimate_context_size(args)
+        else:
+            # Normal retrieval path
+            args = budget_models.GetRelevantContextArgs(
+                workspace_id=workspace_id,
+                task_description=task_description,
+                token_budget=int(token_budget),
+                profile=profile,
+                file_paths=file_paths,
+                scope_id=int(scope_id) if scope_id is not None else None,
+                format=format,
+            )
+            return mcp_handlers.handle_get_relevant_context(args)
     except exceptions.ContextPortalError as e:
         log.error("Error in get_relevant_context handler: %s", e)
         raise
@@ -3127,182 +2868,85 @@ async def tool_get_relevant_context(
     except Exception as e:
         log.error(
             "Error processing args for get_relevant_context: %s. "
-            "Args: workspace_id=%s, task_description='%s', token_budget=%s",
+            "Args: workspace_id=%s, task_description='%s', token_budget=%s, dry_run=%s",
             e,
             workspace_id,
             task_description,
             token_budget,
+            dry_run,
         )
         raise exceptions.ContextPortalError(
             f"Server error processing get_relevant_context: {type(e).__name__}"
         )
 
 
-@engrams_mcp.tool(
-    name="estimate_context_size",
-    description="Preview how much context is available and what budget would be needed. "
-    "Returns entity counts, token estimates for each format, and recommended budget tiers.",
-    annotations=ToolAnnotations(
-        title="Estimate Context Size",
-        readOnlyHint=True,
-    ),
-)
-async def tool_estimate_context_size(
-    workspace_id: Annotated[
-        str, Field(description="Identifier for the workspace (e.g., absolute path)")
-    ],
-    task_description: Annotated[
-        str,
-        Field(
-            min_length=1,
-            description="Description of the current task for relevance scoring",
-        ),
-    ],
-    profile: Annotated[
-        Optional[str],
-        Field(
-            description="Scoring profile: 'task_focused', 'architectural_overview', "
-            "'onboarding', 'review', or 'custom'"
-        ),
-    ] = "task_focused",
-) -> Dict[str, Any]:
-    """
-    Preview how much context is available and what budget would be needed.
-
-    Args:
-        workspace_id: The identifier for the workspace.
-        task_description: Description of the current task.
-        profile: Scoring profile name.
-
-    Returns:
-        A dictionary with entity counts, token estimates, and recommended budgets.
-    """
-    try:
-        args = budget_models.EstimateContextSizeArgs(
-            workspace_id=workspace_id,
-            task_description=task_description,
-            profile=profile,
-        )
-        return mcp_handlers.handle_estimate_context_size(args)
-    except exceptions.ContextPortalError as e:
-        log.error("Error in estimate_context_size handler: %s", e)
-        raise
-    except Exception as e:
-        log.error(
-            "Error processing args for estimate_context_size: %s. "
-            "Args: workspace_id=%s, task_description='%s'",
-            e,
-            workspace_id,
-            task_description,
-        )
-        raise exceptions.ContextPortalError(
-            f"Server error processing estimate_context_size: {type(e).__name__}"
-        )
-
 
 @engrams_mcp.tool(
-    name="get_context_budget_config",
-    description="Retrieve current scoring weights configuration for the context budgeting system. "
-    "Returns either custom weights stored in Engrams or the default weights.",
+    name="manage_budget_config",
+    description="Reads or updates scoring weight configuration for get_relevant_context. Omit weights to read current config; provide a JSON string of weight overrides to update. Valid factors: semantic_similarity, recency, reference_frequency, lifecycle_status, scope_priority, code_proximity, explicit_priority. Each 0.0-1.0. Returns: {weights: {...}, source: 'custom'|'default'}.",
     annotations=ToolAnnotations(
-        title="Get Budget Config",
-        readOnlyHint=True,
+        title="Manage Budget Config",
+        destructiveHint=False,
     ),
 )
-async def tool_get_context_budget_config(
+async def tool_manage_budget_config(
     workspace_id: Annotated[
-        str, Field(description="Identifier for the workspace (e.g., absolute path)")
-    ],
-) -> Dict[str, Any]:
-    """
-    Retrieve current scoring weights configuration.
-
-    Args:
-        workspace_id: The identifier for the workspace.
-
-    Returns:
-        A dictionary with current weights and their source (custom or default).
-    """
-    try:
-        args = budget_models.GetContextBudgetConfigArgs(
-            workspace_id=workspace_id,
-        )
-        return mcp_handlers.handle_get_context_budget_config(args)
-    except exceptions.ContextPortalError as e:
-        log.error("Error in get_context_budget_config handler: %s", e)
-        raise
-    except Exception as e:
-        log.error(
-            "Error processing args for get_context_budget_config: %s. Args: workspace_id=%s",
-            e,
-            workspace_id,
-        )
-        raise exceptions.ContextPortalError(
-            f"Server error processing get_context_budget_config: {type(e).__name__}"
-        )
-
-
-@engrams_mcp.tool(
-    name="update_context_budget_config",
-    description="Update scoring weights for the context budgeting system. "
-    "Valid weight factors: semantic_similarity, recency, reference_frequency, "
-    "lifecycle_status, scope_priority, code_proximity, explicit_priority. "
-    "Each weight must be between 0.0 and 1.0.",
-    annotations=ToolAnnotations(
-        title="Update Budget Config",
-        destructiveHint=True,
-    ),
-)
-async def tool_update_context_budget_config(
-    workspace_id: Annotated[
-        str, Field(description="Identifier for the workspace (e.g., absolute path)")
+        str, Field(description="The absolute path to the workspace directory (e.g. '/home/user/myproject'). Used to locate the Engrams database for this workspace.")
     ],
     weights: Annotated[
-        str,
+        Optional[str],
         Field(
-            description="JSON string of weight overrides, e.g. "
-            '\'{"semantic_similarity": 0.4, "recency": 0.2}\'. '
-            "Each value must be between 0.0 and 1.0."
+            description="JSON string of weight overrides to update (e.g., '{\"semantic_similarity\": 0.4, \"recency\": 0.2}'). "
+            "Omit this parameter to read the current configuration instead. Each value must be between 0.0 and 1.0."
         ),
-    ],
+    ] = None,
 ) -> Dict[str, Any]:
     """
-    Update scoring weights configuration for context budgeting.
+    Reads or updates scoring weights configuration for context budgeting.
 
     Args:
         workspace_id: The identifier for the workspace.
-        weights: JSON string of weight overrides.
+        weights: Optional JSON string of weight overrides. Omit to read current config.
 
     Returns:
-        A dictionary with the updated (merged) weights.
+        A dictionary with current/updated weights and their source (custom or default).
     """
     import json as _json
 
     try:
-        parsed_weights = _json.loads(weights)
-        if not isinstance(parsed_weights, dict):
-            raise ValueError("weights must be a JSON object (dictionary)")
-        args = budget_models.UpdateContextBudgetConfigArgs(
-            workspace_id=workspace_id,
-            weights=parsed_weights,
-        )
-        return mcp_handlers.handle_update_context_budget_config(args)
+        if weights is None:
+            # Read mode
+            args = budget_models.GetContextBudgetConfigArgs(
+                workspace_id=workspace_id,
+            )
+            return mcp_handlers.handle_get_context_budget_config(args)
+        else:
+            # Update mode
+            parsed_weights = _json.loads(weights)
+            if not isinstance(parsed_weights, dict):
+                raise ValueError("weights must be a JSON object (dictionary)")
+            args = budget_models.UpdateContextBudgetConfigArgs(
+                workspace_id=workspace_id,
+                weights=parsed_weights,
+            )
+            return mcp_handlers.handle_update_context_budget_config(args)
     except exceptions.ContextPortalError as e:
-        log.error("Error in update_context_budget_config handler: %s", e)
+        log.error("Error in manage_budget_config handler: %s", e)
         raise
     except (ValueError, _json.JSONDecodeError) as e:
-        log.error("Validation error for update_context_budget_config: %s", e)
+        log.error("Validation error for manage_budget_config: %s", e)
         raise exceptions.ContextPortalError(
-            f"Invalid arguments for update_context_budget_config: {e}"
+            f"Invalid arguments for manage_budget_config: {e}"
         )
     except Exception as e:
         log.error(
-            "Error processing args for update_context_budget_config: %s. Args: workspace_id=%s",
+            "Error processing args for manage_budget_config: %s. Args: workspace_id=%s, weights_provided=%s",
             e,
             workspace_id,
+            weights is not None,
         )
         raise exceptions.ContextPortalError(
-            f"Server error processing update_context_budget_config: {type(e).__name__}"
+            f"Server error processing manage_budget_config: {type(e).__name__}"
         )
 
 
@@ -3311,13 +2955,7 @@ async def tool_update_context_budget_config(
 
 @engrams_mcp.tool(
     name="get_project_briefing",
-    description="Generate a structured project briefing at the specified level. "
-    "Levels: 'executive' (~500 tokens, project purpose & status), "
-    "'overview' (~2000 tokens, architecture, key decisions, active work), "
-    "'detailed' (~5000 tokens, full decision log, patterns, glossary), "
-    "'comprehensive' (~20000 tokens, everything including knowledge graph). "
-    "Integrates with governance scopes, code bindings, and context budgeting "
-    "when those features are available.",
+    description="Generates a structured, human-readable project briefing at a specified depth level. Levels: 'executive' (~500 tokens), 'overview' (~2000 tokens), 'detailed' (~5000 tokens), 'comprehensive' (~20000 tokens). Set staleness_only=True to check data freshness without generating content (replaces get_briefing_staleness). For onboarding new agents or catching up on project context. For raw programmatic context retrieval, use get_product_context or get_relevant_context instead. To drill into one section, pass a single section ID in the sections parameter. Returns: {level, sections: [{id, title, content}], staleness_info, coverage_stats} OR when staleness_only=True: {sections: [{id, last_updated, is_stale}], stale_count}.",
     annotations=ToolAnnotations(
         title="Get Project Briefing",
         readOnlyHint=True,
@@ -3325,14 +2963,22 @@ async def tool_update_context_budget_config(
 )
 async def tool_get_project_briefing(
     workspace_id: Annotated[
-        str, Field(description="Identifier for the workspace (e.g., absolute path)")
+        str, Field(description="The absolute path to the workspace directory (e.g. '/home/user/myproject'). Used to locate the Engrams database for this workspace.")
     ],
     level: Annotated[
         str,
         Field(
-            description="Briefing level: 'executive', 'overview', 'detailed', or 'comprehensive'"
+            description="Briefing depth level. Valid values: 'executive' (~500 tokens), 'overview' (~2000 tokens), 'detailed' (~5000 tokens), 'comprehensive' (~20000 tokens)."
         ),
     ],
+    staleness_only: Annotated[
+        bool,
+        Field(description="If True, return only staleness info without generating content (replaces get_briefing_staleness)"),
+    ] = False,
+    stale_threshold_days: Annotated[
+        Optional[Union[int, str]],
+        Field(description="Days after which data is considered stale (default: 30)"),
+    ] = 30,
     token_budget: Annotated[
         Optional[Union[int, str]],
         Field(
@@ -3359,22 +3005,36 @@ async def tool_get_project_briefing(
     Args:
         workspace_id: The identifier for the workspace.
         level: Briefing depth level.
+        staleness_only: If True, return only staleness info without content.
+        stale_threshold_days: Days after which data is considered stale.
         token_budget: Optional max token budget.
         sections: Optional list of section IDs to include.
         scope_id: Optional scope ID for governance filtering.
 
     Returns:
         A structured briefing with sections, staleness info, and coverage stats.
+        Or when staleness_only=True: per-section staleness info and stale count.
     """
     try:
-        args = onboarding_models.GetProjectBriefingArgs(
-            workspace_id=workspace_id,
-            level=level,
-            token_budget=int(token_budget) if token_budget is not None else None,
-            sections=sections,
-            scope_id=int(scope_id) if scope_id is not None else None,
-        )
-        return mcp_handlers.handle_get_project_briefing(args)
+        if staleness_only:
+            # Route to staleness handler when staleness_only=True
+            args = onboarding_models.GetBriefingStalenessArgs(
+                workspace_id=workspace_id,
+                stale_threshold_days=(
+                    int(stale_threshold_days) if stale_threshold_days is not None else 30
+                ),
+            )
+            return mcp_handlers.handle_get_briefing_staleness(args)
+        else:
+            # Normal briefing generation path
+            args = onboarding_models.GetProjectBriefingArgs(
+                workspace_id=workspace_id,
+                level=level,
+                token_budget=int(token_budget) if token_budget is not None else None,
+                sections=sections,
+                scope_id=int(scope_id) if scope_id is not None else None,
+            )
+            return mcp_handlers.handle_get_project_briefing(args)
     except exceptions.ContextPortalError as e:
         log.error("Error in get_project_briefing handler: %s", e)
         raise
@@ -3386,143 +3046,17 @@ async def tool_get_project_briefing(
     except Exception as e:
         log.error(
             "Error processing args for get_project_briefing: %s. "
-            "Args: workspace_id=%s, level='%s'",
+            "Args: workspace_id=%s, level='%s', staleness_only=%s",
             e,
             workspace_id,
             level,
+            staleness_only,
         )
         raise exceptions.ContextPortalError(
             f"Server error processing get_project_briefing: {type(e).__name__}"
         )
 
 
-@engrams_mcp.tool(
-    name="get_briefing_staleness",
-    description="Check how fresh the briefing data is per section. "
-    "Returns staleness info for every briefing section, indicating "
-    "which data sources haven't been updated recently.",
-    annotations=ToolAnnotations(
-        title="Get Briefing Staleness",
-        readOnlyHint=True,
-    ),
-)
-async def tool_get_briefing_staleness(
-    workspace_id: Annotated[
-        str, Field(description="Identifier for the workspace (e.g., absolute path)")
-    ],
-    stale_threshold_days: Annotated[
-        Optional[Union[int, str]],
-        Field(description="Days after which data is considered stale (default: 30)"),
-    ] = 30,
-) -> Dict[str, Any]:
-    """
-    Check how fresh the briefing data is per section.
-
-    Args:
-        workspace_id: The identifier for the workspace.
-        stale_threshold_days: Days after which data is considered stale.
-
-    Returns:
-        Per-section staleness info and a count of stale sections.
-    """
-    try:
-        args = onboarding_models.GetBriefingStalenessArgs(
-            workspace_id=workspace_id,
-            stale_threshold_days=(
-                int(stale_threshold_days) if stale_threshold_days is not None else 30
-            ),
-        )
-        return mcp_handlers.handle_get_briefing_staleness(args)
-    except exceptions.ContextPortalError as e:
-        log.error("Error in get_briefing_staleness handler: %s", e)
-        raise
-    except ValueError as e:
-        log.error("Validation error for get_briefing_staleness: %s", e)
-        raise exceptions.ContextPortalError(
-            f"Invalid arguments for get_briefing_staleness: {e}"
-        )
-    except Exception as e:
-        log.error(
-            "Error processing args for get_briefing_staleness: %s. "
-            "Args: workspace_id=%s",
-            e,
-            workspace_id,
-        )
-        raise exceptions.ContextPortalError(
-            f"Server error processing get_briefing_staleness: {type(e).__name__}"
-        )
-
-
-@engrams_mcp.tool(
-    name="get_section_detail",
-    description="Drill into a specific briefing section for more detail. "
-    "Useful after an overview briefing when the agent wants to go deeper on one area. "
-    "Valid section IDs: project_identity, current_status, architecture, key_decisions, "
-    "team_conventions, active_tasks, risks_and_concerns, all_decisions, patterns, "
-    "glossary, knowledge_graph.",
-    annotations=ToolAnnotations(
-        title="Get Section Detail",
-        readOnlyHint=True,
-    ),
-)
-async def tool_get_section_detail(
-    workspace_id: Annotated[
-        str, Field(description="Identifier for the workspace (e.g., absolute path)")
-    ],
-    section_id: Annotated[
-        str,
-        Field(
-            description="Section ID to drill into (e.g., 'key_decisions', 'patterns')"
-        ),
-    ],
-    token_budget: Annotated[
-        Optional[Union[int, str]],
-        Field(description="Optional max token budget for the section detail"),
-    ] = None,
-    scope_id: Annotated[
-        Optional[Union[int, str]],
-        Field(description="Optional governance scope ID for filtering"),
-    ] = None,
-) -> Dict[str, Any]:
-    """
-    Get detailed content for a specific briefing section.
-
-    Args:
-        workspace_id: The identifier for the workspace.
-        section_id: ID of the section to drill into.
-        token_budget: Optional max token budget.
-        scope_id: Optional scope ID for filtering.
-
-    Returns:
-        Detailed section content or an error.
-    """
-    try:
-        args = onboarding_models.GetSectionDetailArgs(
-            workspace_id=workspace_id,
-            section_id=section_id,
-            token_budget=int(token_budget) if token_budget is not None else None,
-            scope_id=int(scope_id) if scope_id is not None else None,
-        )
-        return mcp_handlers.handle_get_section_detail(args)
-    except exceptions.ContextPortalError as e:
-        log.error("Error in get_section_detail handler: %s", e)
-        raise
-    except ValueError as e:
-        log.error("Validation error for get_section_detail: %s", e)
-        raise exceptions.ContextPortalError(
-            f"Invalid arguments for get_section_detail: {e}"
-        )
-    except Exception as e:
-        log.error(
-            "Error processing args for get_section_detail: %s. "
-            "Args: workspace_id=%s, section_id='%s'",
-            e,
-            workspace_id,
-            section_id,
-        )
-        raise exceptions.ContextPortalError(
-            f"Server error processing get_section_detail: {type(e).__name__}"
-        )
 
 
 # Mount the FastMCP HTTP app to the FastAPI app at the /mcp path

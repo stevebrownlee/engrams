@@ -10,9 +10,8 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
   </p>
 
   <div class="callout tip">
-    <strong>Full schema via MCP:</strong>
-    Ask your AI: <em>"List all available Engrams tools and their parameters."</em>
-    It will call <code>get_engrams_schema()</code> and return live documentation.
+    <strong>Tool Discovery:</strong>
+    Engrams provides 42 optimized MCP tools. Your AI assistant discovers them automatically via the MCP protocol.
   </div>
 
   <h2>Core Context</h2>
@@ -34,7 +33,6 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
       <tr><td><code>log_decision</code></td><td>Record a new decision with summary, rationale, and tags</td></tr>
       <tr><td><code>get_decisions</code></td><td>List decisions with optional tag and limit filters</td></tr>
       <tr><td><code>search_decisions_fts</code></td><td>Full-text search across decision fields</td></tr>
-      <tr><td><code>delete_decision_by_id</code></td><td>Delete a decision by its ID</td></tr>
     </tbody>
   </table>
 
@@ -45,7 +43,6 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
       <tr><td><code>log_progress</code></td><td>Create a new progress/task entry</td></tr>
       <tr><td><code>get_progress</code></td><td>List progress entries with optional status and parent filters</td></tr>
       <tr><td><code>update_progress</code></td><td>Update the status or description of an existing entry</td></tr>
-      <tr><td><code>delete_progress_by_id</code></td><td>Delete a progress entry</td></tr>
     </tbody>
   </table>
 
@@ -55,7 +52,6 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
     <tbody>
       <tr><td><code>log_system_pattern</code></td><td>Document a new architectural or design pattern</td></tr>
       <tr><td><code>get_system_patterns</code></td><td>List patterns with optional tag filters</td></tr>
-      <tr><td><code>delete_system_pattern_by_id</code></td><td>Delete a pattern by ID</td></tr>
     </tbody>
   </table>
 
@@ -65,9 +61,7 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
     <tbody>
       <tr><td><code>log_custom_data</code></td><td>Store arbitrary category/key/value data</td></tr>
       <tr><td><code>get_custom_data</code></td><td>Retrieve custom data by category and key</td></tr>
-      <tr><td><code>delete_custom_data</code></td><td>Delete a custom data entry</td></tr>
       <tr><td><code>search_custom_data_value_fts</code></td><td>Full-text search across custom data values</td></tr>
-      <tr><td><code>search_project_glossary_fts</code></td><td>FTS scoped to the ProjectGlossary category</td></tr>
     </tbody>
   </table>
 
@@ -102,8 +96,7 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
       <tr><td><code>bind_code_to_item</code></td><td>Bind a glob path pattern to a decision or pattern</td></tr>
       <tr><td><code>get_bindings_for_item</code></td><td>List all bindings for an item</td></tr>
       <tr><td><code>get_context_for_files</code></td><td>Retrieve all context bound to given file paths</td></tr>
-      <tr><td><code>verify_bindings</code></td><td>Check all bindings for path validity</td></tr>
-      <tr><td><code>get_stale_bindings</code></td><td>List bindings pointing to non-existent paths</td></tr>
+      <tr><td><code>verify_bindings</code></td><td>Check binding health: filesystem scan (mode='full') or staleness check (mode='staleness')</td></tr>
       <tr><td><code>suggest_bindings</code></td><td>Auto-propose bindings based on pattern analysis</td></tr>
       <tr><td><code>unbind_code_from_item</code></td><td>Remove a binding by ID</td></tr>
     </tbody>
@@ -113,10 +106,8 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
   <table>
     <thead><tr><th>Tool</th><th>Description</th></tr></thead>
     <tbody>
-      <tr><td><code>get_relevant_context</code></td><td>Retrieve scored, budget-aware context for a query</td></tr>
-      <tr><td><code>estimate_context_size</code></td><td>Estimate token usage for a retrieval</td></tr>
-      <tr><td><code>get_context_budget_config</code></td><td>View current budget settings</td></tr>
-      <tr><td><code>update_context_budget_config</code></td><td>Adjust token budget and scoring weights</td></tr>
+      <tr><td><code>get_relevant_context</code></td><td>Retrieve scored, budget-aware context for a query (set <code>dry_run=True</code> to preview token estimates)</td></tr>
+      <tr><td><code>manage_budget_config</code></td><td>View or update scoring weights (omit weights to read, provide to update)</td></tr>
     </tbody>
   </table>
 
@@ -124,9 +115,7 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
   <table>
     <thead><tr><th>Tool</th><th>Description</th></tr></thead>
     <tbody>
-      <tr><td><code>get_project_briefing</code></td><td>Generate a structured project briefing</td></tr>
-      <tr><td><code>get_briefing_staleness</code></td><td>Check which briefing sections are out of date</td></tr>
-      <tr><td><code>get_section_detail</code></td><td>Drill into a specific briefing section</td></tr>
+      <tr><td><code>get_project_briefing</code></td><td>Generate a project briefing (set <code>staleness_only=True</code> to check freshness, pass a single section in <code>sections</code> to drill down)</td></tr>
     </tbody>
   </table>
 
@@ -135,11 +124,10 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
     <thead><tr><th>Tool</th><th>Description</th></tr></thead>
     <tbody>
       <tr><td><code>get_recent_activity_summary</code></td><td>Summary of recent database activity</td></tr>
-      <tr><td><code>get_engrams_schema</code></td><td>Return live tool schema documentation</td></tr>
       <tr><td><code>export_engrams_to_markdown</code></td><td>Export all knowledge to markdown files</td></tr>
       <tr><td><code>import_markdown_to_engrams</code></td><td>Import knowledge from a markdown export directory</td></tr>
       <tr><td><code>batch_log_items</code></td><td>Log multiple items of the same type in one call</td></tr>
-      <tr><td><code>get_workspace_detection_info</code></td><td>Return auto-detected workspace path and details</td></tr>
+      <tr><td><code>delete_item</code></td><td>Permanently delete any Engrams item by type and ID (or category+key for custom data)</td></tr>
     </tbody>
   </table>
 </DocsLayout>

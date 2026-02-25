@@ -130,7 +130,7 @@ AI:  Bindings created:
   <h2>Binding management</h2>
   <p>
     Bindings can become stale when files are moved or deleted.
-    Use <code>verify_bindings</code> and <code>get_stale_bindings</code> to audit, and
+    Use <code>verify_bindings</code> (with <code>mode='full'</code> for filesystem scan or <code>mode='staleness'</code> for timestamp check) to audit, and
     <code>suggest_bindings</code> to automatically propose new bindings based on pattern analysis.
   </p>
 
@@ -139,8 +139,7 @@ AI:  Bindings created:
     <li><code>bind_code_to_item</code> — create a binding (supports glob patterns)</li>
     <li><code>get_bindings_for_item</code> — list all bindings for a decision or pattern</li>
     <li><code>get_context_for_files</code> — retrieve all context bound to a set of files</li>
-    <li><code>verify_bindings</code> — check whether bound paths still exist</li>
-    <li><code>get_stale_bindings</code> — list bindings with non-existent paths</li>
+    <li><code>verify_bindings</code> — check binding health: mode='full' for filesystem scan, mode='staleness' for timestamp-based check</li>
     <li><code>suggest_bindings</code> — propose bindings based on analysis</li>
     <li><code>unbind_code_from_item</code> — remove a binding</li>
   </ul>
