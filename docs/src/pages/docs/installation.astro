@@ -1,28 +1,36 @@
 ---
-import DocsLayout from '../../layouts/DocsLayout.astro';
+import DocsLayout from "../../layouts/DocsLayout.astro";
 ---
 
-<DocsLayout title="Installation" description="Install Engrams and connect it to your AI coding tool.">
+<DocsLayout
+  title="Installation"
+  description="Install Engrams and connect it to your AI coding tool."
+>
   <h1>Installation</h1>
   <p class="lead">
     Engrams runs as an MCP server and requires <strong>Python 3.10+</strong>.
-    The recommended way is <code>uvx</code>, which manages the Python environment automatically.
+    The recommended way is <code>uvx</code>, which manages the Python
+    environment automatically.
   </p>
 
   <h2>Prerequisites</h2>
   <ul>
-    <li><strong>Python 3.10+</strong> — <a href="https://www.python.org/downloads/" target="_blank" rel="noopener">Download</a></li>
     <li>
-      <strong>uv</strong> (recommended) — fast Python package manager.
-      Install with:
+      <strong>Python 3.10+</strong> — I recommend using <a
+        href="https://github.com/pyenv/pyenv?tab=readme-ov-file#table-of-contents"
+        target="_blank"
+        rel="noopener">pyenv</a>
+    </li>
+    <li>
+      <strong>uv</strong> (recommended) — fast Python package manager. Install with:
       <pre><code>curl -LsSf https://astral.sh/uv/install.sh | sh</code></pre>
     </li>
   </ul>
 
-  <h2>Option 1 — uvx (recommended)</h2>
+  <h2>Step 1 — Configure Editor</h2>
   <p>
-    <code>uvx</code> runs Engrams directly from PyPI without a manual install step.
-    Add the following to your MCP client's configuration file:
+    <code>uvx</code> runs Engrams directly from PyPI. Add the following to your MCP
+    client's configuration file:
   </p>
 
   <pre><code>{`{
@@ -39,67 +47,50 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
   }
 }`}</code></pre>
 
-  <div class="callout tip">
-    <strong>Workspace detection is automatic.</strong>
-    You do <em>not</em> need to pass <code>--workspace_id</code>. Engrams detects the active project
-    directory per-call using common project indicators (<code>.git</code>, <code>package.json</code>, etc.).
-  </div>
-
-  <h2>Option 2 — pip install</h2>
-  <pre><code>pip install engrams-mcp</code></pre>
-  <p>Then reference the installed command in your MCP config:</p>
-  <pre><code>{`{
-  "mcpServers": {
-    "engrams": {
-      "command": "engrams-mcp",
-      "args": ["--mode", "stdio"]
-    }
-  }
-}`}</code></pre>
-
-  <h2>Option 3 — Developer install (from source)</h2>
-  <pre><code>{`git clone https://github.com/stevebrownlee/engrams.git
-cd engrams-mcp
-
-# Create virtual environment
-uv venv
-source .venv/bin/activate   # macOS/Linux
-# .venv\\Scripts\\activate   # Windows
-
-# Install dependencies
-uv pip install -r requirements.txt`}</code></pre>
-
-  <p>Then in your MCP config, point to the local checkout:</p>
-  <pre><code>{`{
-  "mcpServers": {
-    "engrams": {
-      "command": "uv",
-      "args": [
-        "--directory", "/path/to/engrams-mcp",
-        "run", "engrams-mcp",
-        "--mode", "stdio"
-      ]
-    }
-  }
-}`}</code></pre>
-
   <h2>Where is the config file?</h2>
   <table>
     <thead><tr><th>Tool</th><th>Config file location</th></tr></thead>
     <tbody>
-      <tr><td>Roo Code</td><td><code>~/.roo/mcp.json</code> or workspace <code>.roo/mcp.json</code></td></tr>
+      <tr
+        ><td>Roo Code</td><td
+          ><code>~/.roo/mcp.json</code> or workspace <code>.roo/mcp.json</code
+          ></td
+        ></tr
+      >
       <tr><td>Cline</td><td>VS Code settings → Cline → MCP Servers</td></tr>
       <tr><td>Cursor</td><td><code>~/.cursor/mcp.json</code></td></tr>
-      <tr><td>Windsurf</td><td><code>~/.codeium/windsurf/mcp_config.json</code></td></tr>
+      <tr
+        ><td>Windsurf</td><td
+          ><code>~/.codeium/windsurf/mcp_config.json</code></td
+        ></tr
+      >
       <tr><td>Claude Code</td><td><code>~/.claude/mcp.json</code></td></tr>
-      <tr><td>Claude Desktop</td><td><code>~/Library/Application Support/Claude/claude_desktop_config.json</code></td></tr>
+      <tr
+        ><td>Claude Desktop</td><td
+          ><code
+            >~/Library/Application Support/Claude/claude_desktop_config.json</code
+          ></td
+        ></tr
+      >
     </tbody>
   </table>
 
+  <div class="callout tip">
+    <strong>Workspace detection is automatic.</strong>
+    You do <em>not</em> need to pass <code>--workspace_id</code>. Engrams
+    detects the active project directory per-call using common project
+    indicators (<code>.git</code>, <code>package.json</code>, etc.).
+  </div>
+
+  <h2>Step 2 — pip install</h2>
+  <p>In your poejct root directory, run this command:</p>
+  <pre><code>pip install engrams-mcp</code></pre>
+
   <h2>Install the AI strategy</h2>
   <p>
-    After the MCP server is configured, run the <code>engrams init</code> command from your project
-    root to scaffold the correct custom-instructions file for your AI tool:
+    After the MCP server is configured, run the <code>engrams init</code> command
+    from your project root to scaffold the correct custom-instructions file for your
+    AI tool:
   </p>
   <pre><code>{`# See all supported tools
 engrams init --list
@@ -114,8 +105,9 @@ engrams init --tool generic      # → engrams_strategy.md`}</code></pre>
 
   <div class="callout note">
     <strong>What does this do?</strong>
-    The strategy file tells your AI how and when to use Engrams tools — when to log decisions,
-    how to retrieve context, and how to format responses. Without it, the AI won't know Engrams exists.
+    The strategy file tells your AI how and when to use Engrams tools — when to log
+    decisions, how to retrieve context, and how to format responses. Without it, the
+    AI won't know Engrams exists.
   </div>
 
   <h2>Verify the installation</h2>
@@ -128,5 +120,10 @@ engrams init --tool generic      # → engrams_strategy.md`}</code></pre>
 </DocsLayout>
 
 <style>
-  .lead { font-size: 1.125rem; color: var(--color-text-muted); line-height: 1.75; margin-bottom: 1.75rem; }
+  .lead {
+    font-size: 1.125rem;
+    color: var(--color-text-muted);
+    line-height: 1.75;
+    margin-bottom: 1.75rem;
+  }
 </style>
