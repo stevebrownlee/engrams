@@ -15,33 +15,13 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
     <div class="step">
       <div class="step-num">1</div>
       <div class="step-body">
-        <h3>Configure the MCP server</h3>
-        <p>Add Engrams to your MCP client config (see <a href="/docs/installation">Installation</a>) and restart your IDE.</p>
-      </div>
-    </div>
-
-    <!-- Step 2 -->
-    <div class="step">
-      <div class="step-num">2</div>
-      <div class="step-body">
-        <h3>Scaffold the strategy file</h3>
-        <p>Run from your <strong>project root</strong>:</p>
-        <pre><code>engrams init --tool roo   # or cline, cursor, windsurf, claude-code…</code></pre>
-        <p>This creates the custom-instructions file that tells your AI how to use Engrams.</p>
-      </div>
-    </div>
-
-    <!-- Step 3 -->
-    <div class="step">
-      <div class="step-num">3</div>
-      <div class="step-body">
         <h3>Bootstrap from existing docs (optional)</h3>
         <p>
           If you already have a <code>README.md</code>, architecture doc, or similar, ask your AI
-          to import it into Engrams:
+          to read and store the key information in Engrams:
         </p>
-        <pre><code>{`You: Initialize the Engrams database by reading README.md
-     and docs/ARCHITECTURE.md
+        <pre><code>{`You: Read my README.md and docs/ARCHITECTURE.md and store
+     the key decisions, patterns, and project context in Engrams.
 
 AI:  [ENGRAMS_ACTIVE] Engrams initialized.
      Architectural patterns stored.
@@ -51,9 +31,9 @@ AI:  [ENGRAMS_ACTIVE] Engrams initialized.
       </div>
     </div>
 
-    <!-- Step 4 -->
+    <!-- Step 2 -->
     <div class="step">
-      <div class="step-num">4</div>
+      <div class="step-num">2</div>
       <div class="step-body">
         <h3>Log your first decisions</h3>
         <p>Start a conversation and tell your AI about important choices:</p>
@@ -67,9 +47,9 @@ AI:  Decision logged to Engrams:
       </div>
     </div>
 
-    <!-- Step 5 -->
+    <!-- Step 3 -->
     <div class="step">
-      <div class="step-num">5</div>
+      <div class="step-num">3</div>
       <div class="step-body">
         <h3>Watch context surface automatically</h3>
         <p>Now ask your AI to implement something:</p>

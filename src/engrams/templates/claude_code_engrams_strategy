@@ -170,6 +170,12 @@ engrams_memory_strategy:
 
   general:
     status_prefix: "Begin EVERY response with either '[ENGRAMS_ACTIVE]' or '[ENGRAMS_INACTIVE]'."
+    database_initialization: |
+      NEVER run `alembic`, `alembic upgrade head`, or any manual database migration commands.
+      The Engrams MCP server creates and migrates the SQLite database automatically on first tool call.
+      If the database does not exist yet, simply call any Engrams MCP tool (e.g., `get_product_context`)
+      and the server will create it. If you see `alembic.ini` or an `alembic/` directory inside the
+      workspace's `engrams/` folder, those are internal server files — do not interact with them directly.
     proactive_logging_cue: "Proactively log decisions, progress, and context changes to Engrams throughout the conversation. Do NOT wait for the user to ask — if a decision was made, a task completed, or context changed, log it automatically as part of the workflow."
     proactive_error_handling: "When encountering errors (e.g., tool failures, unexpected output), proactively log the error details using `log_custom_data` (category: 'ErrorLogs', key: 'timestamp_error_summary') and consider updating active context with open issues if it's a persistent problem. Prioritize using Engrams's item history or recent activity summary to diagnose issues if they relate to past context changes."
     semantic_search_emphasis: "For complex or nuanced queries, especially when direct keyword search might be insufficient, prioritize using semantic search to leverage conceptual understanding and retrieve more relevant context. Explain to the user why semantic search is being used."

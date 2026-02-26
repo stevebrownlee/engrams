@@ -82,8 +82,8 @@ import DocsLayout from "../../layouts/DocsLayout.astro";
     indicators (<code>.git</code>, <code>package.json</code>, etc.).
   </div>
 
-  <h2>Step 2 — pip install</h2>
-  <p>In your poejct root directory, run this command:</p>
+  <h2>Step 2 — Install the CLI</h2>
+  <p>In your project root directory, run this command to install the CLI tools:</p>
   <pre><code>pip install engrams-mcp</code></pre>
 
   <h2>Install the AI strategy</h2>
@@ -114,6 +114,13 @@ engrams init --tool generic      # → engrams_strategy.md`}</code></pre>
   <p>In a new chat, ask your AI:</p>
   <pre><code>What is the Engrams schema? List all available MCP tools.</code></pre>
   <p>If Engrams is connected, the AI will respond with a full list of tools.</p>
+
+  <div class="callout warning">
+    <strong>No manual database setup required.</strong>
+    The SQLite database is created automatically the first time any Engrams MCP
+    tool is called. Do <em>not</em> run <code>alembic</code>, migration scripts,
+    or any other database commands manually — Engrams handles this internally.
+  </div>
 
   <hr />
   <p>Next: <a href="/docs/quick-start">Quick Start →</a></p>
