@@ -56,25 +56,17 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
         <div class="blob blob-3"></div>
       </div>
       <div class="hero-content">
-        <div class="hero-badge">Open Source · v1.1.0</div>
         <h1 class="hero-title">
-          AI memory that<br />
-          <span class="gradient-text">actually works.</span>
+          AI context memory that<br />
+          <span class="gradient-text">actually works</span>
         </h1>
-        <p class="hero-subtitle">
-          AI coding assistants forget everything between conversations, and
-          don't enable teams to share decisions and strategies.
-        </p>
-        <p class="hero-subtitle">
-          Engrams fixes that.
-        </p>
       </div>
     </section>
 
     <!-- ── Feature Cards ── -->
     <section class="features">
       <div class="features-inner">
-        <h2 class="section-heading">What Engrams remembers for you</h2>
+        <h2 class="section-heading">What Engrams provides...</h2>
 
         <div class="feature-grid">
           {
@@ -82,32 +74,32 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
               {
                 icon: "",
                 title: "Structured Memory",
-                desc: "Save the important stuff — architectural decisions, design patterns, task progress, and project notes — all organised and easy to find.",
+                desc: "Save architectural decisions, design patterns, task progress, and project notes.",
               },
               {
                 icon: "",
                 title: "Smart Search",
-                desc: 'Search by meaning, not just exact words. Ask about "caching strategy" and find decisions about Redis, TTL, and query performance — because Engrams understands what you mean.',
+                desc: 'Search by meaning, not just exact words because Engrams understands what you mean.',
               },
               {
                 icon: "",
                 title: "Team Governance",
-                desc: "Set team-wide rules — like \"always use PostgreSQL\" — that every contributor's AI respects. Individual preferences stay flexible within the team's boundaries.",
+                desc: "Set team-wide rules — like \"always use PostgreSQL\" — that every contributor's LLM respects.",
               },
               {
                 icon: "",
                 title: "Codebase Bindings",
-                desc: "Link decisions to specific files and folders. When your AI opens a file, the relevant context shows up automatically — no prompting needed.",
+                desc: "Link decisions to specific files and folders. Relevant context shows up automatically when editing.",
               },
               {
                 icon: "",
                 title: "Context Budgeting",
-                desc: "As your project grows, Engrams doesn't dump everything into the prompt. It picks only the most relevant items so you keep costs down and responses fast.",
+                desc: "As your project grows, Engrams retrieves only relevant items so you keep costs down.",
               },
               {
                 icon: "",
                 title: "Knowledge Dashboard",
-                desc: "See all your project knowledge in a visual, browser-based dashboard. Explore how decisions, patterns, and tasks connect to each other.",
+                desc: "See all your project knowledge in a visual, browser-based dashboard.",
               },
             ].map((f) => (
               <div class="feature-card">
@@ -147,6 +139,7 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
   <!-- ── Supported Tools ── -->
   <section class="tools-section">
     <div class="tools-inner">
+      <div class="hero-badge" style="margin: 0 auto;">Open Source · v1.1.0</div>
       <h2 class="section-heading">Works with your favourite AI tools</h2>
       <div class="tool-chips">
         {
@@ -245,7 +238,7 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
   .hero {
     position: relative;
     overflow: hidden;
-    padding: calc(var(--header-height) + 4rem) 1.5rem 1rem;
+    padding: calc(var(--header-height) + 2rem) 1.5rem 1rem;
     display: flex;
     justify-content: center;
     background: linear-gradient(160deg, #f0f8ff 0%, #faf8fd 50%, #fff5f8 100%);
@@ -431,7 +424,7 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
 
   /* ── Features ── */
   .features {
-    padding: 1rem 1.5rem 5rem 1.5rem;
+    padding: 0.5rem 1.5rem 3rem 1.5rem;
     background: #fff;
   }
   .features-inner {

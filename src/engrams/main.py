@@ -156,7 +156,7 @@ app = FastAPI(title="Engrams MCP Server Wrapper", version=ENGRAMS_VERSION)
 
 @engrams_mcp.tool(
     name="get_product_context",
-    description="Retrieves the stored high-level product context (project goals, features, architecture) as a single JSON object. Use this for the persistent 'what is this project' definition — NOT for current work focus (use get_active_context), NOT for governance-scoped merged view (use get_effective_context), NOT for token-budgeted task context (use get_relevant_context), and NOT for structured onboarding briefings (use get_project_briefing). Returns: {content: {...}, version: int, updated_at: string}.",
+    description="Retrieves the stored high-level product context (project goals, features, architecture) as a single JSON object. Use this for the persistent 'what is this project' definition — NOT for current work focus (use get_active_context), NOT for governance-scoped merged view (use get_effective_context), NOT for token-budgeted task context (use get_relevant_context), and NOT for structured onboarding briefings (use get_project_briefing). Returns: {content: {...}, version: int, updated_at: string}. Workflow (read-before-write): Step 1 of 2 when patching — call this first to retrieve current content, then call update_product_context(patch_content={...}) with only the keys to change. Skip this step only when doing a full content replacement via update_product_context(content={...}).",
     annotations=ToolAnnotations(
         title="Get Product Context",
         readOnlyHint=True,
@@ -196,7 +196,7 @@ async def tool_get_product_context(
 
 @engrams_mcp.tool(
     name="update_product_context",
-    description="Overwrites or patches the persistent product context (project goals, features, architecture). Provide content for full replacement OR patch_content for partial merge (set a key to '__DELETE__' to remove it). Only one of content/patch_content may be provided. Precondition: use get_product_context first if you need to preserve existing keys. Returns: the updated context object with new version number.",
+    description="Overwrites or patches the persistent product context (project goals, features, architecture). Provide content for full replacement OR patch_content for partial merge (set a key to '__DELETE__' to remove it). Only one of content/patch_content may be provided. Precondition: use get_product_context first if you need to preserve existing keys. Returns: the updated context object with new version number. Workflow (read-before-write): Step 2 of 2 when patching — must call get_product_context first to get current content, then supply patch_content with only the keys to add/change/delete. When doing a full replacement, supply content directly without reading first. Common mistake: providing both content and patch_content in the same call — this raises a validation error.",
     annotations=ToolAnnotations(
         title="Update Product Context",
         destructiveHint=True,
@@ -269,7 +269,7 @@ async def tool_update_product_context(
 
 @engrams_mcp.tool(
     name="get_active_context",
-    description="Retrieves the session-level active context: current work focus, open issues, and recent changes. This is the 'what am I working on right now' state — mutable and frequently updated. For the persistent project definition, use get_product_context instead. For governance-scoped merged view, use get_effective_context. Returns: {content: {...}, version: int, updated_at: string}.",
+    description="Retrieves the session-level active context: current work focus, open issues, and recent changes. This is the 'what am I working on right now' state — mutable and frequently updated. For the persistent project definition, use get_product_context instead. For governance-scoped merged view, use get_effective_context. Returns: {content: {...}, version: int, updated_at: string}. Workflow (read-before-write): Step 1 of 2 when patching — call this first to retrieve current content, then call update_active_context(patch_content={...}) with only the keys to change. Skip this step only when doing a full content replacement via update_active_context(content={...}).",
     annotations=ToolAnnotations(
         title="Get Active Context",
         readOnlyHint=True,
@@ -308,7 +308,7 @@ async def tool_get_active_context(
 
 @engrams_mcp.tool(
     name="update_active_context",
-    description="Overwrites or patches the session-level active context (current focus, open issues, recent changes). Provide content for full replacement OR patch_content for partial merge (set a key to '__DELETE__' to remove it). Only one of content/patch_content may be provided. Call get_active_context first if you need to preserve existing keys. Returns: the updated active context with new version number.",
+    description="Overwrites or patches the session-level active context (current focus, open issues, recent changes). Provide content for full replacement OR patch_content for partial merge (set a key to '__DELETE__' to remove it). Only one of content/patch_content may be provided. Call get_active_context first if you need to preserve existing keys. Returns: the updated active context with new version number. Workflow (read-before-write): Step 2 of 2 when patching — must call get_active_context first to get current content, then supply patch_content with only the keys to add/change/delete. When doing a full replacement, supply content directly without reading first. Common mistake: providing both content and patch_content in the same call — this raises a validation error.",
     annotations=ToolAnnotations(
         title="Update Active Context",
         destructiveHint=True,
@@ -378,7 +378,7 @@ async def tool_update_active_context(
 
 @engrams_mcp.tool(
     name="log_decision",
-    description="Creates a new architectural or implementation decision record. Use this to persist a decision that was just made — NOT to search existing decisions (use get_decisions or search_decisions_fts). Accepts summary (required), rationale, implementation_details, and tags. Optionally assign to a governance scope. Returns: {id: int, summary, rationale, tags, created_at, ...}. For logging multiple decisions at once, use batch_log_items with item_type='decision'.",
+    description="Creates a new architectural or implementation decision record. Use this to persist a decision that was just made — NOT to search existing decisions (use get_decisions or search_decisions_fts). Accepts summary (required), rationale, implementation_details, and tags. Optionally assign to a governance scope via scope_id; if scope_id is provided, visibility defaults to 'scoped' and the decision will only appear in governance checks for that scope — omit scope_id to make the decision globally visible. tags must be a JSON array of strings (e.g., ['auth', 'security']), NOT a comma-separated string. Returns: {id: int, summary, rationale, tags, created_at, ...}. For logging multiple decisions at once, use batch_log_items with item_type='decision'.",
     annotations=ToolAnnotations(
         title="Log Decision",
         destructiveHint=False,
@@ -1235,7 +1235,7 @@ async def tool_import_markdown_to_engrams(
 
 @engrams_mcp.tool(
     name="link_engrams_items",
-    description="Creates a directional relationship link between two Engrams items (e.g., a decision 'implements' a pattern, a progress entry 'tracks' a decision). Builds the project knowledge graph. Common relationship_types: 'implements', 'related_to', 'tracks', 'blocks', 'clarifies', 'depends_on', 'derived_from'. Item types: 'decision', 'system_pattern', 'progress_entry', 'custom_data'. Returns: {link_id, source_item_type, source_item_id, target_item_type, target_item_id, relationship_type}.",
+    description="Creates a directional relationship link between two Engrams items (e.g., a decision 'implements' a pattern, a progress entry 'tracks' a decision). Builds the project knowledge graph. Common relationship_types: 'implements', 'related_to', 'tracks', 'blocks', 'clarifies', 'depends_on', 'derived_from'. Item types: 'decision', 'system_pattern', 'progress_entry', 'custom_data'. Common mistakes: (1) source_item_id and target_item_id must be the integer ID as a string (e.g., '5', not 5) for decision/system_pattern/progress_entry — for custom_data items, use the string key (e.g., 'MyFeatureSpec'), not a numeric ID; (2) do not invert source and target — the relationship reads 'source VERB target' (e.g., source decision 'implements' target pattern). NOT for browsing relationships — use get_linked_items instead. Returns: {link_id, source_item_type, source_item_id, target_item_type, target_item_id, relationship_type}.",
     annotations=ToolAnnotations(
         title="Link Items",
         destructiveHint=False,
@@ -1447,7 +1447,7 @@ async def tool_search_custom_data_value_fts(
 
 @engrams_mcp.tool(
     name="batch_log_items",
-    description="Logs multiple items of the SAME type in a single call, reducing round-trips. Supported item_types: 'decision', 'progress_entry', 'system_pattern', 'custom_data'. Each item in the items list is a dict with the same fields as the corresponding single-item log tool (e.g., log_decision args). Use when you have 2+ items of the same type to log. Returns: {logged_count, item_type, results: [...]}.",
+    description="Logs multiple items of the SAME type in a single call, reducing round-trips. Supported item_types: 'decision', 'progress_entry', 'system_pattern', 'custom_data'. Each item in the items list is a dict with the same fields as the corresponding single-item log tool (e.g., log_decision args) — do NOT include workspace_id in the individual item dicts; it is provided once at the top level. All items in the batch must be the same type — do NOT mix decisions and patterns in one call; make separate batch_log_items calls for different types. NOT for updating existing items — use update_progress or update_product_context for edits. Returns: {logged_count, item_type, results: [...]}.",
     annotations=ToolAnnotations(
         title="Batch Log Items",
         destructiveHint=False,
@@ -1911,7 +1911,7 @@ async def tool_semantic_search_engrams(
 
 @engrams_mcp.tool(
     name="create_scope",
-    description="Creates a new governance scope (container for rules and items). Two types: 'team' (shared rules all members must follow) or 'individual' (personal scope under a team, set parent_scope_id). This is the first step in setting up governance — you must create scopes before logging rules. Returns: {id, scope_type, scope_name, created_by, parent_scope_id, created_at}. To list existing scopes, use get_scopes.",
+    description="Creates a new governance scope (container for rules and items). Two types: 'team' (shared rules all members must follow) or 'individual' (personal scope under a team, set parent_scope_id). This is the first step in setting up governance — you must create scopes before logging rules. Returns: {id, scope_type, scope_name, created_by, parent_scope_id, created_at}. To list existing scopes, use get_scopes. Workflow (governance setup): Step 1 of 4 — create_scope (this tool) → log_governance_rule(scope_id=<returned id>) → log items with scope_id parameter → check_compliance(item_type, item_id). Common mistake: attempting to call log_governance_rule before a scope exists — scope_id must reference a real scope created by this tool or returned by get_scopes.",
     annotations=ToolAnnotations(
         title="Create Scope",
         destructiveHint=False,
@@ -2025,7 +2025,7 @@ async def tool_get_scopes(
 
 @engrams_mcp.tool(
     name="log_governance_rule",
-    description="Creates an enforcement rule within a governance scope. Rules define what is blocked or warned for specific entity types. rule_type controls enforcement: 'hard_block' (prevents action), 'soft_warn' (allows with warning), 'allow_with_flag' (allows but flags for review). rule_definition supports: blocked_tags, required_tags, blocked_keywords, required_keywords. Precondition: the scope_id must exist (use create_scope or get_scopes first). Returns: {id, scope_id, rule_type, entity_type, rule_definition, ...}. To check an item against rules, use check_compliance.",
+    description="Creates an enforcement rule within a governance scope. Rules define what is blocked or warned for specific entity types. rule_type controls enforcement: 'hard_block' (prevents action), 'soft_warn' (allows with warning), 'allow_with_flag' (allows but flags for review). rule_definition supports: blocked_tags, required_tags, blocked_keywords, required_keywords. Precondition: the scope_id must exist (use create_scope or get_scopes first). Returns: {id, scope_id, rule_type, entity_type, rule_definition, ...}. To check an item against rules, use check_compliance. Workflow (governance setup): Step 2 of 4 — create_scope → log_governance_rule (this tool, use scope_id from step 1) → log items with scope_id parameter → check_compliance(item_type, item_id). Common mistake: supplying a scope_id that does not exist — query get_scopes first to confirm valid IDs. Note: check_compliance returns vacuous 'allow' if no rules are logged for the scope, so rules must be created before compliance checks are meaningful.",
     annotations=ToolAnnotations(
         title="Log Governance Rule",
         destructiveHint=False,
@@ -2111,7 +2111,7 @@ async def tool_log_governance_rule(
 
 @engrams_mcp.tool(
     name="get_governance_rules",
-    description="Lists the active governance rules for a specific scope, optionally filtered by entity_type (e.g., 'decision', 'system_pattern'). Use to review what rules exist BEFORE logging items, or to understand why a compliance check flagged something. Requires scope_id. To check a specific item against these rules, use check_compliance instead. Returns: [{id, scope_id, rule_type, entity_type, rule_definition, description, ...}].",
+    description="Lists the active governance rules for a specific scope, optionally filtered by entity_type (e.g., 'decision', 'system_pattern'). Use to review what rules exist BEFORE logging items, or to understand why a compliance check flagged something. Requires scope_id. To check a specific item against these rules, use check_compliance instead. Returns: [{id, scope_id, rule_type, entity_type, rule_definition, description, ...}]. Workflow (governance inspection): Use between steps 2 and 3 of the governance chain — after log_governance_rule and before logging items — to verify rules are correctly configured. Also use after check_compliance raises a conflict to understand which rule was violated: the conflict response includes rule_id which maps to id in this tool's output.",
     annotations=ToolAnnotations(
         title="Get Governance Rules",
         readOnlyHint=True,
@@ -2166,7 +2166,7 @@ async def tool_get_governance_rules(
 
 @engrams_mcp.tool(
     name="check_compliance",
-    description="Evaluates a specific existing item (by item_type and item_id) against all applicable governance rules. Use AFTER an item is logged to verify compliance, or as a pre-check during the governance gate. Returns conflict details: {has_conflict: bool, conflicts: [...], action: 'block'|'warn'|'allow', warnings: [...]}. For listing rules without checking a specific item, use get_governance_rules. For checking rules BEFORE creating an item, simulate by reviewing get_governance_rules for the relevant scope.",
+    description="Evaluates a specific existing item (by item_type and item_id) against all applicable governance rules. Use AFTER an item is logged to verify compliance, or as a pre-check during the governance gate. Returns conflict details: {has_conflict: bool, conflicts: [...], action: 'block'|'warn'|'allow', warnings: [...]}. For listing rules without checking a specific item, use get_governance_rules. For checking rules BEFORE creating an item, simulate by reviewing get_governance_rules for the relevant scope. Workflow (governance setup): Step 4 of 4 — create_scope → log_governance_rule → log item with scope_id (e.g., log_decision, log_system_pattern) → check_compliance (this tool, use item_type and item_id from the log step). Preconditions: (1) a scope must exist, (2) at least one rule must be logged in that scope via log_governance_rule, (3) the item must already be logged and assigned to the scope. Common mistake: calling check_compliance on an item not assigned to a scope with rules — returns vacuous 'allow' with has_conflict=false, which does not mean the item is compliant.",
     annotations=ToolAnnotations(
         title="Check Compliance",
         readOnlyHint=True,
@@ -2385,7 +2385,7 @@ async def tool_get_effective_context(
 
 @engrams_mcp.tool(
     name="bind_code_to_item",
-    description="Creates a code binding linking an Engrams entity (decision, pattern, etc.) to file paths via glob patterns (e.g., 'src/auth/**/*.py'). binding_type defines the relationship: 'implements' (code implements this decision), 'governed_by' (code is governed by this rule), 'tests' (test files for this item), 'documents' (docs for this item), 'configures' (config files for this item). Optional symbol_pattern narrows to specific functions/classes. For AI-suggested bindings based on entity content, use suggest_bindings first. Returns: {id, item_type, item_id, file_pattern, binding_type, ...}.",
+    description="Creates a code binding linking an Engrams entity to file paths via glob patterns. Valid item_type values: 'decision', 'system_pattern', 'progress_entry', 'custom_data'. binding_type defines the relationship: 'implements' (code implements this decision), 'governed_by' (code is governed by this rule), 'tests' (test files for this item), 'documents' (docs for this item), 'configures' (config files for this item). file_pattern supports glob syntax: 'src/auth/service.py' (exact single file), 'src/auth/**/*.py' (recursive directory match), 'tests/test_auth*.py' (prefix wildcard) — do NOT use bare directory names without a wildcard, they will not match any files. Optional symbol_pattern narrows to specific functions or class names within matched files (e.g., 'AuthService', 'login_*'). NOT for listing bindings (use get_bindings_for_item) or retrieving context by file (use get_context_for_files). For AI-suggested bindings, use suggest_bindings first. Workflow (code binding): Step 1 of 3 — bind_code_to_item (this tool) → verify_bindings(item_type, item_id) → get_bindings_for_item(item_type, item_id). Returns: {id, item_type, item_id, file_pattern, binding_type, symbol_pattern, created_at}.",
     annotations=ToolAnnotations(
         title="Bind Code to Item",
         destructiveHint=False,
@@ -2474,7 +2474,7 @@ async def tool_bind_code_to_item(
 
 @engrams_mcp.tool(
     name="get_bindings_for_item",
-    description="Lists all code bindings attached to a specific Engrams entity (by item_type and item_id). Use to see which files are associated with a decision or pattern. This is entity→files lookup. For the reverse direction (files→entities), use get_context_for_files. Returns: [{id, file_pattern, symbol_pattern, binding_type, confidence, last_verified, ...}].",
+    description="Lists all code bindings attached to a specific Engrams entity (by item_type and item_id). Use to see which files are associated with a decision or pattern. This is entity→files lookup. For the reverse direction (files→entities), use get_context_for_files. Returns: [{id, file_pattern, symbol_pattern, binding_type, confidence, last_verified, ...}]. Workflow (code binding query): Step 3a of 3 (entity→files direction) — call after bind_code_to_item and verify_bindings have been run. If last_verified is null or stale, call verify_bindings first to confirm globs still match real files.",
     annotations=ToolAnnotations(
         title="Get Bindings for Item",
         readOnlyHint=True,
@@ -2526,7 +2526,7 @@ async def tool_get_bindings_for_item(
 
 @engrams_mcp.tool(
     name="get_context_for_files",
-    description="Given file paths being edited, returns ALL Engrams entities (decisions, patterns, etc.) bound to those paths. This is the primary files→entities lookup for codebase-context bridging — call this when an agent opens or modifies files to discover relevant project knowledge. For the reverse direction (entity→files), use get_bindings_for_item. Optionally filter by binding_type. Returns: {entities_by_type: {decisions: [...], patterns: [...]}, total_count: int}.",
+    description="Given file paths being edited, returns ALL Engrams entities (decisions, patterns, etc.) bound to those paths. This is the primary files→entities lookup for codebase-context bridging — call this when an agent opens or modifies files to discover relevant project knowledge. For the reverse direction (entity→files), use get_bindings_for_item. Optionally filter by binding_type. Returns: {entities_by_type: {decisions: [...], patterns: [...]}, total_count: int}. Workflow (code binding query): Step 3b of 3 (files→entities direction) — provide exact file paths (not globs) as file_paths; the tool matches these against stored glob patterns. Call after bind_code_to_item has been run to create bindings. If results are empty, bindings may not exist yet (use suggest_bindings to propose them) or the glob patterns may not match (use verify_bindings to diagnose).",
     annotations=ToolAnnotations(
         title="Get Context for Files",
         readOnlyHint=True,
@@ -2584,7 +2584,7 @@ async def tool_get_context_for_files(
 
 @engrams_mcp.tool(
     name="verify_bindings",
-    description="Validates code bindings against the actual filesystem — checks which file_pattern globs still match real files. Omit item_type and item_id to verify ALL bindings workspace-wide. Updates last_verified timestamps. Use periodically or after major refactors. For finding bindings that are already known to be stale, use get_stale_bindings instead (cheaper, no filesystem scan). Returns: {verified_count, valid: [...], broken: [...], ...}.",
+    description="Validates code bindings against the actual filesystem — checks which file_pattern globs still match real files. Omit item_type and item_id to verify ALL bindings workspace-wide. Updates last_verified timestamps. Use periodically or after major refactors. For finding bindings that are already known to be stale, use get_stale_bindings instead (cheaper, no filesystem scan). Returns: {verified_count, valid: [...], broken: [...], ...}. Workflow (code binding): Step 2 of 3 — bind_code_to_item → verify_bindings (this tool, confirm the glob matches real files) → get_context_for_files or get_bindings_for_item. Common mistake: calling verify_bindings before any bindings exist — it returns verified_count=0 with empty valid/broken arrays, not an error. Use get_bindings_for_item first to confirm bindings exist. Broken bindings (files deleted or moved) should be updated via bind_code_to_item with the corrected file_pattern.",
     annotations=ToolAnnotations(
         title="Verify Bindings",
         readOnlyHint=False,
@@ -2770,7 +2770,7 @@ async def tool_unbind_code_from_item(
 
 @engrams_mcp.tool(
     name="get_relevant_context",
-    description="Returns the OPTIMAL subset of ALL Engrams entities (decisions, patterns, progress, custom data) that fit within a token budget, scored by 7 relevance factors. This is the highest-level retrieval tool — use it when you need task-relevant context but don't know exactly which entities matter. Requires task_description and token_budget. Set dry_run=True to preview entity counts and token estimates without retrieving content (replaces estimate_context_size). For browsing/filtering specific entity types, use get_decisions, get_progress, etc. For keyword search, use the FTS tools. For a human-readable project briefing, use get_project_briefing instead. Returns: {selected_entities: [...], scores: [...], tokens_used, tokens_budget, excluded: [...]} OR when dry_run=True: {entity_counts, format_estimates, recommended_budgets}.",
+    description="Returns the OPTIMAL subset of ALL Engrams entities (decisions, patterns, progress, custom data) that fit within a token budget, scored by 7 relevance factors. This is the highest-level retrieval tool — use it when you need task-relevant context but don't know exactly which entities matter. Requires task_description and token_budget. profile selects a scoring preset — valid values: 'default' (balanced), 'code_review' (weights patterns/bindings), 'decision_making' (weights decisions/governance), 'onboarding' (weights product context and patterns). Set dry_run=True to preview entity counts and token estimates without retrieving content (replaces estimate_context_size). NOT for browsing/filtering specific entity types (use get_decisions, get_progress, etc.). NOT for keyword search (use FTS tools). NOT for a human-readable briefing (use get_project_briefing). Returns when dry_run=False: {selected_entities: [...], scores: [...], tokens_used: int, tokens_budget: int, excluded: [...]}. Returns when dry_run=True: {entity_counts: {type: count}, format_estimates: {...}, recommended_budgets: {task_type: tokens}} — NOTE: the return shape is completely different; do not expect selected_entities in dry_run mode.",
     annotations=ToolAnnotations(
         title="Get Relevant Context",
         readOnlyHint=True,
@@ -2955,7 +2955,7 @@ async def tool_manage_budget_config(
 
 @engrams_mcp.tool(
     name="get_project_briefing",
-    description="Generates a structured, human-readable project briefing at a specified depth level. Levels: 'executive' (~500 tokens), 'overview' (~2000 tokens), 'detailed' (~5000 tokens), 'comprehensive' (~20000 tokens). Set staleness_only=True to check data freshness without generating content (replaces get_briefing_staleness). For onboarding new agents or catching up on project context. For raw programmatic context retrieval, use get_product_context or get_relevant_context instead. To drill into one section, pass a single section ID in the sections parameter. Returns: {level, sections: [{id, title, content}], staleness_info, coverage_stats} OR when staleness_only=True: {sections: [{id, last_updated, is_stale}], stale_count}.",
+    description="Generates a structured, human-readable project briefing at a specified depth level. Levels: 'executive' (~500 tokens), 'overview' (~2000 tokens), 'detailed' (~5000 tokens), 'comprehensive' (~20000 tokens) — choose based on your token budget; prefer 'executive' for quick orientation and 'detailed' for deep onboarding. Set staleness_only=True to check data freshness without generating content (returns section freshness metadata only, no content); this is a completely different return shape — do not expect sections[].content when staleness_only=True. To drill into one section, pass a single section ID string in the sections parameter. NOT for programmatic context retrieval (use get_product_context or get_relevant_context instead). Returns when staleness_only=False: {level, sections: [{id, title, content}], staleness_info, coverage_stats}. Returns when staleness_only=True: {sections: [{id, last_updated, is_stale}], stale_count} — content field is absent.",
     annotations=ToolAnnotations(
         title="Get Project Briefing",
         readOnlyHint=True,
