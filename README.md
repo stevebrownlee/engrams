@@ -33,6 +33,7 @@ Add the following to your MCP settings file (`mcp.json` or your IDE's MCP config
     "engrams": {
       "command": "uvx",
       "args": [
+        "--reinstall",
         "--from",
         "engrams-mcp",
         "engrams-mcp",
