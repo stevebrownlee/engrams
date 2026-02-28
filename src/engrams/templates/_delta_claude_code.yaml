@@ -1,0 +1,12 @@
+# Per-tool delta for Claude Code CLI
+header: |
+  # --- Engrams Memory Strategy for Claude Code CLI ---
+  # Install: Save this content as CLAUDE.md in your project root.
+  # Claude Code automatically reads CLAUDE.md for persistent project instructions.
+  # You can also place a global version at ~/.claude/CLAUDE.md for cross-project defaults.
+  # Configure the Engrams MCP server via `claude mcp add` or in .mcp.json.
+workspace_id_source: "The agent must obtain the absolute path to the current workspace to use as `workspace_id` for all Engrams tool calls. In Claude Code, this is typically the directory from which `claude` was invoked."
+list_files_action: "Check for the Engrams database directory at `ACTUAL_WORKSPACE_ID + \"/engrams/\"`."
+list_files_tool_line: ""
+list_files_params: "path: ACTUAL_WORKSPACE_ID + \"/engrams/\""
+workspace_id_step1: "Determine `ACTUAL_WORKSPACE_ID` from the current working directory."

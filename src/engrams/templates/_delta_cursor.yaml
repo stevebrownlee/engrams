@@ -1,0 +1,11 @@
+# Per-tool delta for Cursor
+header: |
+  # --- Engrams Memory Strategy for Cursor ---
+  # Install: Place this content in your Cursor settings under Rules for AI,
+  # or save as .cursorrules in your project root.
+  # Cursor supports MCP servers — configure Engrams MCP in Cursor Settings → MCP Servers.
+workspace_id_source: "The agent must obtain the absolute path to the current workspace to use as `workspace_id` for all Engrams tool calls. This might be available as `${workspaceFolder}` or require asking the user."
+list_files_action: "Invoke a \"list files\" tool for `ACTUAL_WORKSPACE_ID + \"/engrams/\"`."
+list_files_tool_line: ""
+list_files_params: "path: ACTUAL_WORKSPACE_ID + \"/engrams/\""
+workspace_id_step1: "Determine `ACTUAL_WORKSPACE_ID`."

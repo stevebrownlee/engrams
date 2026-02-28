@@ -1,0 +1,13 @@
+# Per-tool delta for Claude Desktop
+header: |
+  # --- Engrams Memory Strategy for Claude Desktop ---
+  # Install: Paste this content into Claude Desktop's custom instructions field
+  # (Settings → Custom Instructions), or include it as a project-level instruction.
+  # Configure the Engrams MCP server in your claude_desktop_config.json:
+  #   macOS/Linux: ~/.config/Claude/claude_desktop_config.json
+  #   Windows: %APPDATA%\Claude\claude_desktop_config.json
+workspace_id_source: "The agent must obtain the absolute path to the current workspace to use as `workspace_id` for all Engrams tool calls. Since Claude Desktop does not have a built-in workspace concept, the user must provide the project path or it must be specified in the MCP server configuration via --workspace_id."
+list_files_action: "Check for the Engrams database directory at `ACTUAL_WORKSPACE_ID + \"/engrams/\"`."
+list_files_tool_line: ""
+list_files_params: "path: ACTUAL_WORKSPACE_ID + \"/engrams/\""
+workspace_id_step1: "Determine `ACTUAL_WORKSPACE_ID`. Ask the user for the project path if not already known."

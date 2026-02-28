@@ -48,6 +48,105 @@ from ..onboarding import models as onboarding_models
 
 log = logging.getLogger(__name__)
 
+# Built-in Engrams strategy sections (returned by get_custom_data when category='engrams_strategy')
+# These are overlaid with any user customizations stored in the DB
+BUILTIN_STRATEGY: Dict[str, str] = {
+    "initialization": """INIT (run at session start):
+  1. Determine ACTUAL_WORKSPACE_ID.
+  2. List files at ACTUAL_WORKSPACE_ID/engrams/ — check for context.db.
+  3. If context.db found → LOAD_EXISTING. Else → NEW_SETUP.
+
+LOAD_EXISTING:
+  Call in parallel: get_product_context, get_active_context, get_decisions(limit=5),
+    get_progress(limit=5), get_system_patterns(limit=5),
+    get_custom_data("critical_settings"), get_custom_data("ProjectGlossary"),
+    get_recent_activity_summary(hours_ago=24, limit_per_type=3)
+  If results non-empty → set [ENGRAMS_ACTIVE], inform user, ask what to work on.
+  If DB exists but empty → set [ENGRAMS_ACTIVE], inform user DB is empty.
+  If calls fail → go to INACTIVE.
+
+NEW_SETUP:
+  1. Inform user no DB found at ACTUAL_WORKSPACE_ID/engrams/context.db.
+  2. Ask: "Initialize new Engrams database?" [Yes / No]
+  3. If Yes:
+     a. Check workspace root for projectBrief.md.
+        If found → read it, ask to import into Product Context.
+        If user confirms → call update_product_context({initial_product_brief: <content>}).
+        If not found → ask if user wants to define Product Context manually.
+     b. Run POST_TASK_SETUP section (fetch: get_custom_data("engrams_strategy","post_task_setup")).
+  4. If No → go to INACTIVE.
+
+INACTIVE: Inform user Engrams will not be used. Status: [ENGRAMS_INACTIVE].""",
+
+    "post_task_setup": """POST_TASK_SETUP (first-time only, after DB init):
+  1. Detect project type from manifest: package.json→Node, pyproject.toml/requirements.txt/setup.py→Python,
+     Cargo.toml→Rust, go.mod→Go, pom.xml/build.gradle→Java, Gemfile→Ruby, composer.json→PHP
+  2. Ask user to configure post-task checks for detected type. Suggest type-appropriate commands.
+  3. Let user toggle/customize checks, set severity (blocking|warning).
+  4. Store → log_custom_data(category="post_task_checks", key="verification_commands",
+     value={project_type, checks:[{command, name, severity, enabled}]})
+  5. Record → log_decision(summary="Configured post-task verification checks for <type>",
+     tags=["post-task-checks","project-setup","dx"])
+  6. Proceed to LOAD_EXISTING.""",
+
+    "governance": """GOVERNANCE CHECK (MANDATORY before any workspace mutation):
+  Option A: get_relevant_context(task_description=<planned action>, token_budget=2000)
+  Option B:
+    1. Verify [ENGRAMS_ACTIVE].
+    2. get_decisions(limit=20) — scan for constraints on planned task.
+    3. get_scopes() — check for governance scopes.
+    4. If scopes exist → get_governance_rules for each relevant scope.
+    5. hard_block conflict → STOP, cite item ID+summary, require explicit override.
+       soft_warn → inform user, proceed only after acknowledgment.
+       No conflict → proceed.""",
+
+    "post_task": """POST_TASK (MANDATORY before attempt_completion):
+  1. get_custom_data("post_task_checks","verification_commands")
+     If missing → skip to step 3.
+  2. Run each enabled check via execute_command.
+     blocking failure → STOP, do NOT call attempt_completion. User must fix or override.
+     warning failure → note and continue, include in completion summary.
+  3. Categorize completed work:
+     (a) Strategic decisions → log_decision (prescriptive summary, rationale, tags)
+     (b) Task completions (bugs/code/refactors/files) → log_progress(status='DONE'), NOT log_decision
+     (c) New patterns → log_system_pattern
+     (d) Context changes → update_active_context
+  4. Log/update progress entries. Update active context if focus changed.
+  5. Link related items via link_engrams_items.
+  6. Call attempt_completion. Include any warning results in summary.""",
+
+    "sync": """SYNC (trigger: "Sync Engrams" or "Engrams Sync"):
+  Respond [ENGRAMS_SYNCING]. Halt current task.
+  Review full chat for: new decisions, progress changes, patterns, context shifts, item relationships.
+  Log: decisions(strategic only), progress(log_progress/update_progress), patterns(log_system_pattern),
+       context(update_active_context/update_product_context), links(link_engrams_items),
+       glossary(log_custom_data category=ProjectGlossary). Use batch_log_items for multiple same-type items.
+  After: get_recent_activity_summary to confirm. Inform user sync complete. Resume or await instructions.""",
+
+    "linking": """KNOWLEDGE GRAPH LINKING (proactive):
+  Watch for relationships between discussed Engrams items (decisions, patterns, progress, custom_data).
+  When spotted → propose linking: "D-5 and SP-2 seem related — link as 'implements'? [Yes/No/Custom type]"
+  If confirmed → link_engrams_items(source, target, relationship_type).
+  Common types: implements, clarifies, related_to, depends_on, blocks, resolves, derived_from.
+  Don't be intrusive — if user declines, move on.""",
+
+    "quality": """DECISION QUALITY:
+  DECISIONS (log_decision): Strategic architectural/convention choices ONLY.
+    Qualifies: patterns, tech selection, conventions, constraints, security policies, process rules.
+    Does NOT qualify: bug fixes, code changes, dependency updates, refactors, file ops → use log_progress.
+    Litmus test: "Would this still matter in a new session on a different feature?" Yes→decision. No→progress.
+    Summary MUST be prescriptive: "Use X for Y" not "Implemented X".
+      ✅ "Use SQLite FTS5 for all full-text search"  ❌ "Implemented FTS5 search"
+  PROGRESS (log_progress): Bug fixes, code changes, task completions, implementation work.
+  CONTEXT: Update active_context when focus shifts or open issues arise.
+  ERRORS: log_custom_data(category='ErrorLogs', key='<timestamp>_<summary>'), update open_issues.
+  SEMANTIC SEARCH: Use semantic_search_engrams for conceptual queries where keyword search falls short.
+  GENERAL: NEVER run alembic or manual DB migrations. MCP server auto-creates/migrates on first tool call.
+  Unified interfaces: delete_item(item_type, item_id), verify_bindings(mode='staleness'),
+    get_relevant_context(dry_run=True), get_project_briefing(staleness_only=True),
+    manage_budget_config, search_custom_data_value_fts(category_filter='ProjectGlossary')""",
+}
+
 
 def _ensure_embedding_service():
     """Lazy-load embedding service when needed."""
@@ -913,8 +1012,58 @@ def handle_get_custom_data(args: models.GetCustomDataArgs) -> List[Dict[str, Any
     Handles the 'get_custom_data' MCP tool.
     Assumes 'args' is an already validated Pydantic model instance.
     Returns a list of custom data entry dictionaries.
+
+    Special behavior: category='engrams_strategy' returns built-in strategy sections
+    (from BUILTIN_STRATEGY), overlaid with any user customizations stored in the DB.
     """
     try:
+        # Special handling for built-in engrams_strategy sections
+        if args.category == "engrams_strategy":
+            # Fetch any user customizations from DB
+            db_entries = db.get_custom_data(
+                args.workspace_id, category="engrams_strategy", key=args.key
+            )
+            db_by_key = {e.key: e.model_dump(mode="json") for e in db_entries}
+
+            if args.key is not None:
+                # Specific key requested
+                if args.key in db_by_key:
+                    # User override takes precedence
+                    return [db_by_key[args.key]]
+                elif args.key in BUILTIN_STRATEGY:
+                    # Return built-in section as a synthetic result
+                    return [{
+                        "id": None,
+                        "category": "engrams_strategy",
+                        "key": args.key,
+                        "value": BUILTIN_STRATEGY[args.key],
+                        "created_at": None,
+                        "source": "builtin",
+                    }]
+                else:
+                    return []
+            else:
+                # Return all: built-ins merged with DB overrides
+                result = []
+                seen_keys = set()
+                # DB entries first (they override built-ins)
+                for key, entry in db_by_key.items():
+                    result.append(entry)
+                    seen_keys.add(key)
+                # Add remaining built-ins not overridden
+                for key, value in BUILTIN_STRATEGY.items():
+                    if key not in seen_keys:
+                        result.append({
+                            "id": None,
+                            "category": "engrams_strategy",
+                            "key": key,
+                            "value": value,
+                            "created_at": None,
+                            "source": "builtin",
+                        })
+                return result
+
+        # Standard behavior for all other categories
         data_list = db.get_custom_data(
             args.workspace_id, category=args.category, key=args.key
         )

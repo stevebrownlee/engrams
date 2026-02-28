@@ -1,0 +1,7 @@
+# Per-tool delta for Roo Code
+header: "# --- Engrams Memory Strategy ---"
+workspace_id_source: "The agent must obtain the absolute path to the current workspace to use as `workspace_id` for all Engrams tool calls. This might be available as `${workspaceFolder}` or require asking the user."
+list_files_action: "Invoke `list_files` for `ACTUAL_WORKSPACE_ID + \"/engrams/\"`."
+list_files_tool_line: "        tool_to_use: \"list_files\""
+list_files_params: "path: ACTUAL_WORKSPACE_ID + \"/engrams/\""
+workspace_id_step1: "Determine `ACTUAL_WORKSPACE_ID`."
