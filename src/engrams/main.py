@@ -378,7 +378,7 @@ async def tool_update_active_context(
 
 @engrams_mcp.tool(
     name="log_decision",
-    description="Creates a new architectural or implementation decision record. Use this to persist a decision that was just made — NOT to search existing decisions (use get_decisions or search_decisions_fts). Accepts summary (required), rationale, implementation_details, and tags. Optionally assign to a governance scope via scope_id; if scope_id is provided, visibility defaults to 'scoped' and the decision will only appear in governance checks for that scope — omit scope_id to make the decision globally visible. tags must be a JSON array of strings (e.g., ['auth', 'security']), NOT a comma-separated string. Returns: {id: int, summary, rationale, tags, created_at, ...}. For logging multiple decisions at once, use batch_log_items with item_type='decision'.",
+    description="Creates a new STRATEGIC decision record — architectural choices, technology selections, coding conventions, or project constraints that guide future work across all sessions. Use this ONLY for decisions that would still be relevant if a new session started on a different feature. Do NOT use for bug fixes, code modifications, refactors, or task completions — use log_progress for those. Accepts summary (required), rationale, implementation_details, and tags. Optionally assign to a governance scope via scope_id; if scope_id is provided, visibility defaults to 'scoped' and the decision will only appear in governance checks for that scope — omit scope_id to make the decision globally visible. tags must be a JSON array of strings (e.g., ['auth', 'security']), NOT a comma-separated string. Returns: {id: int, summary, rationale, tags, created_at, ...}. For logging multiple decisions at once, use batch_log_items with item_type='decision'.",
     annotations=ToolAnnotations(
         title="Log Decision",
         destructiveHint=False,
@@ -590,7 +590,7 @@ async def tool_search_decisions_fts(
 
 @engrams_mcp.tool(
     name="log_progress",
-    description="Creates a new progress/task entry with a status (TODO, IN_PROGRESS, DONE, etc.). Use this when a task begins or a new sub-task is defined. To update an existing entry's status, use update_progress instead. Supports parent_id for subtask hierarchy and linked_item_type/linked_item_id to auto-link to a decision or pattern. Returns: {id: int, description, status, parent_id, created_at, ...}.",
+    description="Creates a new progress/task entry with a status (TODO, IN_PROGRESS, DONE, etc.). Use this when a task begins, a sub-task is defined, OR when implementation work is completed (bug fixes, code changes, refactors, dependency updates). Implementation-level completions belong here, NOT in log_decision. To update an existing entry's status, use update_progress instead. Supports parent_id for subtask hierarchy and linked_item_type/linked_item_id to auto-link to a decision or pattern. Returns: {id: int, description, status, parent_id, created_at, ...}.",
     annotations=ToolAnnotations(
         title="Log Progress",
         destructiveHint=False,

@@ -206,7 +206,47 @@ engrams_memory_strategy:
       If the database does not exist yet, simply call any Engrams MCP tool (e.g., `get_product_context`)
       and the server will create it. If you see `alembic.ini` or an `alembic/` directory inside the
       workspace's `engrams/` folder, those are internal server files — do not interact with them directly.
-    proactive_logging_cue: "Proactively log decisions, progress, and context changes to Engrams throughout the conversation. Do NOT wait for the user to ask — if a decision was made, a task completed, or context changed, log it automatically as part of the workflow."
+    decision_quality_criteria:
+      description: |
+        Decisions are STRATEGIC records that will guide the LLM and the developer
+        in ALL future sessions. They answer the question: "If a new developer (or a
+        fresh LLM session) started working on this project tomorrow, what
+        constraints, conventions, or architectural choices must they know about?"
+      qualifies_as_decision:
+        - "Adoption of an architectural pattern (e.g., 'Use Repository Pattern for all data access')"
+        - "Selection of a technology, library, or framework (e.g., 'Use Pydantic v2 for all data validation')"
+        - "Establishment of a project convention (e.g., 'All API endpoints must return JSON:API format')"
+        - "A constraint or trade-off accepted (e.g., 'Chose eventual consistency over strong consistency for event processing')"
+        - "Security or compliance policy (e.g., 'All user input must be sanitized with DOMPurify before rendering')"
+        - "A process rule (e.g., 'All database migrations must be backward-compatible')"
+      does_NOT_qualify_as_decision:
+        - "Bug fixes ('Fixed null pointer in auth module') → log as progress"
+        - "Code modifications ('Updated function signature in utils.py') → log as progress"
+        - "Dependency updates ('Bumped lodash to 4.17.21') → log as progress"
+        - "Refactoring ('Extracted helper function from controller') → log as progress or pattern"
+        - "File operations ('Created new test file for auth') → log as progress"
+        - "Configuration changes ('Set timeout to 30s') → log as progress or custom_data"
+      litmus_test: |
+        Before calling `log_decision`, apply this test:
+        "Would this still be relevant and constraining if we started a completely
+        new coding session on a different feature?"
+        If YES → log as a decision.
+        If NO → log as progress (use `log_progress`) or skip.
+      summary_style: |
+        Decision summaries should be PRESCRIPTIVE, not DESCRIPTIVE.
+        ✅ GOOD: "Use SQLite FTS5 for all full-text search features"
+        ✅ GOOD: "All API error responses must include a machine-readable error code"
+        ❌ BAD:  "Implemented FTS5 search for decisions"
+        ❌ BAD:  "Fixed error response format in auth endpoint"
+    proactive_logging_cue: |
+      Proactively log information to Engrams throughout the conversation:
+      - DECISIONS: Only strategic, architectural, or convention-defining choices
+        (see `decision_quality_criteria`). When in doubt, it is NOT a decision.
+      - PROGRESS: Bug fixes, code changes, task completions, and implementation
+        work should be logged via `log_progress`, NOT `log_decision`.
+      - CONTEXT: Update active context when focus shifts or new issues arise.
+      Do NOT wait for the user to ask — but DO apply quality criteria before
+      choosing which tool to use.
     proactive_error_handling: "When encountering errors (e.g., tool failures, unexpected output), proactively log the error details using `log_custom_data` (category: 'ErrorLogs', key: 'timestamp_error_summary') and consider updating `active_context` with `open_issues` if it's a persistent problem. Prioritize using Engrams's `get_item_history` or `get_recent_activity_summary` to diagnose issues if they relate to past context changes."
     semantic_search_emphasis: "For complex or nuanced queries, especially when direct keyword search might be insufficient, prioritize using `semantic_search_engrams` to leverage conceptual understanding and retrieve more relevant context. Explain to the user why semantic search is being used."
     merged_tools_note: |
@@ -271,9 +311,26 @@ engrams_memory_strategy:
       - step: 3
         action: "Summarize check results. If all checks passed, proceed. If any blocking check failed, halt and report."
       - step: 4
-        action: "Review the work just completed. Identify: (a) any architectural or implementation decisions made, (b) task status changes, (c) new patterns introduced, (d) context changes."
+        action: |
+          Review the work just completed. Categorize outcomes:
+          (a) STRATEGIC DECISIONS: Architectural choices, technology selections,
+              conventions, or constraints that will guide future work across sessions.
+              Apply the litmus test from `decision_quality_criteria`.
+          (b) TASK COMPLETIONS: Bug fixes, feature implementations, refactors,
+              file changes — these are progress items, NOT decisions.
+          (c) NEW PATTERNS: Reusable architectural or coding patterns introduced.
+          (d) CONTEXT CHANGES: Shifts in project focus, new open issues, etc.
       - step: 5
-        action: "Log each decision using `log_decision` with summary, rationale, and implementation_details."
+        action: |
+          For items categorized as (a) STRATEGIC DECISIONS ONLY:
+            Log using `log_decision` with a prescriptive summary, rationale, and tags.
+          For items categorized as (b) TASK COMPLETIONS:
+            Log using `log_progress` with status 'DONE'.
+            Do NOT log these as decisions.
+          For items categorized as (c) NEW PATTERNS:
+            Log using `log_system_pattern`.
+          For items categorized as (d) CONTEXT CHANGES:
+            Update via `update_active_context`.
       - step: 6
         action: "Log or update progress using `log_progress` or `update_progress` to reflect task completion."
       - step: 7
@@ -297,7 +354,7 @@ engrams_memory_strategy:
         - For `update_product_context` and `update_active_context`, first fetch current content, then merge/update (potentially using `patch_content`), then call the update tool with the *complete new content object* or the patch.
         - All tool calls require the `workspace_id`.
       agent_action_plan_illustrative:
-        - "Log new decisions (use `log_decision`)."
+        - "Log new STRATEGIC decisions only (use `log_decision`). Apply `decision_quality_criteria` — bug fixes, code changes, and implementation work should be logged as progress entries, not decisions."
         - "Log task progress/status changes (use `log_progress`)."
         - "Update existing progress entries (use `update_progress`)."
         - "Log new system patterns (use `log_system_pattern`)."
