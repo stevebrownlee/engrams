@@ -42,7 +42,7 @@ def _get_vector_store_path(workspace_id: str) -> str:
     # Example: /path/to/workspace/.engrams/vector_store
     # For now, using a simpler structure, assuming workspace_id is the root.
     # This needs to align with how SQLite DB path is handled.
-    # From Design Doc: context_portal/[workspace_id]/vector_store/
+    # From Design Doc: engrams/[workspace_id]/vector_store/
     # This implies workspace_id is a name, not a full path.
     # Let's assume a base data directory for engrams, then workspace_id subdir.
     # For now, let's assume workspace_id IS the base path for that workspace's data.
@@ -56,33 +56,32 @@ def _get_vector_store_path(workspace_id: str) -> str:
         )
         # Or raise error, depending on how workspace_id is managed.
 
-    # Path as per design doc: context_portal/[workspace_id]/vector_store/
+    # Path as per design doc: engrams/[workspace_id]/vector_store/
     # This implies a structure where 'engrams' is a subdir in the actual project,
     # and then a specific workspace_id folder under that.
     # Let's assume workspace_id is the root of the project for now for simplicity of this module.
     # The actual path construction should be centralized.
     # For now: workspace_root/.engrams_db/vector_store
-    # This is a deviation from design doc to make it runnable standalone, needs to be fixed.
-    # Design Doc: context_portal/[workspace_id]/vector_store/
+    # Design Doc: engrams/[workspace_id]/vector_store/
     # Let's stick to the design doc as much as possible.
     # If workspace_id = "/abs/path/to/project", then this would be:
-    # "/abs/path/to/project/context_portal/vector_store" (if workspace_id is the name of the folder inside context_portal)
+    # "/abs/path/to/project/engrams/vector_store" (if workspace_id is the name of the folder inside engrams)
     # OR if workspace_id is the full project path:
     # "/abs/path/to/project/.engrams_data/vector_store" (more typical)
 
     # Path for ChromaDB persistence.
-    # It will be located at: [workspace_id]/context_portal/engrams_vector_data/
-    # This aligns with the SQLite DB being in [workspace_id]/context_portal/context.db
+    # It will be located at: [workspace_id]/engrams/engrams_vector_data/
+    # This aligns with the SQLite DB being in [workspace_id]/engrams/context.db
     # workspace_id is assumed to be the root path of the user's project.
 
     # Ensure the 'engrams' directory exists at the workspace root first.
     # The SQLite setup in config.py also creates this, but good to be robust.
-    context_portal_base_dir = os.path.join(workspace_id, "engrams")
-    os.makedirs(context_portal_base_dir, exist_ok=True)
+    engrams_base_dir = os.path.join(workspace_id, "engrams")
+    os.makedirs(engrams_base_dir, exist_ok=True)
 
     vector_db_path = os.path.join(
-        context_portal_base_dir, "engrams_vector_data"
-    )  # No leading dot, and inside context_portal
+        engrams_base_dir, "engrams_vector_data"
+    )  # No leading dot, and inside engrams
     os.makedirs(vector_db_path, exist_ok=True)
     log.info(f"Vector store path set to: {vector_db_path}")
     return vector_db_path

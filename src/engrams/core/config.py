@@ -96,7 +96,7 @@ def get_database_path(workspace_id: str) -> pathlib.Path:
 
     # Default behavior (unchanged)
     # Basic example: Assume workspace_id is the workspace root path
-    # Store DB in a .context_portal directory within the workspace
+    # Store DB in a .engrams directory within the workspace
     # Ensure workspace_id uses POSIX separators for consistency within Docker
     # This is a defensive measure against potential path mangling
     posix_workspace_id = workspace_id.replace("\\", "/")

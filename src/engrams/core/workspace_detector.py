@@ -107,10 +107,10 @@ class WorkspaceDetector:
             log.info(f"Workspace detected by general indicators: {workspace}")
             return workspace
 
-        # Strategy 3: Look for context_portal directory (existing Engrams workspace)
-        workspace = self._detect_by_context_portal()
+        # Strategy 3: Look for engrams directory (existing Engrams workspace)
+        workspace = self._detect_by_engrams_dir()
         if workspace:
-            log.info(f"Workspace detected by existing context_portal: {workspace}")
+            log.info(f"Workspace detected by existing engrams directory: {workspace}")
             return workspace
 
         # Fallback: Use start path
@@ -172,15 +172,15 @@ class WorkspaceDetector:
 
         return None
 
-    def _detect_by_context_portal(self) -> Optional[Path]:
-        """Detect workspace by looking for existing context_portal directory."""
+    def _detect_by_engrams_dir(self) -> Optional[Path]:
+        """Detect workspace by looking for existing engrams directory."""
         current = self.start_path
         depth = 0
 
         while current != current.parent and depth < self.max_depth:
-            context_portal = current / "engrams"
-            if context_portal.exists() and context_portal.is_dir():
-                log.debug(f"Found existing context_portal at: {current}")
+            engrams_dir = current / "engrams"
+            if engrams_dir.exists() and engrams_dir.is_dir():
+                log.debug(f"Found existing engrams directory at: {current}")
                 return current
 
             current = current.parent
@@ -271,8 +271,8 @@ class WorkspaceDetector:
             log.debug(f"Failed to validate pyproject.toml: {e}")
             return False
 
-    def get_context_portal_path(self, workspace_root: Path) -> Path:
-        """Get the context_portal path for the workspace."""
+    def get_engrams_path(self, workspace_root: Path) -> Path:
+        """Get the engrams path for the workspace."""
         return workspace_root / "engrams"
 
     def detect_from_mcp_context(self) -> Optional[str]:
@@ -318,7 +318,7 @@ class WorkspaceDetector:
         info = {
             "start_path": str(self.start_path),
             "detected_workspace": str(workspace_root),
-            "context_portal_path": str(self.get_context_portal_path(workspace_root)),
+            "engrams_path": str(self.get_engrams_path(workspace_root)),
             "detection_method": "fallback",
             "indicators_found": [],
             "environment_variables": {
@@ -341,7 +341,7 @@ class WorkspaceDetector:
         elif len(info["indicators_found"]) >= 2:
             info["detection_method"] = "multiple_indicators"
         elif (workspace_root / "engrams").exists():
-            info["detection_method"] = "existing_context_portal"
+            info["detection_method"] = "existing_engrams_dir"
 
         return info
 

@@ -88,13 +88,13 @@ class TestBindingCRUD:
             workspace_id=workspace_id,
             item_type="decision",
             item_id=sample_decision["id"],
-            file_pattern="src/context_portal_mcp/main.py",
+            file_pattern="src/engrams/main.py",
             binding_type="implements",
         ))
 
         result = H.handle_get_context_for_files(binding_models.GetContextForFilesArgs(
             workspace_id=workspace_id,
-            file_paths=["src/context_portal_mcp/main.py"],
+            file_paths=["src/engrams/main.py"],
         ))
         d = as_dict(result)
         assert d["status"] == "success"

@@ -3143,14 +3143,14 @@ def main_logic(sys_args=None):
         type=str,
         default="logs/engrams.log",
         help="Path to a file where logs should be written, relative to the "
-        "context_portal directory. Defaults to 'logs/engrams.log'.",
+        "engrams directory. Defaults to 'logs/engrams.log'.",
     )
     parser.add_argument(
         "--db-path",
         type=str,
         required=False,
         help="Custom database file path (absolute or relative to workspace). "
-        "Defaults to 'context_portal/context.db' in workspace.",
+        "Defaults to 'engrams/context.db' in workspace.",
     )
     parser.add_argument(
         "--base-path",

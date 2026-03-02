@@ -80,7 +80,7 @@ class TestBindingsWithDecisions:
             workspace_id=workspace_id,
             item_type="decision",
             item_id=dec_id,
-            file_pattern="src/context_portal_mcp/**/*.py",
+            file_pattern="src/engrams/**/*.py",
             binding_type="implements",
         ))
         assert as_dict(bind)["status"] == "success"
@@ -88,7 +88,7 @@ class TestBindingsWithDecisions:
         # 3. Retrieve context for a file
         ctx = H.handle_get_context_for_files(binding_models.GetContextForFilesArgs(
             workspace_id=workspace_id,
-            file_paths=["src/context_portal_mcp/main.py"],
+            file_paths=["src/engrams/main.py"],
         ))
         ctx_d = as_dict(ctx)
         assert ctx_d["status"] == "success"
@@ -243,7 +243,7 @@ class TestGovernanceAndBindingsCombined:
             workspace_id=workspace_id,
             item_type="decision",
             item_id=dec_id,
-            file_pattern="src/context_portal_mcp/governance/**/*.py",
+            file_pattern="src/engrams/governance/**/*.py",
             binding_type="implements",
         ))
         assert as_dict(bind)["status"] == "success"
@@ -251,7 +251,7 @@ class TestGovernanceAndBindingsCombined:
         # Retrieve context for governance files
         ctx = H.handle_get_context_for_files(binding_models.GetContextForFilesArgs(
             workspace_id=workspace_id,
-            file_paths=["src/context_portal_mcp/governance/models.py"],
+            file_paths=["src/engrams/governance/models.py"],
         ))
         ctx_d = as_dict(ctx)
         assert ctx_d["status"] == "success"
