@@ -40,6 +40,23 @@ AI:  Exporting Engrams database to markdown...
 
      You can commit this to version control.`}</code></pre>
 
+  <h3>Team-only export (for Git commit)</h3>
+  <p>
+    Pass <code>visibility_filter="team"</code> to export only items that belong to the whole
+    team — personal progress, individual notes, and active-context files are excluded.
+    This is the format used by the pre-commit Git hook.
+  </p>
+  <pre><code>{`You: "Export only team-scoped decisions and patterns"
+
+AI:  Exporting with visibility_filter=team...
+
+     Created ./engrams-export/ with:
+     decision_log.md    (12 team decisions)
+     system_patterns.md (5 patterns)
+     custom_data/       (3 category files)
+
+     Personal progress and context files excluded.`}</code></pre>
+
   <h2>Import from markdown</h2>
   <pre><code>{`You: "Import the project knowledge from markdown"
 
@@ -54,17 +71,80 @@ AI:  Importing from ./docs/engrams_export/...
 
      Your project memory is fully restored.`}</code></pre>
 
+  <h3>Merge import (additive — for Git pull)</h3>
+  <p>
+    Pass <code>merge=True</code> to import in <strong>additive-only mode</strong>.  Items that
+    already exist locally are skipped rather than overwritten, so personal notes and progress
+    are safe:
+  </p>
+  <ul>
+    <li><strong>Decisions</strong> are matched by a 12-character content-hash slug (SHA-256 of the summary text), so the same decision exported from any machine is recognised as identical.</li>
+    <li><strong>Patterns</strong> are matched by name (case-insensitive).</li>
+    <li><strong>Custom data</strong> is matched by <code>category + key</code>.</li>
+    <li><strong>Context files</strong> (<code>product_context.md</code>, <code>active_context.md</code>, <code>progress_log.md</code>) are always skipped in merge mode — they are personal local state.</li>
+  </ul>
+  <pre><code>{`You: "Import team knowledge after pulling"
+
+AI:  Importing with merge=True from ./engrams-export/...
+
+     items_logged:  { decision_log: 3, system_patterns: 1 }
+     items_skipped: { decision_log: 9, system_patterns: 4, custom_data: 2 }
+     (existing local items untouched)
+
+     Your local database is up to date.`}</code></pre>
+
+  <h2>Team sync via Git hooks</h2>
+  <p>
+    The export and merge-import steps can be automated with Git hooks so the whole workflow
+    is invisible to developers:
+  </p>
+  <table>
+    <thead><tr><th>Hook</th><th>When it runs</th><th>What it does</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>pre-commit</strong></td>
+        <td>Before every <code>git commit</code></td>
+        <td>Exports <code>visibility=team</code> data to <code>engrams-export/</code> and stages it</td>
+      </tr>
+      <tr>
+        <td><strong>post-merge</strong></td>
+        <td>After every <code>git pull</code> / <code>git merge</code></td>
+        <td>Imports <code>engrams-export/</code> in merge mode (additive only)</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Installing the hooks</h3>
+  <pre><code>{`# From your project root (requires a .git directory)
+engrams install-hooks
+
+# Custom export directory
+engrams install-hooks --export-dir team-engrams
+
+# Overwrite existing hooks
+engrams install-hooks --force`}</code></pre>
+  <p>
+    After running <code>install-hooks</code>, commit the <code>engrams-export/</code> directory
+    once so teammates receive your current team-scoped knowledge on their next pull.
+  </p>
+
   <div class="callout tip">
     <strong>Commit your export to version control.</strong>
     Exporting and committing your Engrams database as markdown means new team members can
-    restore the full project memory by importing after cloning.
+    restore the full project memory by importing after cloning — or automatically via the
+    post-merge hook.
   </div>
 
   <h2>MCP tools</h2>
   <ul>
     <li><code>batch_log_items</code> — log multiple items of the same type in one call</li>
-    <li><code>export_engrams_to_markdown</code> — export all knowledge to a markdown directory</li>
-    <li><code>import_markdown_to_engrams</code> — restore knowledge from a markdown export</li>
+    <li><code>export_engrams_to_markdown</code> — export knowledge to a markdown directory; supports <code>visibility_filter</code></li>
+    <li><code>import_markdown_to_engrams</code> — restore knowledge from a markdown export; supports <code>merge</code></li>
+  </ul>
+
+  <h2>CLI commands</h2>
+  <ul>
+    <li><code>engrams install-hooks</code> — write pre-commit and post-merge Git hooks for team sync</li>
   </ul>
 </DocsLayout>
 <style>

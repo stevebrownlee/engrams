@@ -30,7 +30,7 @@ import uvicorn
 from fastapi import FastAPI
 from fastmcp import Context, FastMCP
 from mcp.types import ToolAnnotations
-from pydantic import Field
+from pydantic import Field, ValidationError
 
 # Local imports
 try:
@@ -378,7 +378,7 @@ async def tool_update_active_context(
 
 @engrams_mcp.tool(
     name="log_decision",
-    description="Creates a new STRATEGIC decision record — architectural choices, technology selections, coding conventions, or project constraints that guide future work across all sessions. Use this ONLY for decisions that would still be relevant if a new session started on a different feature. Do NOT use for bug fixes, code modifications, refactors, or task completions — use log_progress for those. Accepts summary (required), rationale, implementation_details, and tags. Optionally assign to a governance scope via scope_id; if scope_id is provided, visibility defaults to 'scoped' and the decision will only appear in governance checks for that scope — omit scope_id to make the decision globally visible. tags must be a JSON array of strings (e.g., ['auth', 'security']), NOT a comma-separated string. Returns: {id: int, summary, rationale, tags, created_at, ...}. For logging multiple decisions at once, use batch_log_items with item_type='decision'.",
+    description="Creates a new STRATEGIC decision record — architectural choices, technology selections, coding conventions, or project constraints that guide future work across all sessions. Use this ONLY for decisions that would still be relevant if a new session started on a different feature. Do NOT use for bug fixes, code modifications, refactors, or task completions — use log_progress for those. Accepts summary (required), rationale, implementation_details, and tags. The workspace has a configured default visibility (team or individual, set during 'engrams init'). If this is a team project, decisions are automatically shared via the .engrams/ filesystem for git sync — you do NOT need to set visibility manually. Only override visibility when the user explicitly requests a different level. Optionally assign to a governance scope via scope_id; if scope_id is provided, visibility defaults to 'scoped' and the decision will only appear in governance checks for that scope — omit scope_id to make the decision globally visible. tags must be a JSON array of strings (e.g., ['auth', 'security']), NOT a comma-separated string. Returns: {id: int, summary, rationale, tags, created_at, ...}. For logging multiple decisions at once, use batch_log_items with item_type='decision'.",
     annotations=ToolAnnotations(
         title="Log Decision",
         destructiveHint=False,
@@ -406,7 +406,7 @@ async def tool_log_decision(
     ] = None,
     visibility: Annotated[
         Optional[str],
-        Field(description="Visibility level: team, individual, proposed, or workspace"),
+        Field(description="Visibility level: team, individual, proposed, or workspace. The workspace default is applied automatically if omitted — only set this to override the default when the user explicitly requests it."),
     ] = None,
 ) -> Dict[str, Any]:
     """
@@ -848,7 +848,7 @@ async def tool_update_progress(
 
 @engrams_mcp.tool(
     name="log_system_pattern",
-    description="Creates or updates a named system/coding pattern (e.g., 'Repository Pattern', 'Error Handling Strategy'). The name field is the unique identifier — if a pattern with the same name already exists, it will be updated. Use for recording architectural patterns, conventions, or reusable approaches. Returns: {id, name, description, tags, created_at, ...}.",
+    description="Creates or updates a named system/coding pattern (e.g., 'Repository Pattern', 'Error Handling Strategy'). The name field is the unique identifier — if a pattern with the same name already exists, it will be updated. Use for recording architectural patterns, conventions, or reusable approaches. The workspace default visibility is applied automatically — if this is a team project, patterns are shared via .engrams/ for git sync. Only override visibility when the user explicitly requests it. Returns: {id, name, description, tags, created_at, ...}.",
     annotations=ToolAnnotations(
         title="Log System Pattern",
         destructiveHint=False,
@@ -873,7 +873,7 @@ async def tool_log_system_pattern(
     ] = None,
     visibility: Annotated[
         Optional[str],
-        Field(description="Visibility level: team, individual, proposed, or workspace"),
+        Field(description="Visibility level: team, individual, proposed, or workspace. The workspace default is applied automatically if omitted — only set this to override the default when the user explicitly requests it."),
     ] = None,
 ) -> Dict[str, Any]:
     """
@@ -997,7 +997,7 @@ async def tool_get_system_patterns(
 
 @engrams_mcp.tool(
     name="log_custom_data",
-    description="Stores or updates a custom key-value entry organized by category. Use for any structured data not covered by decisions, progress, or patterns (e.g., glossary terms under category 'ProjectGlossary', config settings under 'critical_settings', meeting notes, technical specs). The (category, key) pair is the unique identifier — existing entries are overwritten. Value can be any JSON-serializable type. Returns: {category, key, value, created_at}.",
+    description="Stores or updates a custom key-value entry organized by category. Use for any structured data not covered by decisions, progress, or patterns (e.g., glossary terms under category 'ProjectGlossary', config settings under 'critical_settings', meeting notes, technical specs). The (category, key) pair is the unique identifier — existing entries are overwritten. Value can be any JSON-serializable type. The workspace default visibility is applied automatically for non-system categories — if this is a team project, custom data is shared via .engrams/ for git sync. Only override visibility when the user explicitly requests it. Returns: {category, key, value, created_at}.",
     annotations=ToolAnnotations(
         title="Log Custom Data",
         destructiveHint=False,
@@ -1025,7 +1025,7 @@ async def tool_log_custom_data(
     ] = None,
     visibility: Annotated[
         Optional[str],
-        Field(description="Visibility level: team, individual, proposed, or workspace"),
+        Field(description="Visibility level: team, individual, proposed, or workspace. The workspace default is applied automatically if omitted — only set this to override the default when the user explicitly requests it."),
     ] = None,
 ) -> Dict[str, Any]:
     """
@@ -1144,6 +1144,15 @@ async def tool_export_engrams_to_markdown(
             "Defaults to './engrams_export/' if not provided."
         ),
     ] = None,
+    visibility_filter: Annotated[
+        Optional[str],
+        Field(
+            description="When set to 'team', only items with visibility='team' are exported. "
+            "Useful for generating a team-shared markdown snapshot (e.g. for Git). "
+            "When omitted, all items regardless of visibility are exported. "
+            "Valid values: 'team', 'individual', 'proposed', 'workspace'."
+        ),
+    ] = None,
 ) -> Dict[str, Any]:
     """
     Exports Engrams data to markdown files.
@@ -1152,6 +1161,7 @@ async def tool_export_engrams_to_markdown(
         workspace_id: The identifier for the workspace.
         ctx: The MCP context.
         output_path: Optional output directory path.
+        visibility_filter: Optional visibility level to filter exported items.
 
     Returns:
         A dictionary confirming the export.
@@ -1159,7 +1169,9 @@ async def tool_export_engrams_to_markdown(
     try:
         _ = ctx
         pydantic_args = models.ExportEngramsToMarkdownArgs(
-            workspace_id=workspace_id, output_path=output_path
+            workspace_id=workspace_id,
+            output_path=output_path,
+            visibility_filter=visibility_filter,
         )
         return mcp_handlers.handle_export_engrams_to_markdown(pydantic_args)
     except exceptions.ContextPortalError as e:
@@ -1168,10 +1180,11 @@ async def tool_export_engrams_to_markdown(
     except Exception as e:
         log.error(
             "Error processing args for export_engrams_to_markdown: %s. "
-            "Args: workspace_id=%s, output_path='%s'",
+            "Args: workspace_id=%s, output_path='%s', visibility_filter='%s'",
             e,
             workspace_id,
             output_path,
+            visibility_filter,
         )
         raise exceptions.ContextPortalError(
             f"Server error processing export_engrams_to_markdown: {type(e).__name__}"
@@ -1199,6 +1212,16 @@ async def tool_import_markdown_to_engrams(
             "Defaults to './engrams_export/' if not provided."
         ),
     ] = None,
+    merge: Annotated[
+        bool,
+        Field(
+            description="When True, items already present locally are skipped rather than overwritten. "
+            "Decisions are matched by content-hash slug, patterns by name, custom data by category+key. "
+            "Context files (product_context, active_context, progress_log) are always skipped in merge mode. "
+            "Use merge=True for post-pull team-sync hooks so local personal data is never clobbered. "
+            "Defaults to False (overwrite mode)."
+        ),
+    ] = False,
 ) -> Dict[str, Any]:
     """
     Imports data from markdown files into Engrams.
@@ -1207,6 +1230,7 @@ async def tool_import_markdown_to_engrams(
         workspace_id: The identifier for the workspace.
         ctx: The MCP context.
         input_path: Optional input directory path.
+        merge: When True, skip items already present locally rather than overwriting.
 
     Returns:
         A dictionary confirming the import.
@@ -1214,7 +1238,7 @@ async def tool_import_markdown_to_engrams(
     try:
         _ = ctx
         pydantic_args = models.ImportMarkdownToEngramsArgs(
-            workspace_id=workspace_id, input_path=input_path
+            workspace_id=workspace_id, input_path=input_path, merge=merge
         )
         return mcp_handlers.handle_import_markdown_to_engrams(pydantic_args)
     except exceptions.ContextPortalError as e:
@@ -1223,10 +1247,11 @@ async def tool_import_markdown_to_engrams(
     except Exception as e:
         log.error(
             "Error processing args for import_markdown_to_engrams: %s. "
-            "Args: workspace_id=%s, input_path='%s'",
+            "Args: workspace_id=%s, input_path='%s', merge=%s",
             e,
             workspace_id,
             input_path,
+            merge,
         )
         raise exceptions.ContextPortalError(
             f"Server error processing import_markdown_to_engrams: {type(e).__name__}"
@@ -2214,6 +2239,51 @@ async def tool_check_compliance(
         raise exceptions.ContextPortalError(
             f"Server error processing check_compliance: {type(e).__name__}"
         )
+
+
+@engrams_mcp.tool(
+    description="Pre-mutation governance check: verifies a planned action against all accepted team decisions before any workspace changes occur. Returns blocked=true if the action conflicts with an accepted decision. Agents SHOULD call this before major workspace mutations (creating decisions, changing architecture, modifying patterns). This is the pre-check layer of the governance defense-in-depth system — even if skipped, the post-write safety net in _apply_governance_checks will still flag conflicts after the write."
+)
+async def tool_check_planned_action(
+    workspace_id: Annotated[
+        str, Field(description="The absolute path to the workspace directory")
+    ],
+    action_description: Annotated[
+        str,
+        Field(
+            min_length=1,
+            description="Description of the planned action/mutation to check against accepted decisions",
+        ),
+    ],
+    tags: Annotated[
+        Optional[List[str]],
+        Field(
+            default=None,
+            description="Tags related to the planned action for tag-based matching against decisions",
+        ),
+    ] = None,
+) -> Dict[str, Any]:
+    """
+    Pre-mutation governance check against accepted team decisions.
+
+    Call this BEFORE making workspace changes to check if the planned action
+    conflicts with any accepted team decisions. If blocked=true, STOP and
+    review the conflicts before proceeding.
+    """
+    try:
+        from .governance import models as gov_models
+
+        args = gov_models.CheckPlannedActionArgs(
+            workspace_id=workspace_id,
+            action_description=action_description,
+            tags=tags,
+        )
+        return mcp_handlers.handle_check_planned_action(args)
+    except ValidationError as e:
+        raise exceptions.ToolArgumentError(f"Invalid arguments for check_planned_action: {e}")
+    except Exception as e:
+        log.exception("Error in tool_check_planned_action")
+        raise exceptions.ContextPortalError(f"Error checking planned action: {e}")
 
 
 @engrams_mcp.tool(

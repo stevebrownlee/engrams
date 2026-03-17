@@ -102,8 +102,19 @@ def get_database_path(workspace_id: str) -> pathlib.Path:
     posix_workspace_id = workspace_id.replace("\\", "/")
     log.debug(f"Normalized workspace_id to POSIX: {posix_workspace_id}")
 
-    if not posix_workspace_id or not os.path.isdir(posix_workspace_id):
-        raise ValueError(f"Invalid workspace_id: {posix_workspace_id}")
+    if not posix_workspace_id:
+        raise ValueError(
+            f"Invalid workspace_id: empty or None. "
+            f"The workspace_id must be the absolute path to your project directory."
+        )
+
+    if not os.path.isdir(posix_workspace_id):
+        raise ValueError(
+            f"Workspace directory does not exist: '{posix_workspace_id}'. "
+            f"Ensure the workspace_id is the absolute path to an existing project directory "
+            f"(e.g., '/home/user/myproject'). The Engrams database will be created at "
+            f"'{posix_workspace_id}/engrams/{_db_filename}'."
+        )
 
     workspace_path = pathlib.Path(posix_workspace_id)
     log.debug(f"Constructed workspace_path: {workspace_path}")

@@ -29,7 +29,7 @@ import sys
 
 
 # Known subcommands — used to distinguish subcommands from server flags
-_SUBCOMMANDS = {"serve", "init", "dashboard"}
+_SUBCOMMANDS = {"serve", "init", "dashboard", "install-hooks", "migrate-to-filesystem"}
 
 
 def main() -> None:
@@ -79,6 +79,20 @@ def main() -> None:
         sys.argv = [sys.argv[0] + " dashboard"] + remaining_args
         dashboard_main()
 
+    elif command == "install-hooks":
+        from .install_hooks_command import (  # pylint: disable=import-outside-toplevel
+            run_install_hooks_cli,
+        )
+
+        run_install_hooks_cli(sys_args=remaining_args)
+
+    elif command == "migrate-to-filesystem":
+        from .migrate_command import (  # pylint: disable=import-outside-toplevel
+            run_migrate_cli,
+        )
+
+        run_migrate_cli(sys_args=remaining_args)
+
 
 def _print_help(file=None) -> None:
     """Print top-level help for the unified CLI."""
@@ -91,15 +105,22 @@ Usage:
     engrams <command> [options]
 
 Commands:
-    serve       Start the Engrams MCP server (default if no command given)
-    init        Initialize Engrams strategy for an AI coding tool
-    dashboard   Start the Engrams knowledge dashboard
+    serve                   Start the Engrams MCP server (default if no command given)
+    init                    Initialize Engrams strategy for an AI coding tool
+    dashboard               Start the Engrams knowledge dashboard
+    install-hooks           Install Git hooks for team-sync via committed markdown
+    migrate-to-filesystem   Migrate team DB items to .engrams/ filesystem format
 
 Examples:
     engrams serve --mode stdio
     engrams init --tool windsurf
     engrams init --list
     engrams dashboard
+    engrams install-hooks
+    engrams install-hooks --export-dir team-engrams --force
+    engrams migrate-to-filesystem
+    engrams migrate-to-filesystem --dry-run
+    engrams migrate-to-filesystem --project-dir /path/to/repo
 
 Use 'engrams <command> --help' for details on each command.""",
         file=file,

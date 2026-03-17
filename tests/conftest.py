@@ -8,6 +8,23 @@ if SRC_PATH not in sys.path:
     sys.path.insert(0, SRC_PATH)
 
 
+@pytest.fixture(autouse=True)
+def _clear_auto_created_flags():
+    """Clear auto-created workspace tracking between tests.
+
+    When ``get_db_connection()`` auto-creates a database, it sets a flag so
+    MCP handlers can include a one-time notice.  In tests every workspace is
+    freshly created, so the flag is always set — which would cause handlers
+    like ``handle_get_decisions`` to wrap list responses in a dict, breaking
+    tests that expect a plain list.  This fixture ensures the tracking dict
+    is empty before and after each test.
+    """
+    from engrams.db.database import _auto_created_workspaces
+    _auto_created_workspaces.clear()
+    yield
+    _auto_created_workspaces.clear()
+
+
 @pytest.fixture
 def workspace_id(tmp_path):
     """Provide a fresh temporary workspace directory for each test.

@@ -24,6 +24,25 @@ class DatabaseError(ContextPortalError):
     """Exception raised for database-related errors."""
 
 
+class DatabaseNotInitializedError(DatabaseError):
+    """Exception raised when the Engrams database does not exist yet.
+
+    This is distinct from DatabaseError to allow callers (especially LLM agents)
+    to distinguish 'database never created' from 'database exists but broken'.
+    The error message includes actionable guidance.
+    """
+
+    def __init__(self, workspace_id: str, db_path: str, reason: str = ""):
+        self.workspace_id = workspace_id
+        self.db_path = db_path
+        detail = f" ({reason})" if reason else ""
+        super().__init__(
+            f"Engrams database not found at '{db_path}'{detail}. "
+            f"Run 'engrams init --tool <name>' in your project directory to create it, "
+            f"or the database will be auto-created on the next write operation."
+        )
+
+
 class ConfigurationError(ContextPortalError):
     """Exception raised for configuration errors."""
 

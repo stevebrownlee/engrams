@@ -49,12 +49,16 @@ class Decision(BaseModel):
     """Model for the decisions table."""
 
     id: Optional[int] = None  # Auto-incremented by DB
+    uuid: Optional[str] = None  # Stable UUID for cross-workspace deduplication
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     summary: str
     rationale: Optional[str] = None
     implementation_details: Optional[str] = None
     tags: Optional[List[str]] = Field(
         None, description="Optional tags for categorization"
+    )
+    visibility: Optional[str] = Field(
+        None, description="Visibility level: team, individual, proposed, or workspace"
     )
 
 
@@ -80,6 +84,9 @@ class SystemPattern(BaseModel):
     tags: Optional[List[str]] = Field(
         None, description="Optional tags for categorization"
     )
+    visibility: Optional[str] = Field(
+        None, description="Visibility level: team, individual, proposed, or workspace"
+    )
 
 
 class CustomData(BaseModel):
@@ -93,6 +100,9 @@ class CustomData(BaseModel):
     key: str
     value: (
         Any  # Store arbitrary JSON data (SQLAlchemy handles JSON str conversion for DB)
+    )
+    visibility: Optional[str] = Field(
+        None, description="Visibility level: team, individual, proposed, or workspace"
     )
 
 
@@ -224,6 +234,10 @@ class LogDecisionArgs(IntCoercionMixin, BaseArgs):
     visibility: Optional[str] = Field(
         default=None,
         description="Visibility level: team, individual, proposed, or workspace",
+    )
+    uuid: Optional[str] = Field(
+        default=None,
+        description="Optional stable UUID to assign; generated automatically if omitted",
     )
 
     @model_validator(mode="after")
@@ -611,6 +625,27 @@ class ExportEngramsToMarkdownArgs(BaseArgs):
         None,
         description="Optional output directory path relative to workspace_id. Defaults to './engrams_export/' if not provided.",
     )
+    visibility_filter: Optional[str] = Field(
+        None,
+        description=(
+            "Optional visibility filter for team sync. "
+            "When set to 'team', only items with visibility='team' are exported — "
+            "suitable for committing to a shared Git repository. "
+            "When None (default), all items are exported. "
+            "Valid values: 'team', 'individual', 'proposed', 'workspace'."
+        ),
+    )
+
+    @model_validator(mode="after")
+    def validate_visibility_filter(self) -> "ExportEngramsToMarkdownArgs":
+        if self.visibility_filter and self.visibility_filter not in (
+            "team",
+            "individual",
+            "proposed",
+            "workspace",
+        ):
+            raise ValueError(f"Invalid visibility_filter: {self.visibility_filter}")
+        return self
 
 
 # --- Import Tool ---
@@ -622,6 +657,15 @@ class ImportMarkdownToEngramsArgs(BaseArgs):
     input_path: Optional[str] = Field(
         None,
         description="Optional input directory path relative to workspace_id containing markdown files. Defaults to './engrams_export/' if not provided.",
+    )
+    merge: bool = Field(
+        False,
+        description=(
+            "When True, uses merge semantics: items already present locally (matched by "
+            "content-hash slug) are skipped rather than overwritten. "
+            "Use merge=True for team sync (post-pull import) so local personal data is preserved. "
+            "When False (default), all items are inserted or replaced — use for full restores."
+        ),
     )
 
 
@@ -969,5 +1013,13 @@ TOOL_ARG_MODELS = _LazyToolArgModels(
         "update_progress": UpdateProgressArgs,
         "delete_progress_by_id": DeleteProgressByIdArgs,
         # Feature 1-4 tools are lazily resolved via _LazyToolArgModels._LAZY_REFS
+        "index_sync": "IndexSyncArgs",
     }
 )
+
+
+class IndexSyncArgs(BaseModel):
+    """Arguments for the index-sync CLI/MCP command (Phase 3)."""
+
+    workspace_id: str
+    files: Optional[List[str]] = None  # If None, do full scan

@@ -87,7 +87,7 @@ import DocsLayout from "../../layouts/DocsLayout.astro";
   <p>In your project root directory, run this command to install the CLI tools:</p>
   <pre><code>pip install engrams-mcp</code></pre>
 
-  <h2>Install the AI strategy</h2>
+  <h2>Step 3 — Install the AI strategy</h2>
   <p>
     After the MCP server is configured, run the <code>engrams init</code> command
     from your project root to scaffold the correct custom-instructions file for your
@@ -110,6 +110,48 @@ engrams init --tool generic      # → engrams_strategy.md`}</code></pre>
     decisions, how to retrieve context, and how to format responses. Without it, the
     AI won't know Engrams exists.
   </div>
+
+  <h2>Step 4 — (Team) Install Git hooks for team sync</h2>
+  <p>
+    If you are working in a team and want architectural decisions, patterns, and custom
+    data to be shared automatically through Git, run:
+  </p>
+  <pre><code>engrams install-hooks</code></pre>
+  <p>
+    This writes two Git hooks into <code>.git/hooks/</code>:
+  </p>
+  <table>
+    <thead><tr><th>Hook</th><th>What it does</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>pre-commit</strong></td>
+        <td>
+          Exports items with <code>visibility=team</code> to an <code>engrams-export/</code>
+          directory and stages them so they are committed alongside your code.
+        </td>
+      </tr>
+      <tr>
+        <td><strong>post-merge</strong></td>
+        <td>
+          After <code>git pull</code> or <code>git merge</code>, imports the committed
+          markdown in merge mode — adding only new team items and never overwriting
+          your personal notes.
+        </td>
+      </tr>
+    </tbody>
+  </table>
+  <p>
+    After installing the hooks, commit the <code>engrams-export/</code> directory once so
+    the initial team knowledge is available to all teammates on their next pull.
+  </p>
+  <pre><code>{`engrams install-hooks
+# … then make a commit to kick off the first export
+git add engrams-export/
+git commit -m "chore: add initial Engrams team export"`}</code></pre>
+  <p>
+    See <a href="/docs/features/batch-export">Batch &amp; Export</a> for full details on
+    visibility levels, merge mode, and the team-sync workflow.
+  </p>
 
   <h2>Verify the installation</h2>
   <p>In a new chat, ask your AI:</p>

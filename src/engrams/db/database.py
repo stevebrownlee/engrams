@@ -19,6 +19,7 @@ import json
 import logging
 import os
 import sqlite3
+import uuid as _uuid_module
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -27,7 +28,7 @@ from alembic import command
 from alembic.config import Config
 
 from ..core.config import get_database_path
-from ..core.exceptions import ConfigurationError, DatabaseError
+from ..core.exceptions import ConfigurationError, DatabaseError, DatabaseNotInitializedError
 from . import models  # Import models from the same directory
 
 log = logging.getLogger(__name__)  # Get a logger for this module
@@ -522,30 +523,159 @@ def downgrade() -> None:
     op.drop_table('context_scopes')
 """
 
+DECISIONS_UUID_SCHEMA_CONTENT = """
+\"\"\"Add uuid column to decisions for stable cross-workspace identity
+
+Revision ID: 20260306
+Revises: 20260220
+Create Date: 2026-03-06 00:00:00.000000
+
+\"\"\"
+from alembic import op
+import sqlalchemy as sa
+
+revision = '20260306'
+down_revision = '20260220'
+branch_labels = None
+depends_on = None
+
+
+def _column_exists(table_name: str, column_name: str) -> bool:
+    bind = op.get_bind()
+    result = bind.execute(sa.text(f"PRAGMA table_info({table_name})"))
+    columns = [row[1] for row in result]
+    return column_name in columns
+
+
+def upgrade() -> None:
+    if not _column_exists('decisions', 'uuid'):
+        op.add_column('decisions', sa.Column('uuid', sa.Text(), nullable=True))
+        op.create_index('ix_decisions_uuid', 'decisions', ['uuid'], unique=True)
+
+
+def downgrade() -> None:
+    op.drop_index('ix_decisions_uuid', table_name='decisions')
+    op.drop_column('decisions', 'uuid')
+"""
+
 # --- Connection Handling ---
 
 _connections: Dict[str, sqlite3.Connection] = {}
+
+# Track workspaces where the database was auto-created (not via `engrams init`)
+_auto_created_workspaces: Dict[str, bool] = {}
+
+
+def create_database(workspace_id: str) -> Path:
+    """
+    Creates the Engrams database for a workspace, including directory structure,
+    Alembic migration files, and running schema migrations.
+
+    This is the canonical function for database initialization. It is called by:
+    - ``engrams init`` (CLI) to proactively create the database
+    - ``get_db_connection()`` as a fallback when no database exists
+
+    Args:
+        workspace_id: The absolute path to the workspace directory.
+
+    Returns:
+        The Path to the created database file.
+
+    Raises:
+        DatabaseError: If database creation fails.
+        DatabaseNotInitializedError: If the workspace_id is invalid and
+            the database cannot be created.
+    """
+    try:
+        # 1. Ensure all necessary directories and Alembic files are present.
+        ensure_alembic_files_exist(workspace_id)
+
+        # 2. Get the database path (directory was created by ensure_alembic_files_exist).
+        db_path = get_database_path(workspace_id)
+
+        # 3. Run migrations to create/update the database schema.
+        run_migrations(db_path)
+
+        log.info(
+            f"Database created successfully at {db_path} for workspace: {workspace_id}"
+        )
+        return db_path
+    except (ValueError, OSError) as e:
+        # ValueError from get_database_path when workspace_id is invalid
+        # OSError from directory creation or file writing
+        db_path_str = str(
+            Path(workspace_id) / "engrams" / "context.db"
+        )
+        raise DatabaseNotInitializedError(
+            workspace_id=workspace_id,
+            db_path=db_path_str,
+            reason=str(e),
+        )
+    except DatabaseError:
+        # Re-raise DatabaseError as-is (includes migration failures)
+        raise
+    except Exception as e:
+        db_path_str = str(
+            Path(workspace_id) / "engrams" / "context.db"
+        )
+        raise DatabaseNotInitializedError(
+            workspace_id=workspace_id,
+            db_path=db_path_str,
+            reason=f"Unexpected error: {e}",
+        )
+
+
+def was_auto_created(workspace_id: str) -> bool:
+    """
+    Returns True if the database for this workspace was auto-created by
+    ``get_db_connection()`` rather than explicitly by ``engrams init``.
+
+    This is used by MCP handlers to include a notice in the first response
+    after auto-creation, guiding the LLM to inform the user.
+    """
+    return _auto_created_workspaces.get(workspace_id, False)
+
+
+def clear_auto_created_flag(workspace_id: str) -> None:
+    """
+    Clears the auto-created flag for a workspace after the notice has been
+    communicated to the LLM. Called by the MCP handler after including the
+    notice in a response.
+    """
+    _auto_created_workspaces.pop(workspace_id, None)
 
 
 def get_db_connection(workspace_id: str) -> sqlite3.Connection:
     """
     Gets or creates a database connection for the given workspace.
-    This function now orchestrates the entire workspace initialization on first call.
+
+    If the database does not exist, it is auto-created as a fallback
+    (the preferred path is explicit creation via ``engrams init``).
+    Auto-creation is tracked so MCP handlers can include a notice.
     """
     if workspace_id in _connections:
         return _connections[workspace_id]
 
-    # 1. Ensure all necessary directories and Alembic files are present.
-    # This is the core of the deferred initialization.
-    ensure_alembic_files_exist(workspace_id)
+    # Check if the database already exists before we try to create it
+    try:
+        db_path = get_database_path(workspace_id)
+    except ValueError:
+        # workspace_id is invalid — create_database will raise a clear error
+        db_path = None
 
-    # 2. Get the database path (which should now exist within the created directories).
-    db_path = get_database_path(workspace_id)
+    db_existed = db_path is not None and db_path.exists()
 
-    # 3. Run migrations to create/update the database schema.
-    run_migrations(db_path)
+    # Create database if needed (idempotent if it already exists)
+    db_path = create_database(workspace_id)
 
-    # 4. Establish and cache the database connection.
+    if not db_existed:
+        _auto_created_workspaces[workspace_id] = True
+        log.info(
+            f"Database auto-created for workspace {workspace_id}. "
+            f"Consider running 'engrams init --tool <name>' for full setup."
+        )
+
+    # Establish and cache the database connection.
     try:
         conn = sqlite3.connect(
             db_path, detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
@@ -553,7 +683,7 @@ def get_db_connection(workspace_id: str) -> sqlite3.Connection:
         conn.row_factory = sqlite3.Row  # Access columns by name
         _connections[workspace_id] = conn
         log.info(
-            f"Successfully initialized and connected to database for workspace: {workspace_id}"
+            f"Successfully connected to database for workspace: {workspace_id}"
         )
         return conn
     except ConfigurationError as e:
@@ -653,6 +783,22 @@ def ensure_alembic_files_exist(workspace_id: str):
                 f"Failed to create governance/bindings migration at {gov_bindings_path}: {e}"
             )
             raise DatabaseError(f"Could not create governance/bindings migration: {e}")
+
+    # Check for decisions uuid migration
+    decisions_uuid_path = alembic_versions_path / "2026_03_06_decisions_uuid.py"
+    if not decisions_uuid_path.exists():
+        log.info(
+            f"Decisions UUID migration not found. Creating at {decisions_uuid_path}"
+        )
+        try:
+            os.makedirs(alembic_versions_path, exist_ok=True)
+            with open(decisions_uuid_path, "w") as f:
+                f.write(DECISIONS_UUID_SCHEMA_CONTENT)
+        except OSError as e:
+            log.error(
+                f"Failed to create decisions UUID migration at {decisions_uuid_path}: {e}"
+            )
+            raise DatabaseError(f"Could not create decisions UUID migration: {e}")
 
 
 def run_migrations(db_path: Path):
@@ -943,12 +1089,14 @@ def update_active_context(
 # --- Add more CRUD functions for other models (ActiveContext, Decision, etc.) ---
 # Example: log_decision
 def log_decision(workspace_id: str, decision_data: models.Decision) -> models.Decision:
-    """Logs a new decision."""
+    """Logs a new decision, generating a UUID if one is not already set."""
     conn = get_db_connection(workspace_id)
     cursor = None  # Initialize cursor for finally block
+    if not decision_data.uuid:
+        decision_data.uuid = str(_uuid_module.uuid4())
     sql = """
-        INSERT INTO decisions (timestamp, summary, rationale, implementation_details, tags)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO decisions (timestamp, summary, rationale, implementation_details, tags, visibility, uuid)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
     """
     tags_json = (
         json.dumps(decision_data.tags) if decision_data.tags is not None else None
@@ -959,6 +1107,8 @@ def log_decision(workspace_id: str, decision_data: models.Decision) -> models.De
         decision_data.rationale,
         decision_data.implementation_details,
         tags_json,
+        decision_data.visibility,
+        decision_data.uuid,
     )
     try:
         cursor = conn.cursor()
@@ -976,32 +1126,86 @@ def log_decision(workspace_id: str, decision_data: models.Decision) -> models.De
             cursor.close()
 
 
+def update_decision(workspace_id: str, decision_uuid: str, decision_data: models.Decision) -> Optional[models.Decision]:
+    """Updates an existing decision identified by its UUID.
+
+    Returns the updated Decision object, or None if no decision with that UUID exists.
+    """
+    conn = get_db_connection(workspace_id)
+    cursor = None
+    sql = """
+        UPDATE decisions
+        SET summary = ?, rationale = ?, implementation_details = ?, tags = ?
+        WHERE uuid = ?
+    """
+    tags_json = (
+        json.dumps(decision_data.tags) if decision_data.tags is not None else None
+    )
+    params = (
+        decision_data.summary,
+        decision_data.rationale,
+        decision_data.implementation_details,
+        tags_json,
+        decision_uuid,
+    )
+    try:
+        cursor = conn.cursor()
+        cursor.execute(sql, params)
+        conn.commit()
+        if cursor.rowcount == 0:
+            return None
+        # Fetch and return the updated row
+        cursor.execute(
+            "SELECT id, uuid, timestamp, summary, rationale, implementation_details, tags, visibility FROM decisions WHERE uuid = ?",
+            (decision_uuid,),
+        )
+        row = cursor.fetchone()
+        if row is None:
+            return None
+        return models.Decision(
+            id=row["id"],
+            uuid=row["uuid"],
+            timestamp=row["timestamp"],
+            summary=row["summary"],
+            rationale=row["rationale"],
+            implementation_details=row["implementation_details"],
+            tags=json.loads(row["tags"]) if row["tags"] else None,
+            visibility=row["visibility"],
+        )
+    except sqlite3.Error as e:
+        conn.rollback()
+        raise DatabaseError(f"Failed to update decision: {e}")
+    finally:
+        if cursor:
+            cursor.close()
+
+
 def get_decisions(
     workspace_id: str,
     limit: Optional[int] = None,
     tags_filter_include_all: Optional[List[str]] = None,
     tags_filter_include_any: Optional[List[str]] = None,
+    visibility_filter: Optional[str] = None,
 ) -> List[models.Decision]:
-    """Retrieves decisions, optionally limited, and filtered by tags."""
+    """Retrieves decisions, optionally limited, filtered by tags and/or visibility."""
     conn = get_db_connection(workspace_id)
     cursor = None  # Initialize cursor for finally block
 
-    base_sql = "SELECT id, timestamp, summary, rationale, implementation_details, tags FROM decisions"
+    base_sql = "SELECT id, uuid, timestamp, summary, rationale, implementation_details, tags, visibility FROM decisions"
     conditions = []
     params_list: List[Any] = []
 
     if tags_filter_include_all:
-        # For each tag in the list, we need to ensure it exists in the 'tags' JSON array.
-        # This is tricky with pure SQL LIKE on a JSON array string.
-        # A more robust way is to fetch and filter in Python, or use json_each if available and suitable.
-        # For simplicity here, we'll filter in Python after fetching.
-        # This means 'limit' will apply before this specific tag filter.
-        # A true SQL solution would be more complex, e.g., using json_tree or json_each and subqueries.
-        pass  # Will be handled post-query
+        # Will be handled post-query
+        pass
 
     if tags_filter_include_any:
-        # Similar to above, this is easier to handle post-query for now.
-        pass  # Will be handled post-query
+        # Will be handled post-query
+        pass
+
+    if visibility_filter:
+        conditions.append("visibility = ?")
+        params_list.append(visibility_filter)
 
     # ORDER BY must come before LIMIT
     order_by_clause = " ORDER BY timestamp DESC"
@@ -1011,10 +1215,8 @@ def get_decisions(
         limit_clause = " LIMIT ?"
         params_list.append(limit)
 
-    # Construct the SQL query
-    # Since tag filtering will be done in Python for now, conditions list remains empty for SQL
     sql = base_sql
-    if conditions:  # This block will not be hit with current Python-based tag filtering
+    if conditions:
         sql += " WHERE " + " AND ".join(conditions)
 
     sql += order_by_clause + limit_clause
@@ -1028,11 +1230,13 @@ def get_decisions(
         decisions = [
             models.Decision(
                 id=row["id"],
+                uuid=row["uuid"] if "uuid" in row.keys() else None,
                 timestamp=row["timestamp"],
                 summary=row["summary"],
                 rationale=row["rationale"],
                 implementation_details=row["implementation_details"],
                 tags=json.loads(row["tags"]) if row["tags"] else None,
+                visibility=row["visibility"] if "visibility" in row.keys() else None,
             )
             for row in rows
         ]
@@ -1053,8 +1257,78 @@ def get_decisions(
             ]
 
         return decisions
-    except (sqlite3.Error, json.JSONDecodeError) as e:  # Added JSONDecodeError
+    except (sqlite3.Error, json.JSONDecodeError) as e:
         raise DatabaseError(f"Failed to retrieve decisions: {e}")
+    finally:
+        if cursor:
+            cursor.close()
+
+
+def get_decision_by_id(workspace_id: str, decision_id: int) -> Optional[models.Decision]:
+    """Retrieve a single decision by its integer primary key.
+
+    Returns ``None`` if no decision with *decision_id* exists.
+    """
+    conn = get_db_connection(workspace_id)
+    cursor = None
+    sql = """
+        SELECT id, uuid, timestamp, summary, rationale, implementation_details, tags, visibility
+        FROM decisions
+        WHERE id = ?
+    """
+    try:
+        cursor = conn.cursor()
+        cursor.execute(sql, (decision_id,))
+        row = cursor.fetchone()
+        if row is None:
+            return None
+        return models.Decision(
+            id=row["id"],
+            uuid=row["uuid"] if "uuid" in row.keys() else None,
+            timestamp=row["timestamp"],
+            summary=row["summary"],
+            rationale=row["rationale"],
+            implementation_details=row["implementation_details"],
+            tags=json.loads(row["tags"]) if row["tags"] else None,
+            visibility=row["visibility"] if "visibility" in row.keys() else None,
+        )
+    except (sqlite3.Error, json.JSONDecodeError) as e:
+        raise DatabaseError(f"Failed to retrieve decision {decision_id}: {e}")
+    finally:
+        if cursor:
+            cursor.close()
+
+
+def get_decision_by_uuid(workspace_id: str, decision_uuid: str) -> Optional[models.Decision]:
+    """Retrieve a single decision by its UUID.
+
+    Returns ``None`` if no decision with *decision_uuid* exists.
+    """
+    conn = get_db_connection(workspace_id)
+    cursor = None
+    sql = """
+        SELECT id, uuid, timestamp, summary, rationale, implementation_details, tags, visibility
+        FROM decisions
+        WHERE uuid = ?
+    """
+    try:
+        cursor = conn.cursor()
+        cursor.execute(sql, (decision_uuid,))
+        row = cursor.fetchone()
+        if row is None:
+            return None
+        return models.Decision(
+            id=row["id"],
+            uuid=row["uuid"],
+            timestamp=row["timestamp"],
+            summary=row["summary"],
+            rationale=row["rationale"],
+            implementation_details=row["implementation_details"],
+            tags=json.loads(row["tags"]) if row["tags"] else None,
+            visibility=row["visibility"] if "visibility" in row.keys() else None,
+        )
+    except (sqlite3.Error, json.JSONDecodeError) as e:
+        raise DatabaseError(f"Failed to retrieve decision by UUID '{decision_uuid}': {e}")
     finally:
         if cursor:
             cursor.close()
@@ -1302,8 +1576,8 @@ def log_system_pattern(
     # Use INSERT OR REPLACE to handle unique constraint on 'name'
     # This will overwrite the description and tags if the name already exists.
     sql = """
-        INSERT OR REPLACE INTO system_patterns (timestamp, name, description, tags)
-        VALUES (?, ?, ?, ?)
+        INSERT OR REPLACE INTO system_patterns (timestamp, name, description, tags, visibility)
+        VALUES (?, ?, ?, ?, ?)
     """
     tags_json = json.dumps(pattern_data.tags) if pattern_data.tags is not None else None
     params = (
@@ -1311,6 +1585,7 @@ def log_system_pattern(
         pattern_data.name,
         pattern_data.description,
         tags_json,
+        pattern_data.visibility,
     )
     try:
         cursor = conn.cursor()
@@ -1340,26 +1615,30 @@ def get_system_patterns(
     workspace_id: str,
     tags_filter_include_all: Optional[List[str]] = None,
     tags_filter_include_any: Optional[List[str]] = None,
-    # limit: Optional[int] = None, # Add if pagination is desired
+    visibility_filter: Optional[str] = None,
 ) -> List[models.SystemPattern]:
-    """Retrieves system patterns, optionally filtered by tags."""
+    """Retrieves system patterns, optionally filtered by tags and/or visibility."""
     conn = get_db_connection(workspace_id)
     cursor = None  # Initialize cursor for finally block
 
     base_sql = "SELECT id, timestamp, name, description, tags FROM system_patterns"
-    order_by_clause = " ORDER BY name ASC"
-    # params_list: List[Any] = [] # Not used for SQL filtering of tags for now
-    # limit_clause = ""
-    # if limit is not None and limit > 0:
-    #     limit_clause = " LIMIT ?"
-    #     params_list.append(limit)
+    conditions: List[Any] = []
+    params_list: List[Any] = []
 
-    sql = base_sql + order_by_clause  # + limit_clause
-    # params_tuple = tuple(params_list)
+    if visibility_filter:
+        conditions.append("visibility = ?")
+        params_list.append(visibility_filter)
+
+    order_by_clause = " ORDER BY name ASC"
+
+    sql = base_sql
+    if conditions:
+        sql += " WHERE " + " AND ".join(conditions)
+    sql += order_by_clause
 
     try:
         cursor = conn.cursor()
-        cursor.execute(sql)  # , params_tuple)
+        cursor.execute(sql, tuple(params_list))
         rows = cursor.fetchall()
         patterns = [
             models.SystemPattern(
@@ -1388,7 +1667,7 @@ def get_system_patterns(
             ]
 
         return patterns
-    except (sqlite3.Error, json.JSONDecodeError) as e:  # Added JSONDecodeError
+    except (sqlite3.Error, json.JSONDecodeError) as e:
         raise DatabaseError(f"Failed to retrieve system patterns: {e}")
     finally:
         if cursor:
@@ -1416,19 +1695,158 @@ def delete_system_pattern_by_id(workspace_id: str, pattern_id: int) -> bool:
             cursor.close()
 
 
+def get_system_pattern_by_id(
+    workspace_id: str, pattern_id: int
+) -> Optional[models.SystemPattern]:
+    """Retrieve a single system pattern by its integer primary key.
+
+    Returns ``None`` if no pattern with *pattern_id* exists.
+    """
+    conn = get_db_connection(workspace_id)
+    cursor = None
+    sql = """
+        SELECT id, timestamp, name, description, tags, visibility
+        FROM system_patterns
+        WHERE id = ?
+    """
+    try:
+        cursor = conn.cursor()
+        cursor.execute(sql, (pattern_id,))
+        row = cursor.fetchone()
+        if row is None:
+            return None
+        return models.SystemPattern(
+            id=row["id"],
+            timestamp=row["timestamp"],
+            name=row["name"],
+            description=row["description"],
+            tags=json.loads(row["tags"]) if row["tags"] else None,
+            visibility=row["visibility"] if "visibility" in row.keys() else None,
+        )
+    except (sqlite3.Error, json.JSONDecodeError) as e:
+        raise DatabaseError(f"Failed to retrieve system pattern {pattern_id}: {e}")
+    finally:
+        if cursor:
+            cursor.close()
+
+
+def get_system_pattern_by_uuid(
+    workspace_id: str, pattern_uuid: str
+) -> Optional[models.SystemPattern]:
+    """Retrieve a single system pattern by its UUID.
+
+    Returns ``None`` if no pattern with *pattern_uuid* exists.
+    """
+    conn = get_db_connection(workspace_id)
+    cursor = None
+    sql = """
+        SELECT id, timestamp, name, description, tags, visibility, uuid
+        FROM system_patterns
+        WHERE uuid = ?
+    """
+    try:
+        cursor = conn.cursor()
+        cursor.execute(sql, (pattern_uuid,))
+        row = cursor.fetchone()
+        if row is None:
+            return None
+        keys = row.keys()
+        return models.SystemPattern(
+            id=row["id"],
+            timestamp=row["timestamp"],
+            name=row["name"],
+            description=row["description"],
+            tags=json.loads(row["tags"]) if row["tags"] else None,
+            visibility=row["visibility"] if "visibility" in keys else None,
+        )
+    except (sqlite3.Error, json.JSONDecodeError) as e:
+        raise DatabaseError(f"Failed to retrieve system pattern by UUID '{pattern_uuid}': {e}")
+    finally:
+        if cursor:
+            cursor.close()
+
+
+def update_system_pattern(
+    workspace_id: str, pattern_uuid: str, pattern_data: models.SystemPattern
+) -> Optional[models.SystemPattern]:
+    """Updates an existing system pattern identified by its UUID.
+
+    Returns the updated SystemPattern object, or None if no pattern with that UUID exists.
+    """
+    conn = get_db_connection(workspace_id)
+    cursor = None
+
+    # First check if uuid column exists
+    check_sql = "PRAGMA table_info(system_patterns)"
+    try:
+        cursor = conn.cursor()
+        cursor.execute(check_sql)
+        cols = [row[1] for row in cursor.fetchall()]
+        cursor.close()
+        cursor = None
+    except sqlite3.Error as e:
+        raise DatabaseError(f"Failed to inspect system_patterns schema: {e}")
+
+    if "uuid" not in cols:
+        # uuid column doesn't exist yet — fall back to name-based lookup
+        return None
+
+    sql = """
+        UPDATE system_patterns
+        SET name = ?, description = ?, tags = ?
+        WHERE uuid = ?
+    """
+    tags_json = (
+        json.dumps(pattern_data.tags) if pattern_data.tags is not None else None
+    )
+    params = (
+        pattern_data.name,
+        pattern_data.description,
+        tags_json,
+        pattern_uuid,
+    )
+    try:
+        cursor = conn.cursor()
+        cursor.execute(sql, params)
+        conn.commit()
+        if cursor.rowcount == 0:
+            return None
+        cursor.execute(
+            "SELECT id, timestamp, name, description, tags, visibility FROM system_patterns WHERE uuid = ?",
+            (pattern_uuid,),
+        )
+        row = cursor.fetchone()
+        if row is None:
+            return None
+        return models.SystemPattern(
+            id=row["id"],
+            timestamp=row["timestamp"],
+            name=row["name"],
+            description=row["description"],
+            tags=json.loads(row["tags"]) if row["tags"] else None,
+            visibility=row["visibility"] if "visibility" in row.keys() else None,
+        )
+    except sqlite3.Error as e:
+        conn.rollback()
+        raise DatabaseError(f"Failed to update system pattern: {e}")
+    finally:
+        if cursor:
+            cursor.close()
+
+
 def log_custom_data(workspace_id: str, data: models.CustomData) -> models.CustomData:
     """Logs or updates a custom data entry. Uses INSERT OR REPLACE based on unique (category, key)."""
     conn = get_db_connection(workspace_id)
     cursor = None  # Initialize cursor for finally block
     sql = """
-        INSERT OR REPLACE INTO custom_data (timestamp, category, key, value)
-        VALUES (?, ?, ?, ?)
+        INSERT OR REPLACE INTO custom_data (timestamp, category, key, value, visibility)
+        VALUES (?, ?, ?, ?, ?)
     """
     try:
         cursor = conn.cursor()
         # Ensure value is serialized to JSON string
         value_json = json.dumps(data.value)
-        params = (data.timestamp, data.category, data.key, value_json)
+        params = (data.timestamp, data.category, data.key, value_json, data.visibility)
         cursor.execute(sql, params)
         conn.commit()
         # Query back to get ID if needed (similar to log_system_pattern)
@@ -1451,9 +1869,12 @@ def log_custom_data(workspace_id: str, data: models.CustomData) -> models.Custom
 
 
 def get_custom_data(
-    workspace_id: str, category: Optional[str] = None, key: Optional[str] = None
+    workspace_id: str,
+    category: Optional[str] = None,
+    key: Optional[str] = None,
+    visibility_filter: Optional[str] = None,
 ) -> List[models.CustomData]:
-    """Retrieves custom data entries, optionally filtered by category and/or key."""
+    """Retrieves custom data entries, optionally filtered by category, key, and/or visibility."""
     if key and not category:
         raise ValueError("Cannot filter by key without specifying a category.")
 
@@ -1469,6 +1890,9 @@ def get_custom_data(
     if key:  # We already ensured category is present if key is
         conditions.append("key = ?")
         params_list.append(key)
+    if visibility_filter:
+        conditions.append("visibility = ?")
+        params_list.append(visibility_filter)
 
     if conditions:
         sql += " WHERE " + " AND ".join(conditions)

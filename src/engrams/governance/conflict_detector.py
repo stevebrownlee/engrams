@@ -25,6 +25,7 @@ from typing import Any, Dict, List, Optional
 
 from . import db_operations as gov_db
 from . import models as gov_models
+from ..db import database as db
 
 log = logging.getLogger(__name__)
 
@@ -261,3 +262,143 @@ def _does_rule_match(
             match_details["required_keywords_missing"] = missing_keywords
 
     return match_details if match_details else None
+
+
+def check_decision_conflicts(
+    workspace_id: str,
+    item_type: str,
+    item_data: Dict[str, Any],
+) -> gov_models.ConflictCheckResult:
+    """
+    Check a proposed item against all accepted decisions in the workspace.
+
+    Unlike check_conflicts(), this does NOT require scopes or governance rules.
+    It directly scans the decisions table for tag overlap and keyword conflicts.
+
+    This is the post-write safety net — it runs after every write to flag
+    potential conflicts with accepted team decisions.
+
+    Args:
+        workspace_id: The workspace identifier.
+        item_type: Entity type being written ('decision', 'system_pattern', etc.).
+        item_data: Dictionary of the item's fields (summary, tags, rationale, etc.).
+
+    Returns:
+        ConflictCheckResult with action='warn' if conflicts found (never 'block' —
+        the post-write path uses warnings only since the write already happened).
+    """
+    result = gov_models.ConflictCheckResult()
+    result.action = "warn"  # Post-write path only warns, never blocks
+
+    try:
+        # Fetch all decisions from the workspace
+        decisions = db.get_decisions(workspace_id, limit=None)
+        if not decisions:
+            return result  # No decisions to check against
+
+        item_tags = item_data.get("tags", []) or []
+        item_summary = (item_data.get("summary") or "").lower()
+        item_rationale = (item_data.get("rationale") or "").lower()
+        item_description = (item_data.get("description") or "").lower()
+        item_text = f"{item_summary} {item_rationale} {item_description}".strip()
+
+        for decision in decisions:
+            # Skip if decision has no tags or summary
+            if not decision.tags or not decision.summary:
+                continue
+
+            # 1. Check for tag overlap
+            decision_tags = decision.tags if isinstance(decision.tags, list) else []
+            overlapping_tags = set(item_tags) & set(decision_tags)
+
+            if overlapping_tags:
+                # Tag overlap detected — check if decision suggests a constraint
+                decision_summary = (decision.summary or "").lower()
+                decision_rationale = (decision.rationale or "").lower()
+                decision_text = f"{decision_summary} {decision_rationale}".strip()
+
+                # 2. Check for keyword conflicts
+                # Extract key terms from decision and check for contradictions
+                has_keyword_conflict = _check_keyword_conflict(
+                    decision_text, item_text, overlapping_tags
+                )
+
+                if overlapping_tags or has_keyword_conflict:
+                    result.has_conflict = True
+                    conflict_info = {
+                        "type": "decision_conflict",
+                        "decision_id": decision.id,
+                        "decision_summary": decision.summary,
+                        "decision_uuid": decision.uuid,
+                        "overlapping_tags": list(overlapping_tags),
+                        "message": f"Potential conflict with Decision #{decision.id}: '{decision.summary}'",
+                    }
+                    result.conflicts.append(conflict_info)
+                    result.warnings.append(
+                        f"WARNING: This item may conflict with accepted Decision #{decision.id}: "
+                        f"'{decision.summary}'. Review before proceeding."
+                    )
+
+        return result
+
+    except Exception as e:
+        # Non-fatal — log and return empty result
+        log.warning("Decision conflict check failed (non-fatal): %s", e)
+        return gov_models.ConflictCheckResult()
+
+
+def _check_keyword_conflict(
+    decision_text: str, item_text: str, overlapping_tags: set
+) -> bool:
+    """
+    Check if item text contains contradictory keywords relative to decision text.
+
+    Simple approach: extract key terms from decision and check if item text
+    references the same domain (via tag overlap) but with different technology terms.
+
+    Args:
+        decision_text: Lowercased decision summary + rationale.
+        item_text: Lowercased item summary + rationale + description.
+        overlapping_tags: Tags that overlap between decision and item.
+
+    Returns:
+        True if a keyword conflict is detected, False otherwise.
+    """
+    if not overlapping_tags or not decision_text or not item_text:
+        return False
+
+    # Extract words from decision text (simple tokenization)
+    decision_words = set(decision_text.split())
+    item_words = set(item_text.split())
+
+    # Common technology/architecture keywords that often conflict
+    conflict_pairs = [
+        ("sqlite", "postgresql"),
+        ("postgresql", "sqlite"),
+        ("mysql", "postgresql"),
+        ("mysql", "sqlite"),
+        ("mongodb", "postgresql"),
+        ("mongodb", "sqlite"),
+        ("rest", "graphql"),
+        ("graphql", "rest"),
+        ("sync", "async"),
+        ("async", "sync"),
+        ("monolith", "microservice"),
+        ("microservice", "monolith"),
+    ]
+
+    # Check if decision mentions one technology and item mentions another
+    for tech1, tech2 in conflict_pairs:
+        if tech1 in decision_words and tech2 in item_words:
+            return True
+        if tech2 in decision_words and tech1 in item_words:
+            return True
+
+    # Also check for explicit contradictions like "switch", "change", "replace"
+    contradiction_keywords = ["switch", "change", "replace", "migrate", "convert"]
+    if any(kw in item_words for kw in contradiction_keywords):
+        # If item mentions switching/changing and overlaps with decision tags,
+        # it might be proposing a change to an accepted decision
+        return True
+
+    return False

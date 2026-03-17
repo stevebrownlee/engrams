@@ -175,6 +175,23 @@ AI:  Individual strategy #4 created:
     precedence rules. Your AI always sees the right combined view.
   </p>
 
+  <h2>Team sync via Git</h2>
+  <p>
+    Governance decisions with <code>visibility=team</code> are automatically committed to your
+    repository's <code>engrams-export/</code> directory on every <code>git commit</code>, and
+    imported back into each teammate's local database after every <code>git pull</code>. This
+    means architectural mandates and governance rules are shared automatically — no manual
+    export required.
+  </p>
+  <p>
+    To set up the Git hooks, run once per repository:
+  </p>
+  <pre><code>engrams install-hooks</code></pre>
+  <p>
+    See the <a href="/docs/features/batch-export">Batch &amp; Export</a> page for the full
+    team-sync workflow.
+  </p>
+
   <h2>MCP tools</h2>
   <ul>
     <li><code>create_scope</code> / <code>get_scopes</code></li>

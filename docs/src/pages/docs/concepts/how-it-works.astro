@@ -25,6 +25,45 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
     Your data is never shared between projects, and the database is created automatically the first time you use Engrams.
   </p>
 
+  <h2>Visibility levels</h2>
+  <p>
+    Every item stored in Engrams — decisions, patterns, custom data — carries an optional
+    <strong>visibility</strong> label that controls who sees it and whether it is shared with
+    your team.
+  </p>
+  <table>
+    <thead><tr><th>Visibility</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td><code>team</code></td><td>Shared across all teammates. Exported and committed to Git.</td></tr>
+      <tr><td><code>individual</code></td><td>Personal notes or local state. Never committed.</td></tr>
+      <tr><td><code>proposed</code></td><td>Suggestions under review before becoming team decisions.</td></tr>
+      <tr><td><code>workspace</code></td><td>Workspace-wide defaults visible to anyone using this repo.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Team sync via Git</h2>
+  <p>
+    Because the Engrams database is a binary SQLite file, Git cannot 3-way merge it when two
+    teammates both push changes. Engrams solves this with a <strong>markdown round-trip</strong>:
+  </p>
+  <ol>
+    <li>A <strong>pre-commit hook</strong> exports <code>visibility=team</code> items to a versioned
+        <code>engrams-export/</code> directory and stages the markdown files automatically.</li>
+    <li>A <strong>post-merge hook</strong> imports those markdown files back into every teammate's
+        local database after each <code>git pull</code> or <code>git merge</code>.</li>
+    <li>The import uses <strong>merge mode</strong> — it only adds new items, so individual notes
+        and personal progress are never overwritten.</li>
+  </ol>
+  <p>
+    Decisions are identified across machines by a <strong>content-addressed slug</strong>
+    (a 12-character SHA-256 of the summary text), so the same decision exported from Alice's
+    machine is recognised as identical on Bob's machine and skipped rather than duplicated.
+  </p>
+  <p>
+    Run <code>engrams install-hooks</code> once per repository to wire everything up automatically.
+    See the <a href="/docs/features/batch-export">Batch &amp; Export</a> page for details.
+  </p>
+
   <h2>Workspace detection</h2>
   <p>
     Engrams figures out which project you're working in automatically by looking for common project

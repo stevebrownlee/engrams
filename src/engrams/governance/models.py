@@ -178,3 +178,14 @@ class GetEffectiveContextArgs(BaseArgs):
     scope_id: int = Field(
         ..., description="Individual scope ID to get effective context for"
     )
+
+
+class CheckPlannedActionArgs(BaseArgs):
+    """Arguments for check_planned_action tool — pre-mutation governance check."""
+
+    action_description: str = Field(
+        ..., min_length=1, description="Description of the planned action/mutation"
+    )
+    tags: Optional[List[str]] = Field(
+        None, description="Tags related to the planned action for tag-based matching"
+    )

@@ -15,16 +15,17 @@
 
 """Functions implementing the logic for each MCP tool."""
 
+import hashlib
 import json
 import logging
 import re  # For markdown parsing
 from datetime import datetime  # Added missing import
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set
 
 from pydantic import ValidationError
 
-from ..core.exceptions import ContextPortalError, DatabaseError, ToolArgumentError
+from ..core.exceptions import ContextPortalError, DatabaseError, DatabaseNotInitializedError, ToolArgumentError
 from ..db import database as db
 from ..db import models
 
@@ -45,8 +46,12 @@ from ..governance import db_operations as gov_db_ops
 from ..governance import models as gov_models
 from ..onboarding import briefing as onboarding_briefing
 from ..onboarding import models as onboarding_models
+from ..team_sync import write_through
 
 log = logging.getLogger(__name__)
+
+# Track which workspaces have been seeded from config_seed.json
+_seeded_workspaces: Set[str] = set()
 
 # Built-in Engrams strategy sections (returned by get_custom_data when category='engrams_strategy')
 # These are overlaid with any user customizations stored in the DB
@@ -60,6 +65,7 @@ LOAD_EXISTING:
   Call in parallel: get_product_context, get_active_context, get_decisions(limit=5),
     get_progress(limit=5), get_system_patterns(limit=5),
     get_custom_data("critical_settings"), get_custom_data("ProjectGlossary"),
+    get_custom_data("engrams_config", "default_decision_visibility"),
     get_recent_activity_summary(hours_ago=24, limit_per_type=3)
   If results non-empty → set [ENGRAMS_ACTIVE], inform user, ask what to work on.
   If DB exists but empty → set [ENGRAMS_ACTIVE], inform user DB is empty.
@@ -67,13 +73,20 @@ LOAD_EXISTING:
 
 NEW_SETUP:
   1. Inform user no DB found at ACTUAL_WORKSPACE_ID/engrams/context.db.
-  2. Ask: "Initialize new Engrams database?" [Yes / No]
+  2. Ask: "Initialize Engrams for this project?" [Yes / No]
   3. If Yes:
-     a. Check workspace root for projectBrief.md.
+     a. Ask: "Is this a team project (decisions shared via git) or solo?" [Team / Solo]
+     b. If Team:
+        - log_custom_data(category="engrams_config", key="default_decision_visibility", value="team")
+        - Inform user: "All decisions will be automatically shared via .engrams/ for git sync."
+     c. If Solo:
+        - log_custom_data(category="engrams_config", key="default_decision_visibility", value="individual")
+        - Inform user: "Decisions will be stored locally in your Engrams database."
+     d. Check workspace root for projectBrief.md.
         If found → read it, ask to import into Product Context.
         If user confirms → call update_product_context({initial_product_brief: <content>}).
         If not found → ask if user wants to define Product Context manually.
-     b. Run POST_TASK_SETUP section (fetch: get_custom_data("engrams_strategy","post_task_setup")).
+     e. Run POST_TASK_SETUP section (fetch: get_custom_data("engrams_strategy","post_task_setup")).
   4. If No → go to INACTIVE.
 
 INACTIVE: Inform user Engrams will not be used. Status: [ENGRAMS_INACTIVE].""",
@@ -90,15 +103,21 @@ INACTIVE: Inform user Engrams will not be used. Status: [ENGRAMS_INACTIVE].""",
   6. Proceed to LOAD_EXISTING.""",
 
     "governance": """GOVERNANCE CHECK (MANDATORY before any workspace mutation):
-  Option A: get_relevant_context(task_description=<planned action>, token_budget=2000)
-  Option B:
-    1. Verify [ENGRAMS_ACTIVE].
-    2. get_decisions(limit=20) — scan for constraints on planned task.
-    3. get_scopes() — check for governance scopes.
-    4. If scopes exist → get_governance_rules for each relevant scope.
-    5. hard_block conflict → STOP, cite item ID+summary, require explicit override.
-       soft_warn → inform user, proceed only after acknowledgment.
-       No conflict → proceed.""",
+  PREFERRED: check_planned_action(workspace_id, action_description=<planned action>, tags=[<relevant tags>])
+    If blocked=true → STOP, cite the conflicting decision(s), require explicit user override.
+    If proceed=true → continue with the planned action.
+  FALLBACK (if check_planned_action unavailable):
+    Option A: get_relevant_context(task_description=<planned action>, token_budget=2000)
+    Option B:
+      1. Verify [ENGRAMS_ACTIVE].
+      2. get_decisions(limit=20) — scan for constraints on planned task.
+      3. get_scopes() — check for governance scopes.
+      4. If scopes exist → get_governance_rules for each relevant scope.
+      5. hard_block conflict → STOP, cite item ID+summary, require explicit override.
+         soft_warn → inform user, proceed only after acknowledgment.
+         No conflict → proceed.
+  NOTE: Even if the pre-check is skipped, the post-write safety net will flag
+  decision conflicts in the response of any write operation.""",
 
     "post_task": """POST_TASK (MANDATORY before attempt_completion):
   1. get_custom_data("post_task_checks","verification_commands")
@@ -107,7 +126,9 @@ INACTIVE: Inform user Engrams will not be used. Status: [ENGRAMS_INACTIVE].""",
      blocking failure → STOP, do NOT call attempt_completion. User must fix or override.
      warning failure → note and continue, include in completion summary.
   3. Categorize completed work:
-     (a) Strategic decisions → log_decision (prescriptive summary, rationale, tags)
+     (a) Strategic decisions → log_decision (prescriptive summary, rationale, tags).
+         Visibility is applied automatically by the server — do NOT set visibility unless
+         the user explicitly requested a specific level.
      (b) Task completions (bugs/code/refactors/files) → log_progress(status='DONE'), NOT log_decision
      (c) New patterns → log_system_pattern
      (d) Context changes → update_active_context
@@ -118,7 +139,8 @@ INACTIVE: Inform user Engrams will not be used. Status: [ENGRAMS_INACTIVE].""",
     "sync": """SYNC (trigger: "Sync Engrams" or "Engrams Sync"):
   Respond [ENGRAMS_SYNCING]. Halt current task.
   Review full chat for: new decisions, progress changes, patterns, context shifts, item relationships.
-  Log: decisions(strategic only), progress(log_progress/update_progress), patterns(log_system_pattern),
+  Log: decisions(strategic only, visibility applied automatically by server),
+       progress(log_progress/update_progress), patterns(log_system_pattern, visibility automatic),
        context(update_active_context/update_product_context), links(link_engrams_items),
        glossary(log_custom_data category=ProjectGlossary). Use batch_log_items for multiple same-type items.
   After: get_recent_activity_summary to confirm. Inform user sync complete. Resume or await instructions.""",
@@ -137,6 +159,9 @@ INACTIVE: Inform user Engrams will not be used. Status: [ENGRAMS_INACTIVE].""",
     Litmus test: "Would this still matter in a new session on a different feature?" Yes→decision. No→progress.
     Summary MUST be prescriptive: "Use X for Y" not "Implemented X".
       ✅ "Use SQLite FTS5 for all full-text search"  ❌ "Implemented FTS5 search"
+    VISIBILITY: The server applies the workspace default automatically. Do NOT set visibility
+      unless the user explicitly requests a specific level. The workspace was classified as
+      team or solo during init — the server handles the rest.
   PROGRESS (log_progress): Bug fixes, code changes, task completions, implementation work.
   CONTEXT: Update active_context when focus shifts or open issues arise.
   ERRORS: log_custom_data(category='ErrorLogs', key='<timestamp>_<summary>'), update open_issues.
@@ -194,6 +219,23 @@ def _apply_governance_checks(
     Returns:
         The response dict, potentially augmented with governance_warnings and override_status.
     """
+    # Always run decision-conflict checks (no scope required)
+    try:
+        decision_conflicts = conflict_detector.check_decision_conflicts(
+            workspace_id, item_type, item_data
+        )
+        if decision_conflicts.has_conflict:
+            response.setdefault("decision_warnings", []).extend(
+                [c if isinstance(c, str) else c for c in decision_conflicts.conflicts]
+            )
+            if decision_conflicts.warnings:
+                response.setdefault("decision_warnings", []).extend(
+                    decision_conflicts.warnings
+                )
+            response["decision_conflict_detected"] = True
+    except Exception as dec_err:
+        log.warning("Decision conflict check failed (non-fatal): %s", dec_err)
+
     if scope_id is None or item_id is None:
         return response
 
@@ -275,6 +317,116 @@ def _apply_governance_checks(
     return response
 
 
+def _seed_config_from_file(workspace_id: str) -> None:
+    """
+    On first use, seeds engrams_config from .engrams/config_seed.json
+    if the config doesn't already exist in the DB.
+    """
+    try:
+        existing = db.get_custom_data(
+            workspace_id,
+            category="engrams_config",
+            key="default_decision_visibility",
+        )
+        if existing and len(existing) > 0:
+            return  # Already seeded
+    except Exception:
+        pass  # DB might not exist yet, that's fine
+
+    # Look for seed file
+    seed_path = Path(workspace_id) / ".engrams" / "config_seed.json"
+    if not seed_path.exists():
+        return
+
+    try:
+        with open(seed_path, "r") as f:
+            seed_data = json.load(f)
+        visibility = seed_data.get("default_decision_visibility")
+        if visibility in ("team", "individual", "proposed", "workspace"):
+            data_to_log = models.CustomData(
+                category="engrams_config",
+                key="default_decision_visibility",
+                value=visibility,
+                visibility=None,
+            )
+            db.log_custom_data(workspace_id, data_to_log)
+            log.info(
+                "Seeded default_decision_visibility=%s from config_seed.json",
+                visibility,
+            )
+    except Exception as e:
+        log.warning("Failed to seed config from config_seed.json: %s", e)
+
+
+def _resolve_effective_visibility(workspace_id: str, explicit_visibility: Optional[str]) -> Optional[str]:
+    """
+    Resolves effective visibility for an item.
+
+    If the caller explicitly set visibility, use that. Otherwise, check
+    for a workspace-level default stored in custom_data under
+    category='engrams_config', key='default_decision_visibility'.
+
+    Falls back to 'individual' if no configuration is found (safe default
+    that never accidentally shares).
+    """
+    if explicit_visibility is not None:
+        return explicit_visibility
+
+    # Seed config from file on first access per workspace
+    if workspace_id not in _seeded_workspaces:
+        _seed_config_from_file(workspace_id)
+        _seeded_workspaces.add(workspace_id)
+
+    try:
+        defaults = db.get_custom_data(
+            workspace_id,
+            category="engrams_config",
+            key="default_decision_visibility",
+        )
+        if defaults and len(defaults) > 0:
+            value = defaults[0].value
+            if value in ("team", "individual", "proposed", "workspace"):
+                return value
+    except Exception as e:
+        log.warning("Failed to read default_decision_visibility config: %s", e)
+
+    return "individual"  # Safe fallback — never accidentally shared
+
+
+def _augment_with_auto_create_notice(workspace_id: str, response: Any) -> Any:
+    """
+    If the database for this workspace was auto-created (not via ``engrams init``),
+    augments the response with a notice so the LLM can inform the user.
+
+    The notice is only included once per workspace — after the first response
+    includes it, the flag is cleared.
+
+    Works with both dict responses and list responses (wraps list in a dict
+    with the notice).
+    """
+    if not db.was_auto_created(workspace_id):
+        return response
+
+    notice = {
+        "_engrams_auto_initialized": True,
+        "_notice": (
+            "The Engrams database was auto-created because it did not exist. "
+            "For full setup (team sync, .engrams/ directory structure), "
+            "run 'engrams init --tool <name>' in your project terminal."
+        ),
+    }
+
+    # Clear the flag so the notice only appears once
+    db.clear_auto_created_flag(workspace_id)
+
+    if isinstance(response, dict):
+        return {**notice, **response}
+    elif isinstance(response, list):
+        return {"_engrams_auto_initialized": True, "_notice": notice["_notice"], "results": response}
+    else:
+        return response
+
+
 # --- Tool Handler Functions ---
 
 
@@ -327,7 +479,10 @@ def handle_get_product_context(args: models.GetContextArgs) -> Dict[str, Any]:
     """
     try:
         context_model = db.get_product_context(args.workspace_id)
-        return context_model.content
+        result = context_model.content
+        return _augment_with_auto_create_notice(args.workspace_id, result)
+    except DatabaseNotInitializedError:
+        raise  # Let it propagate with its clear message
     except DatabaseError as e:
         raise ContextPortalError(f"Database error getting product context: {e}")
     except Exception as e:
@@ -371,11 +526,16 @@ def handle_log_decision(args: models.LogDecisionArgs) -> Dict[str, Any]:
     Returns the logged decision as a dictionary.
     """
     try:
+        # Resolve effective visibility from workspace config if not explicitly set
+        effective_visibility = _resolve_effective_visibility(args.workspace_id, args.visibility)
+
         decision_to_log = models.Decision(
             summary=args.summary,
             rationale=args.rationale,
             implementation_details=args.implementation_details,
             tags=args.tags,
+            visibility=effective_visibility,
+            uuid=args.uuid if hasattr(args, "uuid") else None,
             # Timestamp is added automatically by the Pydantic model's default_factory
         )
         logged_decision = db.log_decision(args.workspace_id, decision_to_log)
@@ -421,13 +581,17 @@ def handle_log_decision(args: models.LogDecisionArgs) -> Dict[str, Any]:
         # --- End Add to Vector Store ---
 
         response = logged_decision.model_dump(mode="json")
+        # Filesystem-first: .engrams/ is the authoritative source for team items.
+        # This write MUST succeed — failure means the operation fails.
+        if getattr(logged_decision, "visibility", None) == "team":
+            write_through.write_decision_file(args.workspace_id, logged_decision, [])
         return _apply_governance_checks(
             workspace_id=args.workspace_id,
             item_type="decision",
             item_id=logged_decision.id,
             item_data=response,
             scope_id=args.scope_id,
-            visibility=args.visibility,
+            visibility=effective_visibility,
             response=response,
         )
     except DatabaseError as e:
@@ -499,7 +663,10 @@ def handle_get_active_context(args: models.GetContextArgs) -> Dict[str, Any]:
     """
     try:
         context_model = db.get_active_context(args.workspace_id)
-        return context_model.content
+        result = context_model.content
+        return _augment_with_auto_create_notice(args.workspace_id, result)
+    except DatabaseNotInitializedError:
+        raise  # Let it propagate with its clear message
     except DatabaseError as e:
         raise ContextPortalError(f"Database error getting active context: {e}")
     except Exception as e:
@@ -761,8 +928,12 @@ def handle_log_system_pattern(args: models.LogSystemPatternArgs) -> Dict[str, An
     Returns the logged system pattern as a dictionary.
     """
     try:
+        # Resolve effective visibility from workspace config if not explicitly set
+        effective_visibility = _resolve_effective_visibility(args.workspace_id, args.visibility)
+
         pattern_to_log = models.SystemPattern(
-            name=args.name, description=args.description, tags=args.tags
+            name=args.name, description=args.description, tags=args.tags,
+            visibility=effective_visibility,
         )
         logged_pattern = db.log_system_pattern(args.workspace_id, pattern_to_log)
 
@@ -800,13 +971,17 @@ def handle_log_system_pattern(args: models.LogSystemPatternArgs) -> Dict[str, An
         # --- End Add to Vector Store ---
 
         response = logged_pattern.model_dump(mode="json")
+        # Filesystem-first: .engrams/ is the authoritative source for team items.
+        # This write MUST succeed — failure means the operation fails.
+        if getattr(logged_pattern, "visibility", None) == "team":
+            write_through.write_pattern_file(args.workspace_id, logged_pattern, [])
         return _apply_governance_checks(
             workspace_id=args.workspace_id,
             item_type="system_pattern",
             item_id=logged_pattern.id,
             item_data=response,
             scope_id=args.scope_id,
-            visibility=args.visibility,
+            visibility=effective_visibility,
             response=response,
         )
     except DatabaseError as e:
@@ -894,7 +1069,7 @@ def handle_get_recent_activity_summary(
                 args.limit_per_type if args.limit_per_type is not None else 5
             ),  # Ensure default if None
         )
-        return summary_data
+        return _augment_with_auto_create_notice(args.workspace_id, summary_data)
     except DatabaseError as e:
         log.error(
             f"Database error in get_recent_activity_summary for workspace {args.workspace_id}: {e}"
@@ -914,8 +1089,16 @@ def handle_log_custom_data(args: models.LogCustomDataArgs) -> Dict[str, Any]:
     Returns the logged custom data entry as a dictionary.
     """
     try:
+        # Don't override visibility for system-internal categories
+        SYSTEM_CATEGORIES = {"engrams_config", "engrams_strategy", "post_task_checks"}
+        if args.category in SYSTEM_CATEGORIES:
+            effective_visibility = args.visibility
+        else:
+            effective_visibility = _resolve_effective_visibility(args.workspace_id, args.visibility)
+
         data_to_log = models.CustomData(
-            category=args.category, key=args.key, value=args.value
+            category=args.category, key=args.key, value=args.value,
+            visibility=effective_visibility,
         )
         # Assuming CustomData model has a metadata field, or we add it if needed for cache_hint
         # For now, the LogCustomDataArgs does not have metadata.
@@ -989,13 +1172,24 @@ def handle_log_custom_data(args: models.LogCustomDataArgs) -> Dict[str, Any]:
         # --- End Add to Vector Store ---
 
         response = logged_data.model_dump(mode="json")
+        # Filesystem-first: .engrams/ is the authoritative source for team items.
+        # This write MUST succeed — failure means the operation fails.
+        if getattr(logged_data, "visibility", None) == "team":
+            all_entries = db.get_custom_data(
+                args.workspace_id,
+                category=args.category,
+                visibility_filter="team",
+            )
+            write_through.write_shared_data_file(
+                args.workspace_id, args.category, all_entries
+            )
         return _apply_governance_checks(
             workspace_id=args.workspace_id,
             item_type="custom_data",
             item_id=logged_data.id,
             item_data=response,
             scope_id=args.scope_id,
-            visibility=args.visibility,
+            visibility=effective_visibility,
             response=response,
         )
     except DatabaseError as e:
@@ -1317,6 +1511,15 @@ def _format_active_context_md(data: Dict[str, Any]) -> str:
     return "".join(lines)
 
 
+def _decision_slug(summary: str) -> str:
+    """Return a stable 12-char hex slug derived from the decision summary.
+
+    Kept for backwards-compatibility when parsing older exports that contain
+    ``<!-- slug:... -->`` comments instead of ``<!-- uuid:... -->`` comments.
+    """
+    return hashlib.sha256(summary.strip().lower().encode()).hexdigest()[:12]
+
+
 def _format_decisions_md(decisions: List[models.Decision]) -> str:
     lines = ["# Decision Log\n"]
     for dec in sorted(decisions, key=lambda x: x.timestamp, reverse=True):
@@ -1325,6 +1528,13 @@ def _format_decisions_md(decisions: List[models.Decision]) -> str:
         lines.append(
             f"*   [{dec.timestamp.strftime('%Y-%m-%d %H:%M:%S')}] {dec.summary}\n"
         )
+        # Embed the decision's UUID so the import can do a stable upsert.
+        # Fall back to a slug comment for decisions that predate the uuid column.
+        if dec.uuid:
+            lines.append(f"<!-- uuid:{dec.uuid} -->\n")
+        else:
+            slug = _decision_slug(dec.summary)
+            lines.append(f"<!-- slug:{slug} -->\n")
         if dec.rationale:
             lines.append("\n## Rationale\n")
             lines.append(f"*   {dec.rationale}\n")
@@ -1390,58 +1600,79 @@ def handle_export_engrams_to_markdown(
     args: models.ExportEngramsToMarkdownArgs,
 ) -> Dict[str, Any]:
     """
-    Exports all Engrams data for a workspace to markdown files.
+    Exports Engrams data for a workspace to markdown files.
+
+    When ``args.visibility_filter`` is set (e.g. ``'team'``), only items whose
+    ``visibility`` column matches that value are included.  This makes the
+    export suitable for committing to a shared Git repository — personal
+    progress and individual notes are excluded, so only team-scoped decisions,
+    patterns, and custom data land in the committed files.
+
     Assumes 'args' is an already validated Pydantic model instance.
     """
     workspace_path = Path(args.workspace_id)
     output_dir_name = args.output_path if args.output_path else "engrams_export"
     output_path = workspace_path / output_dir_name
+    vf = args.visibility_filter  # None → export everything
 
     try:
         output_path.mkdir(parents=True, exist_ok=True)
         log.info(
-            f"Exporting Engrams data for workspace '{args.workspace_id}' to '{output_path}'"
+            "Exporting Engrams data for workspace '%s' to '%s' (visibility_filter=%s)",
+            args.workspace_id,
+            output_path,
+            vf or "all",
         )
 
         files_created = []
 
-        # Product Context
-        product_ctx_data = db.get_product_context(args.workspace_id).content
-        if product_ctx_data:
-            with open(output_path / "product_context.md", "w", encoding="utf-8") as f:
-                f.write(_format_product_context_md(product_ctx_data))
-            files_created.append("product_context.md")
+        # Product Context — only included in full (unfiltered) exports
+        if vf is None:
+            product_ctx_data = db.get_product_context(args.workspace_id).content
+            if product_ctx_data:
+                with open(
+                    output_path / "product_context.md", "w", encoding="utf-8"
+                ) as f:
+                    f.write(_format_product_context_md(product_ctx_data))
+                files_created.append("product_context.md")
 
-        # Active Context
-        active_ctx_data = db.get_active_context(args.workspace_id).content
-        if active_ctx_data:
-            with open(output_path / "active_context.md", "w", encoding="utf-8") as f:
-                f.write(_format_active_context_md(active_ctx_data))
-            files_created.append("active_context.md")
+            active_ctx_data = db.get_active_context(args.workspace_id).content
+            if active_ctx_data:
+                with open(
+                    output_path / "active_context.md", "w", encoding="utf-8"
+                ) as f:
+                    f.write(_format_active_context_md(active_ctx_data))
+                files_created.append("active_context.md")
 
-        # Decisions
-        decisions = db.get_decisions(args.workspace_id, limit=None)  # Get all
+            # Progress — personal by nature; only in full exports
+            progress_entries = db.get_progress(args.workspace_id, limit=None)
+            if progress_entries:
+                with open(output_path / "progress_log.md", "w", encoding="utf-8") as f:
+                    f.write(_format_progress_md(progress_entries))
+                files_created.append("progress_log.md")
+
+        # Decisions — visibility-filtered
+        decisions = db.get_decisions(
+            args.workspace_id, limit=None, visibility_filter=vf
+        )
         if decisions:
             with open(output_path / "decision_log.md", "w", encoding="utf-8") as f:
                 f.write(_format_decisions_md(decisions))
             files_created.append("decision_log.md")
 
-        # Progress
-        progress_entries = db.get_progress(args.workspace_id, limit=None)  # Get all
-        if progress_entries:
-            with open(output_path / "progress_log.md", "w", encoding="utf-8") as f:
-                f.write(_format_progress_md(progress_entries))
-            files_created.append("progress_log.md")
-
-        # System Patterns
-        system_patterns = db.get_system_patterns(args.workspace_id)
+        # System Patterns — visibility-filtered
+        system_patterns = db.get_system_patterns(
+            args.workspace_id, visibility_filter=vf
+        )
         if system_patterns:
             with open(output_path / "system_patterns.md", "w", encoding="utf-8") as f:
                 f.write(_format_system_patterns_md(system_patterns))
             files_created.append("system_patterns.md")
 
-        # Custom Data
-        custom_data_entries = db.get_custom_data(args.workspace_id)
+        # Custom Data — visibility-filtered
+        custom_data_entries = db.get_custom_data(
+            args.workspace_id, visibility_filter=vf
+        )
         if custom_data_entries:
             custom_data_path = output_path / "custom_data"
             custom_data_path.mkdir(exist_ok=True)
@@ -1449,11 +1680,9 @@ def handle_export_engrams_to_markdown(
             for item in custom_data_entries:
                 if item.category not in categories:
                     categories[item.category] = []
-                value_str = (
-                    json.dumps(item.value, indent=2)
-                    if not isinstance(item.value, str)
-                    else item.value
-                )
+                # Always JSON-encode so the round-trip parser can use json.loads()
+                # consistently regardless of whether the value is a string or dict.
+                value_str = json.dumps(item.value, indent=2)
                 categories[item.category].append(
                     f"### {item.key}\n\n*   [{item.timestamp.strftime('%Y-%m-%d %H:%M:%S')}]\n\n```json\n{value_str}\n```\n"
                 )
@@ -1461,12 +1690,14 @@ def handle_export_engrams_to_markdown(
             for (
                 category_name_from_loop,
                 items_md,
-            ) in categories.items():  # Renamed category to avoid clash
+            ) in categories.items():
                 cat_file_name = (
                     "".join(c if c.isalnum() else "_" for c in category_name_from_loop)
                     + ".md"
                 )
-                with open(custom_data_path / cat_file_name, "w", encoding="utf-8") as f:
+                with open(
+                    custom_data_path / cat_file_name, "w", encoding="utf-8"
+                ) as f:
                     f.write(
                         f"# Custom Data: {category_name_from_loop}\n\n"
                         + "\n---\n".join(items_md)
@@ -1475,7 +1706,14 @@ def handle_export_engrams_to_markdown(
 
         return {
             "status": "success",
-            "message": f"Engrams data exported to '{output_path}'. Files created: {', '.join(files_created)}",
+            "message": (
+                f"Engrams data exported to '{output_path}' "
+                f"(visibility_filter={vf or 'all'}). "
+                f"Files created: {', '.join(files_created)}"
+            ),
+            "exported_path": str(output_path),
+            "visibility_filter": vf,
+            "file_count": len(files_created),
         }
 
     except DatabaseError as e:
@@ -1486,7 +1724,8 @@ def handle_export_engrams_to_markdown(
         )
     except Exception as e:
         log.exception(
-            f"Unexpected error in export_engrams_to_markdown for workspace {args.workspace_id}"
+            "Unexpected error in export_engrams_to_markdown for workspace %s",
+            args.workspace_id,
         )
         raise ContextPortalError(f"Unexpected error during export: {e}")
 
@@ -1537,8 +1776,16 @@ def _parse_product_or_active_context_md(content: str) -> Dict[str, Any]:
     return data
 
 
-def _parse_decisions_md(content: str) -> List[Dict[str, str]]:
-    """Parses decision_log.md content."""
+def _parse_decisions_md(content: str) -> List[Dict[str, Any]]:
+    """Parses decision_log.md content.
+
+    Each returned dict may include:
+    - ``_uuid``: extracted from ``<!-- uuid:... -->`` (new format, preferred)
+    - ``_slug``: extracted from ``<!-- slug:... -->`` (legacy format, fallback)
+
+    The UUID is used for stable upsert during merge imports; the slug is kept
+    for backwards-compatibility with older exports.
+    """
     decisions = []
     # Split by '---' separator, then process each decision block
     decision_blocks = content.split("\n---\n")
@@ -1546,14 +1793,26 @@ def _parse_decisions_md(content: str) -> List[Dict[str, str]]:
         if not block.strip() or "## Decision" not in block:
             continue
 
-        summary_match = re.search(r"## Decision\n\*\s*\[.*?\]\s*(.+)", block, re.DOTALL)
+        # Match only the single title line (no DOTALL so we stop at the newline)
+        summary_match = re.search(r"## Decision\n\*\s*\[.*?\]\s*([^\n]+)", block)
         summary = summary_match.group(1).strip() if summary_match else "N/A"
+        # Strip any embedded HTML comment that ended up on the same line
+        summary = re.sub(r"\s*<!--\s*(?:uuid|slug):[^\s>]+\s*-->", "", summary).strip()
+
+        # Prefer UUID comment; fall back to slug comment for legacy exports
+        uuid_match = re.search(
+            r"<!--\s*uuid:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\s*-->",
+            block,
+        )
+        slug_match = re.search(r"<!--\s*slug:([0-9a-f]+)\s*-->", block)
+        decision_uuid = uuid_match.group(1) if uuid_match else None
+        slug = slug_match.group(1) if slug_match else _decision_slug(summary)
 
         rationale_match = re.search(r"## Rationale\n\*\s*(.+)", block, re.DOTALL)
         rationale = rationale_match.group(1).strip() if rationale_match else None
         # Handle multi-line rationale
         if (
-            rationale_match and "\n*" in rationale
+            rationale_match and rationale and "\n*" in rationale
         ):  # crude check for multi-bullet rationale
             rationale = "\n".join(
                 [line.strip().lstrip("*").strip() for line in rationale.split("\n")]
@@ -1566,7 +1825,7 @@ def _parse_decisions_md(content: str) -> List[Dict[str, str]]:
             impl_details_match.group(1).strip() if impl_details_match else None
         )
         if (
-            impl_details_match and "\n*" in impl_details
+            impl_details_match and impl_details and "\n*" in impl_details
         ):  # crude check for multi-bullet details
             impl_details = "\n".join(
                 [line.strip().lstrip("*").strip() for line in impl_details.split("\n")]
@@ -1577,6 +1836,8 @@ def _parse_decisions_md(content: str) -> List[Dict[str, str]]:
                 "summary": summary,
                 "rationale": rationale,
                 "implementation_details": impl_details,
+                "_uuid": decision_uuid,
+                "_slug": slug,
             }
         )
     return decisions
@@ -1649,7 +1910,7 @@ def _parse_custom_data_category_md(
             continue
 
         key_match = re.match(
-            r"(.+?)\n+```json\n(.*?)\n```", block.strip(), re.DOTALL | re.MULTILINE
+            r"([^\n]+)\n.*?```json\n(.*?)\n```", block.strip(), re.DOTALL | re.MULTILINE
         )
         if key_match:
             key = key_match.group(1).strip()
@@ -1664,11 +1925,54 @@ def _parse_custom_data_category_md(
     return items
 
 
+def _existing_decision_slugs(workspace_id: str) -> Set[str]:
+    """Return the set of content-hash slugs for all decisions already in the DB.
+
+    Used by the merge-import path as a fallback for legacy exports that carry
+    ``<!-- slug:... -->`` comments instead of ``<!-- uuid:... -->`` comments.
+    """
+    existing = db.get_decisions(workspace_id, limit=None)
+    return {_decision_slug(d.summary) for d in existing}
+
+
+def _existing_decision_uuids(workspace_id: str) -> Set[str]:
+    """Return the set of UUIDs for all decisions already in the DB."""
+    existing = db.get_decisions(workspace_id, limit=None)
+    return {d.uuid for d in existing if d.uuid}
+
+
+def _existing_pattern_names(workspace_id: str) -> Set[str]:
+    """Return the set of system-pattern names already in the DB (case-insensitive)."""
+    existing = db.get_system_patterns(workspace_id)
+    return {p.name.strip().lower() for p in existing}
+
+
+def _existing_custom_data_keys(workspace_id: str) -> Set[str]:
+    """Return a set of 'category::key' strings for all custom_data entries in the DB."""
+    existing = db.get_custom_data(workspace_id)
+    return {f"{e.category}::{e.key}" for e in existing}
+
+
 def handle_import_markdown_to_engrams(
     args: models.ImportMarkdownToEngramsArgs,
 ) -> Dict[str, Any]:
     """
     Imports data from markdown files into Engrams for a workspace.
+
+    When ``args.merge`` is ``True``, items that already exist locally are
+    skipped rather than overwritten:
+
+    - Decisions are identified by their content-hash slug (SHA-256 of the
+      summary text, truncated to 12 hex chars).  A decision in the markdown
+      file is skipped if a decision with the same slug is already in the DB.
+    - System patterns are identified by name (case-insensitive).
+    - Custom data entries are identified by ``category::key``.
+    - Context files (product_context.md, active_context.md, progress_log.md)
+      are always skipped in merge mode because they are personal/local state.
+
+    When ``args.merge`` is ``False`` (the default), all items are inserted or
+    replaced — identical to the previous behaviour.
+
     Assumes 'args' is an already validated Pydantic model instance.
     """
     workspace_path = Path(args.workspace_id)
@@ -1679,21 +1983,38 @@ def handle_import_markdown_to_engrams(
         raise ToolArgumentError(f"Input directory not found: {input_path}")
 
     log.info(
-        f"Importing Engrams data for workspace '{args.workspace_id}' from '{input_path}'"
+        "Importing Engrams data for workspace '%s' from '%s' (merge=%s)",
+        args.workspace_id,
+        input_path,
+        args.merge,
     )
-    summary_report = {
+    summary_report: Dict[str, Any] = {
         "status": "success",
         "message": "Import process initiated.",
+        "merge": args.merge,
         "files_processed": [],
         "items_logged": {},
+        "items_skipped": {},
         "errors": [],
     }
 
-    # This handler will be called by a tool wrapper in main.py.
-    # It calls other refactored handlers in this file.
+    # Pre-load existing keys once if we're in merge mode (avoid N+1 queries)
+    existing_uuids: Set[str] = (
+        _existing_decision_uuids(args.workspace_id) if args.merge else set()
+    )
+    existing_slugs: Set[str] = (
+        _existing_decision_slugs(args.workspace_id) if args.merge else set()
+    )
+    existing_patterns: Set[str] = (
+        _existing_pattern_names(args.workspace_id) if args.merge else set()
+    )
+    existing_custom: Set[str] = (
+        _existing_custom_data_keys(args.workspace_id) if args.merge else set()
+    )
 
-    # Define which handler and Pydantic model to use for each file type
-    file_processing_map = {
+    # --- Context files (product_context.md, active_context.md, progress_log.md) ---
+    # In merge mode these are skipped entirely — they represent local/personal state.
+    context_file_map = {
         "product_context.md": (
             _parse_product_or_active_context_md,
             handle_update_product_context,
@@ -1704,70 +2025,141 @@ def handle_import_markdown_to_engrams(
             handle_update_active_context,
             models.UpdateContextArgs,
         ),
-        "decision_log.md": (
-            _parse_decisions_md,
-            handle_log_decision,
-            models.LogDecisionArgs,
-        ),
         "progress_log.md": (
             _parse_progress_md,
             handle_log_progress,
             models.LogProgressArgs,
         ),
-        "system_patterns.md": (
-            _parse_system_patterns_md,
-            handle_log_system_pattern,
-            models.LogSystemPatternArgs,
-        ),
     }
 
-    for filename, (
-        parser_func,
-        target_handler_func,
-        pydantic_arg_model,
-    ) in file_processing_map.items():
+    for filename, (parser_func, target_handler_func, pydantic_arg_model) in context_file_map.items():
         file_to_import = input_path / filename
-        if file_to_import.is_file():
-            try:
-                with open(file_to_import, "r", encoding="utf-8") as f:
-                    content_str = f.read()
-                parsed_data = parser_func(content_str)
-                summary_report["files_processed"].append(filename)
+        if not file_to_import.is_file():
+            continue
+        if args.merge:
+            log.debug("merge mode: skipping context file %s", filename)
+            summary_report["items_skipped"][filename] = "skipped (merge mode)"
+            continue
+        try:
+            with open(file_to_import, "r", encoding="utf-8") as f:
+                content_str = f.read()
+            parsed_data = parser_func(content_str)
+            summary_report["files_processed"].append(filename)
+            item_type_key = filename.split(".")[0]
 
-                item_type_key = filename.split(".")[0]  # Define item_type_key
-
-                if item_type_key in ["product_context", "active_context"]:
-                    # For these, parsed_data is the content dict itself
+            if item_type_key in ("product_context", "active_context"):
+                handler_call_args = pydantic_arg_model(
+                    workspace_id=args.workspace_id, content=parsed_data
+                )
+                target_handler_func(handler_call_args)
+                summary_report["items_logged"][item_type_key] = (
+                    summary_report["items_logged"].get(item_type_key, 0) + 1
+                )
+            else:
+                for item_data in parsed_data:
                     handler_call_args = pydantic_arg_model(
-                        workspace_id=args.workspace_id, content=parsed_data
+                        workspace_id=args.workspace_id, **item_data
                     )
                     target_handler_func(handler_call_args)
                     summary_report["items_logged"][item_type_key] = (
                         summary_report["items_logged"].get(item_type_key, 0) + 1
                     )
-                else:  # List based items (decisions, progress, system_patterns)
-                    for item_data in parsed_data:  # parsed_data is a list of dicts
-                        handler_call_args = pydantic_arg_model(
-                            workspace_id=args.workspace_id, **item_data
-                        )
-                        target_handler_func(handler_call_args)
-                        summary_report["items_logged"][item_type_key] = (
-                            summary_report["items_logged"].get(item_type_key, 0) + 1
-                        )
-            except Exception as e:
-                log.error(f"Error processing file {filename}: {e}")
-                summary_report["errors"].append(
-                    f"Error processing {filename}: {str(e)}"
-                )
-        else:
-            log.warning(f"File not found for import: {file_to_import}")
-            summary_report["errors"].append(f"File not found: {filename}")
+        except Exception as e:
+            log.error("Error processing file %s: %s", filename, e)
+            summary_report["errors"].append(f"Error processing {filename}: {str(e)}")
 
-    # Custom Data
+    # --- Decisions ---
+    decision_file = input_path / "decision_log.md"
+    if decision_file.is_file():
+        try:
+            with open(decision_file, "r", encoding="utf-8") as f:
+                content_str = f.read()
+            parsed_decisions = _parse_decisions_md(content_str)
+            summary_report["files_processed"].append("decision_log.md")
+            for item_data in parsed_decisions:
+                decision_uuid = item_data.pop("_uuid", None)
+                slug = item_data.pop("_slug", None)
+
+                if args.merge:
+                    if decision_uuid and decision_uuid in existing_uuids:
+                        # UUID match → upsert: update the existing decision in place
+                        log.debug("merge: upserting existing decision uuid=%s", decision_uuid)
+                        upsert_data = models.Decision(
+                            uuid=decision_uuid,
+                            summary=item_data.get("summary", ""),
+                            rationale=item_data.get("rationale"),
+                            implementation_details=item_data.get("implementation_details"),
+                            tags=None,
+                            visibility=None,
+                        )
+                        db.update_decision(args.workspace_id, decision_uuid, upsert_data)
+                        summary_report["items_logged"]["decision_log"] = (
+                            summary_report["items_logged"].get("decision_log", 0) + 1
+                        )
+                        continue
+                    elif not decision_uuid and slug and slug in existing_slugs:
+                        # Legacy slug match (no UUID in export) → skip as before
+                        log.debug("merge: skipping existing decision slug=%s (legacy)", slug)
+                        summary_report["items_skipped"]["decision_log"] = (
+                            summary_report["items_skipped"].get("decision_log", 0) + 1
+                        )
+                        continue
+
+                # No match found — insert as a new decision
+                # Carry the UUID from the markdown so we don't create a new one
+                log_args_kwargs = dict(item_data)
+                if decision_uuid:
+                    log_args_kwargs["uuid"] = decision_uuid
+                handler_call_args = models.LogDecisionArgs(
+                    workspace_id=args.workspace_id, **log_args_kwargs
+                )
+                logged = handle_log_decision(handler_call_args)
+                if args.merge:
+                    if decision_uuid:
+                        existing_uuids.add(decision_uuid)
+                    elif slug:
+                        existing_slugs.add(slug)
+                summary_report["items_logged"]["decision_log"] = (
+                    summary_report["items_logged"].get("decision_log", 0) + 1
+                )
+        except Exception as e:
+            log.error("Error processing decision_log.md: %s", e)
+            summary_report["errors"].append(f"Error processing decision_log.md: {str(e)}")
+
+    # --- System Patterns ---
+    patterns_file = input_path / "system_patterns.md"
+    if patterns_file.is_file():
+        try:
+            with open(patterns_file, "r", encoding="utf-8") as f:
+                content_str = f.read()
+            parsed_patterns = _parse_system_patterns_md(content_str)
+            summary_report["files_processed"].append("system_patterns.md")
+            for item_data in parsed_patterns:
+                name_key = item_data.get("name", "").strip().lower()
+                if args.merge and name_key in existing_patterns:
+                    log.debug("merge: skipping existing pattern name=%s", item_data.get("name"))
+                    summary_report["items_skipped"]["system_patterns"] = (
+                        summary_report["items_skipped"].get("system_patterns", 0) + 1
+                    )
+                    continue
+                handler_call_args = models.LogSystemPatternArgs(
+                    workspace_id=args.workspace_id, **item_data
+                )
+                handle_log_system_pattern(handler_call_args)
+                if args.merge:
+                    existing_patterns.add(name_key)
+                summary_report["items_logged"]["system_patterns"] = (
+                    summary_report["items_logged"].get("system_patterns", 0) + 1
+                )
+        except Exception as e:
+            log.error("Error processing system_patterns.md: %s", e)
+            summary_report["errors"].append(f"Error processing system_patterns.md: {str(e)}")
+
+    # --- Custom Data ---
     custom_data_dir = input_path / "custom_data"
     if custom_data_dir.is_dir():
         summary_report["files_processed"].append("custom_data/*")
-        for category_md_file in custom_data_dir.glob("*.md"):  # Renamed variable
+        for category_md_file in custom_data_dir.glob("*.md"):
             try:
                 category_name = category_md_file.stem.replace("_", " ")
                 with open(category_md_file, "r", encoding="utf-8") as f:
@@ -1776,24 +2168,35 @@ def handle_import_markdown_to_engrams(
                     content_str, category_name
                 )
                 for item_data in parsed_custom_items:
-                    # item_data already contains 'category', 'key', 'value'
+                    ck = f"{item_data.get('category')}::{item_data.get('key')}"
+                    if args.merge and ck in existing_custom:
+                        log.debug("merge: skipping existing custom_data %s", ck)
+                        summary_report["items_skipped"]["custom_data"] = (
+                            summary_report["items_skipped"].get("custom_data", 0) + 1
+                        )
+                        continue
                     handler_args = models.LogCustomDataArgs(
                         workspace_id=args.workspace_id, **item_data
                     )
                     handle_log_custom_data(handler_args)
+                    if args.merge:
+                        existing_custom.add(ck)
                     summary_report["items_logged"]["custom_data"] = (
                         summary_report["items_logged"].get("custom_data", 0) + 1
                     )
             except Exception as e:
                 log.error(
-                    f"Error processing custom data file {category_md_file.name}: {e}"
+                    "Error processing custom data file %s: %s",
+                    category_md_file.name,
+                    e,
                 )
                 summary_report["errors"].append(
                     f"Error processing {category_md_file.name}: {str(e)}"
                 )
 
     summary_report["message"] = (
-        f"Engrams data import from '{input_path}' complete. See details."
+        f"Engrams data import from '{input_path}' complete "
+        f"(merge={args.merge}). See details."
     )
     return summary_report
 
@@ -2208,6 +2611,74 @@ def handle_check_compliance(args: gov_models.CheckComplianceArgs) -> Dict[str, A
         raise ContextPortalError(f"Unexpected error checking compliance: {e}")
 
 
+def handle_check_planned_action(args: gov_models.CheckPlannedActionArgs) -> Dict[str, Any]:
+    """Pre-mutation check: scans accepted decisions for conflicts with a planned action.
+
+    This is the pre-check tool from Option E — agents call this BEFORE making
+    workspace mutations. It checks the planned action description and tags against
+    all accepted decisions using tag overlap and keyword matching.
+
+    Unlike the post-write safety net in _apply_governance_checks(), this can
+    return action='block' to prevent the mutation from happening.
+    """
+    try:
+        # Build item_data dict from args to reuse check_decision_conflicts logic
+        item_data = {
+            "summary": args.action_description,
+            "description": args.action_description,
+            "tags": args.tags or [],
+        }
+
+        # Run the decision conflict check
+        conflicts = conflict_detector.check_decision_conflicts(
+            args.workspace_id, "planned_action", item_data
+        )
+
+        # For pre-mutation checks, upgrade warnings to blocks
+        blocked = False
+        blocking_decisions = []
+        warnings_list = []
+
+        if conflicts.has_conflict:
+            for conflict in conflicts.conflicts:
+                # All pre-mutation conflicts are blocking
+                blocking_decisions.append({
+                    "decision_id": conflict.get("decision_id"),
+                    "decision_summary": conflict.get("decision_summary"),
+                    "decision_uuid": conflict.get("decision_uuid"),
+                    "overlapping_tags": conflict.get("overlapping_tags", []),
+                    "message": conflict.get("message", ""),
+                })
+            blocked = True
+            warnings_list = conflicts.warnings
+
+        return {
+            "blocked": blocked,
+            "action": "block" if blocked else "allow",
+            "conflicts": blocking_decisions,
+            "warnings": warnings_list,
+            "proceed": not blocked,
+            "checked_against_decisions": True,
+            "message": (
+                f"BLOCKED: {len(blocking_decisions)} accepted decision(s) conflict with this action. "
+                "Review the conflicts and seek explicit override before proceeding."
+                if blocked
+                else "No conflicts detected with accepted decisions. Proceed."
+            ),
+        }
+    except Exception as e:
+        log.warning("check_planned_action failed: %s", e)
+        return {
+            "blocked": False,
+            "action": "allow",
+            "conflicts": [],
+            "warnings": [f"Pre-check failed (non-fatal): {e}. Proceed with caution."],
+            "proceed": True,
+            "checked_against_decisions": False,
+            "message": f"Pre-check encountered an error: {e}. Proceeding without governance check.",
+        }
+
+
 def handle_get_scope_amendments(
     args: gov_models.GetScopeAmendmentsArgs,
 ) -> List[Dict[str, Any]]:
@@ -2348,6 +2819,16 @@ def handle_bind_code_to_item(args: binding_models.BindCodeToItemArgs) -> Dict[st
             confidence=args.confidence,
         )
         result = binding_db_ops.create_code_binding(args.workspace_id, binding)
+        # Write-through: update .engrams/ file frontmatter for team entities
+        try:
+            _update_binding_in_file(args.workspace_id, args.item_type, args.item_id)
+        except Exception as e_wt:
+            log.warning(
+                "Write-through failed for binding on %s/%s: %s",
+                args.item_type,
+                args.item_id,
+                e_wt,
+            )
         return {"status": "success", "binding": result.model_dump(mode="json")}
     except DatabaseError as e:
         raise ContextPortalError(f"Database error creating code binding: {e}")
@@ -2494,7 +2975,18 @@ def handle_unbind_code_from_item(
 ) -> Dict[str, Any]:
     """Removes a code binding by its ID."""
     try:
+        # Fetch binding info BEFORE deletion for write-through
+        binding_info = binding_db_ops.get_binding_by_id(args.workspace_id, args.binding_id)
         deleted = binding_db_ops.delete_code_binding(args.workspace_id, args.binding_id)
+        if deleted and binding_info:
+            try:
+                _update_binding_in_file(
+                    args.workspace_id, binding_info.item_type, binding_info.item_id
+                )
+            except Exception as e_wt:
+                log.warning(
+                    "Write-through failed removing binding %s: %s", args.binding_id, e_wt
+                )
         if deleted:
             return {
                 "status": "success",
@@ -2510,6 +3002,34 @@ def handle_unbind_code_from_item(
     except Exception as e:
         log.error("Error deleting binding: %s", e, exc_info=True)
         raise ContextPortalError(f"Unexpected error deleting binding: {e}")
+
+
+def _update_binding_in_file(workspace_id: str, item_type: str, item_id: int) -> None:
+    """Private helper: update the ``.engrams/`` file frontmatter after a binding add/remove.
+
+    Fetches the entity from DB, checks ``visibility == 'team'``, gets all current
+    bindings, then calls the appropriate write-through updater.
+
+    Silently skips non-team entities — this is intentional (individual/personal
+    bindings remain DB-only).
+    """
+    if item_type == "decision":
+        entity = db.get_decision_by_id(workspace_id, item_id)
+        if entity is None or getattr(entity, "visibility", None) != "team":
+            return
+        current_bindings = binding_db_ops.get_bindings_for_item(
+            workspace_id, item_type, item_id
+        )
+        write_through.update_decision_bindings(workspace_id, entity, current_bindings)
+    elif item_type == "system_pattern":
+        entity = db.get_system_pattern_by_id(workspace_id, item_id)
+        if entity is None or getattr(entity, "visibility", None) != "team":
+            return
+        current_bindings = binding_db_ops.get_bindings_for_item(
+            workspace_id, item_type, item_id
+        )
+        write_through.update_pattern_bindings(workspace_id, entity, current_bindings)
+    # Other item types (progress_entry, custom_data) do not have binding file support
 
 
 # --- Context Budgeting Tool Handlers (Feature 3) ---
@@ -2753,3 +3273,52 @@ def handle_get_section_detail(
     except Exception as e:
         log.error("Error getting section detail: %s", e, exc_info=True)
         return {"status": "error", "error": str(e)}
+
+
+def handle_index_sync(args) -> Dict[str, Any]:
+    """Triggers TeamContentIndexer.scan_and_sync() or incremental_sync().
+
+    Called by the ``engrams-mcp index-sync`` CLI command, which is installed
+    by the post-merge git hook in filesystem-first mode.
+
+    Args:
+        args: An object with ``workspace_id`` (str) and optionally ``files``
+              (list of file path strings).  Accepts Pydantic model instances,
+              argparse namespaces, or any duck-typed object.
+
+    Returns:
+        A dict with status, counts, and any error messages.
+    """
+    from pathlib import Path as _Path
+
+    from ..team_sync.indexer import TeamContentIndexer
+
+    try:
+        workspace_id = args.workspace_id
+        files = getattr(args, "files", None) or []
+
+        indexer = TeamContentIndexer(workspace_id)
+
+        if files:
+            changed = [
+                _Path(f) if _Path(f).is_absolute() else _Path(workspace_id) / f
+                for f in files
+            ]
+            report = indexer.incremental_sync(changed)
+        else:
+            report = indexer.scan_and_sync()
+
+        return {
+            "status": "success",
+            "files_processed": report.files_processed,
+            "decisions_upserted": report.decisions_upserted,
+            "patterns_upserted": report.patterns_upserted,
+            "custom_data_upserted": report.custom_data_upserted,
+            "bindings_added": report.bindings_added,
+            "bindings_removed": report.bindings_removed,
+            "files_skipped": report.files_skipped,
+            "errors": report.errors,
+        }
+    except Exception as e:
+        log.error("Error in handle_index_sync: %s", e, exc_info=True)
+        raise ContextPortalError(f"Unexpected error in index_sync: {e}")

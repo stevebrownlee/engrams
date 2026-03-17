@@ -24,6 +24,7 @@ LOAD_EXISTING:
   Call in parallel: get_product_context, get_active_context, get_decisions(limit=5),
     get_progress(limit=5), get_system_patterns(limit=5),
     get_custom_data("critical_settings"), get_custom_data("ProjectGlossary"),
+    get_custom_data("engrams_config", "default_decision_visibility"),
     get_recent_activity_summary(hours_ago=24, limit_per_type=3)
   If non-empty → [ENGRAMS_ACTIVE], inform user, ask what to work on.
   If empty DB → [ENGRAMS_ACTIVE], inform user DB is empty.
@@ -31,11 +32,36 @@ LOAD_EXISTING:
 
 NEW_SETUP:
   1. Inform user: no DB at ACTUAL_WORKSPACE_ID/engrams/context.db.
-  2. Ask: "Initialize new Engrams database?" [Yes / No]
-  3. If Yes → check for projectBrief.md, offer to import; then fetch POST_TASK_SETUP section.
+  2. Ask: "Initialize Engrams for this project?" [Yes / No]
+  3. If Yes:
+     a. Ask: "Is this a team project (decisions shared via git) or solo?" [Team / Solo]
+     b. If Team:
+        - log_custom_data(category="engrams_config", key="default_decision_visibility", value="team")
+        - Create .engrams/ directory structure if not present
+        - Inform user: "All decisions will be automatically shared via .engrams/ for git sync."
+     c. If Solo:
+        - log_custom_data(category="engrams_config", key="default_decision_visibility", value="individual")
+        - Inform user: "Decisions will be stored locally in your Engrams database."
+     d. Check for projectBrief.md, offer to import.
+     e. Run POST_TASK_SETUP section (fetch: get_custom_data("engrams_strategy","post_task_setup")).
   4. If No → [ENGRAMS_INACTIVE].
 
 PROACTIVE LOGGING (always active — fetch QUALITY section for full criteria):
-  log_decision: strategic/architectural choices only (prescriptive summaries: "Use X for Y")
-  log_progress: bug fixes, code changes, task completions
-  update_active_context: when focus shifts or issues arise
+  log_decision: strategic/architectural choices only (prescriptive summaries: "Use X for Y").
+    Visibility is applied automatically based on workspace config — do NOT override unless
+    the user explicitly requests a different visibility level.
+  log_progress: bug fixes, code changes, task completions (always individual scope)
+  update_active_context: when focus shifts or issues arise (always individual scope)
+
+VISIBILITY RULES (CRITICAL — applies to ALL log_decision, log_system_pattern, log_custom_data calls):
+  The workspace default visibility is configured during init. The server applies it automatically
+  when you omit the visibility parameter. You do NOT need to set visibility on every call.
+
+  If workspace is "team" → decisions/patterns are git-shared via .engrams/ automatically.
+    Only override with visibility="individual" for personal notes the user explicitly says are private.
+
+  If workspace is "individual" or unconfigured → items are local-only by default.
+    Only set visibility="team" if the user explicitly asks to share something.
+
+  NEVER override visibility unless the user explicitly requests it.
+  When in doubt, omit the visibility parameter and let the server apply the workspace default.

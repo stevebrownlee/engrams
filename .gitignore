@@ -128,7 +128,14 @@ dmypy.json
 .pyre/
 
 # Engrams specific
+#
+# engrams/      — local SQLite DB directory (machine-local, never committed)
+# .engrams/     — filesystem-first team decisions (SOURCE OF TRUTH, MUST be committed)
+# .engrams_vector_data/ — local ChromaDB vector store (machine-local, never committed)
+#
 /engrams/
+engrams/
+.engrams/
 /.engrams_vector_data/
 *.sqlite
 *.sqlite-journal
@@ -137,6 +144,5 @@ dmypy.json
 .roomodes
 memory-bank/
 .DS_Store
-engrams/
 planning/
 reports/

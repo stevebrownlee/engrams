@@ -158,6 +158,35 @@ def get_stale_bindings(
             cursor.close()
 
 
+def get_binding_by_id(
+    workspace_id: str, binding_id: int
+) -> Optional[binding_models.CodeBinding]:
+    """Retrieves a single code binding by its ID.
+
+    Returns ``None`` if no binding with *binding_id* exists.
+    """
+    conn = get_db_connection(workspace_id)
+    cursor = None
+    sql = """
+        SELECT id, item_type, item_id, file_pattern, symbol_pattern, binding_type,
+               confidence, last_verified_at, created_at, updated_at
+        FROM code_bindings
+        WHERE id = ?
+    """
+    try:
+        cursor = conn.cursor()
+        cursor.execute(sql, (binding_id,))
+        row = cursor.fetchone()
+        if row is None:
+            return None
+        return _row_to_binding(row)
+    except sqlite3.Error as e:
+        raise DatabaseError(f"Failed to get binding {binding_id}: {e}")
+    finally:
+        if cursor:
+            cursor.close()
+
+
 def delete_code_binding(workspace_id: str, binding_id: int) -> bool:
     """Deletes a code binding by ID."""
     conn = get_db_connection(workspace_id)
