@@ -29,23 +29,32 @@ Usage:
 """
 
 import argparse
+import filecmp
 import json
 import logging
 import sys
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 import yaml
 
 log = logging.getLogger(__name__)
 
 # Tool registry: maps --tool flag values to delta filenames and output targets
-TOOL_REGISTRY: Dict[str, Dict[str, str]] = {
+TOOL_REGISTRY: Dict[str, Dict] = {
     "roo": {
         "template": "roo_code_engrams_strategy",  # kept for backward-compat reference
         "delta": "_delta_roo.yaml",
         "output": ".roo/rules/engrams_strategy",
-        "description": "Roo Code — installs into .roo/rules/",
+        "description": "Roo Code — installs full scaffold into .roo/ and .roomodes",
+        "scaffold_files": [
+            ".roomodes",
+            ".roo/system-prompt-flow-architect",
+            ".roo/system-prompt-flow-code",
+            ".roo/system-prompt-flow-ask",
+            ".roo/system-prompt-flow-debug",
+            ".roo/system-prompt-flow-orchestrator",
+        ],
     },
     "cline": {
         "template": "cline_engrams_strategy",
@@ -89,6 +98,11 @@ TOOL_REGISTRY: Dict[str, Dict[str, str]] = {
 def get_templates_dir() -> Path:
     """Returns the path to the bundled templates directory."""
     return Path(__file__).parent / "templates"
+
+
+def get_scaffolds_dir() -> Path:
+    """Returns the path to the bundled scaffolds directory."""
+    return Path(__file__).parent / "scaffolds"
 
 
 def merge_template(tool: str) -> str:
@@ -173,12 +187,101 @@ def merge_template(tool: str) -> str:
     return merged
 
 
+# Scaffold file mapping: scaffold source name → install-time relative path
+_ROO_SCAFFOLD_FILES = {
+    "roomodes": ".roomodes",
+    "system-prompt-flow-architect": ".roo/system-prompt-flow-architect",
+    "system-prompt-flow-code": ".roo/system-prompt-flow-code",
+    "system-prompt-flow-ask": ".roo/system-prompt-flow-ask",
+    "system-prompt-flow-debug": ".roo/system-prompt-flow-debug",
+    "system-prompt-flow-orchestrator": ".roo/system-prompt-flow-orchestrator",
+}
+
+
+def _install_roo_scaffold(target_dir: Path, force: bool = False) -> List[str]:
+    """
+    Installs the Roo scaffold files (.roomodes and system prompts) into
+    the target project directory.
+
+    Per-file conflict handling:
+    - File does not exist → write it
+    - File exists, identical content → skip ("already up to date")
+    - File exists, different content + force → overwrite
+    - File exists, different content + no force → prompt per-file
+
+    Args:
+        target_dir: The project root to install scaffold files into.
+        force: If True, overwrite existing files without prompting.
+
+    Returns:
+        A list of human-readable status strings, one per file.
+    """
+    scaffolds_dir = get_scaffolds_dir() / "roo"
+    results: List[str] = []
+
+    for src_name, dest_relpath in _ROO_SCAFFOLD_FILES.items():
+        src_path = scaffolds_dir / src_name
+        dest_path = target_dir / dest_relpath
+
+        if not src_path.exists():
+            results.append(f"  ⚠ {dest_relpath} — scaffold source missing")
+            continue
+
+        # Ensure parent directory exists (e.g., .roo/)
+        dest_path.parent.mkdir(parents=True, exist_ok=True)
+
+        if dest_path.exists():
+            # Compare content
+            if filecmp.cmp(str(src_path), str(dest_path), shallow=False):
+                results.append(f"  · {dest_relpath} — already up to date")
+                continue
+
+            # Content differs
+            if force:
+                with open(src_path, "r") as sf:
+                    content = sf.read()
+                with open(dest_path, "w") as df:
+                    df.write(content)
+                results.append(f"  ✓ {dest_relpath} — overwritten (--force)")
+            else:
+                # Per-file interactive prompt
+                try:
+                    response = (
+                        input(f"  Overwrite {dest_relpath}? [y/N] ").strip().lower()
+                    )
+                except (EOFError, KeyboardInterrupt):
+                    results.append(f"  · {dest_relpath} — skipped")
+                    continue
+                if response in ("y", "yes"):
+                    with open(src_path, "r") as sf:
+                        content = sf.read()
+                    with open(dest_path, "w") as df:
+                        df.write(content)
+                    results.append(f"  ✓ {dest_relpath} — overwritten")
+                else:
+                    results.append(f"  · {dest_relpath} — skipped (kept existing)")
+        else:
+            # File does not exist — write it
+            with open(src_path, "r") as sf:
+                content = sf.read()
+            with open(dest_path, "w") as df:
+                df.write(content)
+            results.append(f"  ✓ {dest_relpath} — installed")
+
+    return results
+
+
 def list_tools() -> None:
     """Prints all available tool targets."""
     print("Available tools for 'engrams init --tool <name>':\n")
     for name, info in TOOL_REGISTRY.items():
         print(f"  {name:<16} {info['description']}")
         print(f"  {'':<16} → {info['output']}")
+        # Show scaffold files if the tool has them
+        scaffold_files = info.get("scaffold_files")
+        if scaffold_files:
+            for sf in scaffold_files:
+                print(f"  {'':<16} → {sf}")
         print()
 
 
@@ -294,6 +397,7 @@ def init_strategy(
     force: bool = False,
     team: bool = False,
     solo: bool = False,
+    skip_prompts: bool = False,
 ) -> int:
     """
     Merges the core strategy template with per-tool delta and installs
@@ -352,6 +456,14 @@ def init_strategy(
     print(f"✓ Engrams strategy installed for {tool}")
     print(f"  → {output_path}")
 
+    # --- Roo Scaffold Files ---
+    if tool == "roo" and not skip_prompts:
+        print()
+        print("Installing Roo scaffold files...")
+        scaffold_results = _install_roo_scaffold(target_dir, force=force)
+        for line in scaffold_results:
+            print(line)
+
     # --- Team/Solo Classification ---
     if team:
         visibility = "team"
@@ -397,10 +509,13 @@ def init_strategy(
             "  Claude Code will automatically read CLAUDE.md from your project root."
         )
     elif tool == "roo":
-        print()
-        print(
-            "  Roo Code will automatically load rules from .roo/rules/."
-        )
+        if not skip_prompts:
+            print()
+            print("  Roo Code will automatically load modes from .roomodes and rules from .roo/rules/.")
+            print("  Restart Roo Code to pick up the new configuration.")
+        else:
+            print()
+            print("  Roo Code will automatically load rules from .roo/rules/.")
 
     return 0
 
@@ -427,6 +542,11 @@ def _build_parser() -> argparse.ArgumentParser:
         "--force",
         action="store_true",
         help="Overwrite existing files without prompting.",
+    )
+    parser.add_argument(
+        "--skip-prompts",
+        action="store_true",
+        help="Skip installing system prompt files (rules-only mode).",
     )
     parser.add_argument(
         "--project-dir",
@@ -480,6 +600,7 @@ def run_init_cli(sys_args=None) -> None:
         force=args.force,
         team=args.team,
         solo=args.solo,
+        skip_prompts=args.skip_prompts,
     )
     sys.exit(exit_code)
 

@@ -56,7 +56,7 @@ Works with Roo Code, Cline, Cursor, Windsurf, Claude Code, and any MCP-compatibl
 After installing, run `engrams init` from your project root to scaffold the strategy file for your AI tool:
 
 ```bash
-engrams init --tool roo          # → .roo/rules/engrams_strategy
+engrams init --tool roo          # → .roo/rules/engrams_strategy + .roomodes + system prompts
 engrams init --tool cline        # → .clinerules
 engrams init --tool cursor       # → .cursorrules
 engrams init --tool windsurf     # → .windsurfrules

@@ -86,6 +86,7 @@ include = ["engrams*"]
 [tool.setuptools.package-data]
 "engrams" = [
     "templates/**/*",
+    "scaffolds/**/*",
     "dashboard/static/**/*",
     "*.json",
     "*.yaml",

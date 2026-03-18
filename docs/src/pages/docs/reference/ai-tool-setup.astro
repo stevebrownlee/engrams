@@ -20,6 +20,13 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
   }
 }`}</code></pre>
   <pre><code>engrams init --tool roo</code></pre>
+  <p>This installs the complete Roo scaffold:</p>
+  <ul>
+    <li><code>.roo/rules/engrams_strategy</code> — Engrams memory strategy rules</li>
+    <li><code>.roomodes</code> — 5 custom Flow modes (Code, Architect, Ask, Debug, Orchestrator)</li>
+    <li><code>.roo/system-prompt-flow-*</code> — Per-mode system prompts with Engrams integration</li>
+  </ul>
+  <p>Use <code>--skip-prompts</code> to install only the strategy rules without system prompt files.</p>
 
   <h2>Cline</h2>
   <p>In VS Code, open Settings → Extensions → Cline → MCP Servers and add:</p>

@@ -5,9 +5,17 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
 <DocsLayout title="Batch Operations & Export" description="Bulk log items and export/import your knowledge base to markdown.">
   <h1>Batch Operations &amp; Export / Import</h1>
   <p class="lead">
-    Log multiple items in one call, export for backup or team sharing, and import from
+    Log multiple items in one call, export for backup or snapshots, and import from
     version-controlled markdown.
   </p>
+
+  <div class="callout tip">
+    <strong>Primary team sync is now <code>.engrams/</code>.</strong>
+    In v1.4, team decisions are written through to <code>.engrams/</code> immediately when
+    created — no export step needed. The export/import tools below are useful for
+    <strong>backup</strong>, <strong>migration</strong>, and the <strong>legacy hook-based workflow</strong>.
+    See <a href="/docs/features/team-sync">Team Sync</a> for the primary sharing mechanism.
+  </div>
 
   <h2>Batch logging</h2>
   <pre><code>{`You: "Log these tech stack decisions all at once:
@@ -93,10 +101,11 @@ AI:  Importing with merge=True from ./engrams-export/...
 
      Your local database is up to date.`}</code></pre>
 
-  <h2>Team sync via Git hooks</h2>
+  <h2>Legacy: Team sync via Git hooks</h2>
   <p>
-    The export and merge-import steps can be automated with Git hooks so the whole workflow
-    is invisible to developers:
+    Prior to v1.4, team sync relied on Git hooks to export and import. This approach still works
+    and can serve as a <strong>backup mechanism</strong> alongside the primary
+    <a href="/docs/features/team-sync"><code>.engrams/</code> write-through</a>:
   </p>
   <table>
     <thead><tr><th>Hook</th><th>When it runs</th><th>What it does</th></tr></thead>

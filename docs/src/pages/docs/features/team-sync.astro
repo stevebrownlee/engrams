@@ -1,0 +1,237 @@
+---
+import DocsLayout from '../../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="Team Sync" description="Share architectural decisions across your team with the .engrams/ filesystem-first architecture.">
+  <h1>Team Sync via <code>.engrams/</code></h1>
+  <p class="lead">
+    In v1.4, Engrams uses a <strong>filesystem-first</strong> architecture for team knowledge.
+    Decisions, patterns, and shared data are written as human-readable markdown files in
+    <code>.engrams/</code> — committed to Git and shared automatically. The SQLite database
+    is a derived cache that can always be rebuilt.
+  </p>
+
+  <div class="callout tip">
+    <strong>New in v1.4:</strong> The <code>.engrams/</code> directory replaces the older
+    <code>engrams-export/</code> hook-based workflow. Team items are now written to disk
+    <em>immediately</em> when created — no export step needed.
+  </div>
+
+  <h2>How it works</h2>
+  <p>
+    When your AI logs a decision, pattern, or custom data item with <code>visibility=team</code>,
+    Engrams performs a <strong>guaranteed write-through</strong>:
+  </p>
+  <ol>
+    <li><strong>SQLite first</strong> — the item is written to the local database to acquire a numeric ID.</li>
+    <li><strong>Filesystem write</strong> — a markdown file is written to <code>.engrams/</code> using the pattern
+        <code>{'{nnn}'}-{'{slug}'}.md</code>. <em>This write is guaranteed</em> — if it fails, the entire
+        operation fails.</li>
+    <li><strong>Embedding (best-effort)</strong> — a vector embedding is created for semantic search. This step
+        is non-blocking; if it fails, the item is still saved.</li>
+  </ol>
+
+  <h3>Directory structure</h3>
+  <pre><code>{`your-project/
+├── .engrams/                    # ← Committed to Git
+│   ├── config_seed.json         # Team/solo visibility default
+│   ├── decisions/
+│   │   ├── 001-use-postgresql.md
+│   │   ├── 002-jwt-authentication.md
+│   │   └── 003-react-query-for-server-state.md
+│   ├── patterns/
+│   │   ├── 001-repository-pattern.md
+│   │   └── 002-error-handling-middleware.md
+│   └── shared-data/
+│       └── ProjectGlossary/
+│           └── notification_channel.md
+├── engrams/
+│   └── context.db               # ← In .gitignore (local cache)
+└── ...`}</code></pre>
+
+  <div class="callout note">
+    <strong>What gets committed vs. what stays local:</strong>
+    <ul>
+      <li><code>.engrams/</code> → <strong>committed to Git</strong> — team decisions, patterns, shared data</li>
+      <li><code>engrams/context.db</code> → <strong>in .gitignore</strong> — local cache (progress, active context, individual notes)</li>
+    </ul>
+  </div>
+
+  <h2>Setting up team sync</h2>
+
+  <h3>Step 1 — Initialize as a team project</h3>
+  <p>When you run <code>engrams init</code>, choose <strong>Team</strong> when prompted (or pass <code>--team</code>):</p>
+  <pre><code>{`engrams init --tool roo --team
+
+# Or interactively:
+engrams init --tool roo
+# → "Project classification:"
+# → [1] Team project — decisions shared via .engrams/ for git sync
+# → [2] Solo project — decisions stay in local database only
+# → Choose [1/2] (default: 1 for team): 1`}</code></pre>
+  <p>
+    This creates the <code>.engrams/</code> directory structure and writes a
+    <code>config_seed.json</code> that sets the default visibility to <code>team</code>.
+  </p>
+
+  <h3>Step 2 — Commit <code>.engrams/</code> to Git</h3>
+  <pre><code>{`git add .engrams/
+git commit -m "chore: initialize Engrams team sync"`}</code></pre>
+
+  <h3>Step 3 — Teammates clone and init</h3>
+  <p>
+    When a teammate clones the repo, they already get the <code>.engrams/</code> directory with
+    all team decisions. They just need to run:
+  </p>
+  <pre><code>{`pip install engrams-mcp
+engrams init --tool roo --team`}</code></pre>
+  <p>
+    On first MCP tool call, Engrams reads the <code>.engrams/</code> markdown files and populates
+    the local SQLite cache automatically via <code>TeamContentIndexer.scan_and_sync()</code>.
+  </p>
+
+  <h2>The filesystem-first invariant</h2>
+  <p>
+    This is the core architectural guarantee of Engrams v1.4:
+  </p>
+  <div class="callout warning">
+    <strong>Invariant:</strong> <code>.engrams/</code> markdown files are the <strong>authoritative
+    source of truth</strong> for team items. SQLite is always a derived, rebuildable cache.
+    If the database is deleted, all team knowledge can be reconstructed from the filesystem.
+  </div>
+  <p>
+    This means:
+  </p>
+  <ul>
+    <li><strong>Human-readable</strong> — open any file in <code>.engrams/decisions/</code> with a text editor</li>
+    <li><strong>Git-mergeable</strong> — markdown files support standard 3-way merge (unlike binary SQLite)</li>
+    <li><strong>Auditable</strong> — use <code>git log .engrams/</code> to see who changed what and when</li>
+    <li><strong>Portable</strong> — copy the directory to any machine and Engrams rebuilds its index</li>
+  </ul>
+
+  <h2>How decisions are shared</h2>
+  <p>The team sync workflow is fully automatic once <code>.engrams/</code> is in your repo:</p>
+
+  <div class="sync-flow">
+    <div class="sync-step">
+      <div class="sync-icon">📝</div>
+      <div class="sync-detail">
+        <strong>Alice logs a decision</strong>
+        <p>Her AI calls <code>log_decision</code>. Engrams writes to SQLite <em>and</em> creates
+           <code>.engrams/decisions/004-use-redis-caching.md</code></p>
+      </div>
+    </div>
+    <div class="sync-step">
+      <div class="sync-icon">📤</div>
+      <div class="sync-detail">
+        <strong>Alice commits and pushes</strong>
+        <p><code>git add .engrams/ && git commit && git push</code></p>
+      </div>
+    </div>
+    <div class="sync-step">
+      <div class="sync-icon">📥</div>
+      <div class="sync-detail">
+        <strong>Bob pulls</strong>
+        <p><code>git pull</code> — Bob now has the new markdown file in <code>.engrams/decisions/</code></p>
+      </div>
+    </div>
+    <div class="sync-step">
+      <div class="sync-icon">🔄</div>
+      <div class="sync-detail">
+        <strong>Bob's Engrams auto-syncs</strong>
+        <p>On the next MCP tool call, <code>TeamContentIndexer</code> detects the new file and imports
+           it into Bob's local SQLite cache.</p>
+      </div>
+    </div>
+  </div>
+
+  <h2>Content-addressed deduplication</h2>
+  <p>
+    Decisions are identified across machines by a <strong>content-addressed slug</strong> — a 12-character
+    SHA-256 hash of the summary text. This means:
+  </p>
+  <ul>
+    <li>The same decision created on two machines produces the same slug</li>
+    <li>Import/sync recognizes identical decisions and skips them (no duplicates)</li>
+    <li>Patterns are matched by name, custom data by <code>category + key</code></li>
+  </ul>
+
+  <h2>Rebuilding the database from <code>.engrams/</code></h2>
+  <p>
+    If the SQLite database is lost or corrupted, Engrams automatically rebuilds it from the
+    filesystem. You can also force a full re-index:
+  </p>
+  <pre><code>{`# Delete the local cache
+rm engrams/context.db
+
+# The MCP server rebuilds on next tool call automatically.
+# Or trigger it manually:
+engrams migrate`}</code></pre>
+
+  <h2>Visibility levels</h2>
+  <table>
+    <thead><tr><th>Visibility</th><th>Stored in <code>.engrams/</code>?</th><th>Committed to Git?</th></tr></thead>
+    <tbody>
+      <tr><td><code>team</code></td><td>✅ Yes — write-through guaranteed</td><td>✅ Yes</td></tr>
+      <tr><td><code>individual</code></td><td>❌ No — SQLite only</td><td>❌ No</td></tr>
+      <tr><td><code>proposed</code></td><td>❌ No — SQLite only until accepted</td><td>❌ No</td></tr>
+      <tr><td><code>workspace</code></td><td>✅ Yes</td><td>✅ Yes</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Recommended <code>.gitignore</code></h2>
+  <pre><code>{`# Engrams local database (rebuildable from .engrams/)
+engrams/
+
+# Do NOT ignore .engrams/ — it contains team knowledge
+# .engrams/   ← WRONG — never ignore this`}</code></pre>
+
+  <h2>Legacy: <code>engrams-export/</code> hook-based sync</h2>
+  <p>
+    Prior to v1.4, team sync used Git hooks that exported to <code>engrams-export/</code> on commit
+    and imported on pull. This approach still works via <code>engrams install-hooks</code> and is
+    useful as a backup/snapshot mechanism, but the <code>.engrams/</code> write-through is now the
+    primary team sync method.
+  </p>
+  <p>
+    See <a href="/docs/features/batch-export">Batch &amp; Export</a> for details on the
+    hook-based approach.
+  </p>
+
+  <h2>MCP tools</h2>
+  <ul>
+    <li><code>log_decision</code> — with <code>visibility=team</code>, writes through to <code>.engrams/decisions/</code></li>
+    <li><code>log_system_pattern</code> — with <code>visibility=team</code>, writes through to <code>.engrams/patterns/</code></li>
+    <li><code>log_custom_data</code> — with <code>visibility=team</code>, writes through to <code>.engrams/shared-data/</code></li>
+    <li><code>export_engrams_to_markdown</code> — full export for backup (separate from write-through)</li>
+    <li><code>import_markdown_to_engrams</code> — import with <code>merge=True</code> for safe additive sync</li>
+  </ul>
+</DocsLayout>
+
+<style>
+  .lead { font-size: 1.125rem; color: var(--color-text-muted); line-height: 1.75; margin-bottom: 1.75rem; }
+
+  .sync-flow {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin: 1.5rem 0;
+  }
+  .sync-step {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--color-border);
+  }
+  .sync-step:last-child { border-bottom: none; }
+  .sync-icon {
+    flex-shrink: 0;
+    font-size: 1.5rem;
+    width: 2.5rem;
+    text-align: center;
+    margin-top: .15rem;
+  }
+  .sync-detail { flex: 1; }
+  .sync-detail strong { display: block; margin-bottom: .25rem; }
+  .sync-detail p { margin: 0; font-size: .9rem; color: var(--color-text-muted); }
+</style>

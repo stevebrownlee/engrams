@@ -50,13 +50,16 @@ engrams serve --mode stdio --log-level DEBUG`}</code></pre>
     Scaffold the AI strategy file for a supported coding tool into the current project directory.
     Run this from your <strong>project root</strong>.
   </p>
-  <pre><code>engrams init --tool &lt;name&gt; [--list] [--force] [--project-dir DIR]</code></pre>
+  <pre><code>engrams init --tool &lt;name&gt; [--list] [--force] [--skip-prompts] [--team|--solo] [--project-dir DIR]</code></pre>
   <table>
     <thead><tr><th>Flag</th><th>Description</th></tr></thead>
     <tbody>
       <tr><td><code>--tool NAME</code></td><td>Target AI tool (see supported tools below)</td></tr>
       <tr><td><code>--list</code></td><td>List all supported tool names and exit</td></tr>
       <tr><td><code>--force</code></td><td>Overwrite an existing strategy file</td></tr>
+      <tr><td><code>--skip-prompts</code></td><td>Skip installing system prompt files (Roo only, rules-only mode)</td></tr>
+      <tr><td><code>--team</code></td><td>Configure as a team project (decisions shared via git)</td></tr>
+      <tr><td><code>--solo</code></td><td>Configure as a solo project (decisions stay local)</td></tr>
       <tr><td><code>--project-dir DIR</code></td><td>Target project directory (default: <code>.</code>)</td></tr>
     </tbody>
   </table>
@@ -65,7 +68,14 @@ engrams serve --mode stdio --log-level DEBUG`}</code></pre>
   <table>
     <thead><tr><th>Tool name</th><th>Output file</th></tr></thead>
     <tbody>
-      <tr><td><code>roo</code></td><td><code>.roo/rules/engrams_strategy</code></td></tr>
+      <tr>
+        <td><code>roo</code></td>
+        <td>
+          <code>.roo/rules/engrams_strategy</code><br/>
+          <code>.roomodes</code> (5 Flow modes)<br/>
+          <code>.roo/system-prompt-flow-*</code> (architect, code, ask, debug, orchestrator)
+        </td>
+      </tr>
       <tr><td><code>cline</code></td><td><code>.clinerules</code></td></tr>
       <tr><td><code>cursor</code></td><td><code>.cursorrules</code></td></tr>
       <tr><td><code>windsurf</code></td><td><code>.windsurfrules</code></td></tr>
@@ -84,6 +94,9 @@ engrams init --tool roo
 
 # Force overwrite an existing file
 engrams init --tool cursor --force
+
+# Initialize for Roo Code (rules only, no system prompts)
+engrams init --tool roo --skip-prompts
 
 # Scaffold into a specific directory
 engrams init --tool cline --project-dir /path/to/project`}</code></pre>

@@ -19,49 +19,77 @@ import DocsLayout from '../../../layouts/DocsLayout.astro';
     <li><strong>New decisions get saved.</strong> As you work, Engrams records what you decide so it's there next time.</li>
   </ol>
 
-  <h2>Storage</h2>
+  <h2>Storage: the filesystem-first architecture</h2>
   <p>
-    Each project gets its own local database stored in a <code>engrams/</code> folder at your project root.
-    Your data is never shared between projects, and the database is created automatically the first time you use Engrams.
+    Engrams uses a <strong>two-layer storage model</strong> designed for team collaboration:
+  </p>
+  <table>
+    <thead><tr><th>Layer</th><th>Location</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong><code>.engrams/</code></strong></td>
+        <td>Project root (committed to Git)</td>
+        <td>Authoritative source for team decisions, patterns, and shared data — human-readable markdown files</td>
+      </tr>
+      <tr>
+        <td><strong><code>engrams/context.db</code></strong></td>
+        <td>Project root (in <code>.gitignore</code>)</td>
+        <td>Local SQLite cache for fast queries, FTS, semantic search, progress tracking, and session state</td>
+      </tr>
+    </tbody>
+  </table>
+  <p>
+    The core invariant: <strong><code>.engrams/</code> is the source of truth for team items</strong>.
+    The SQLite database is a derived cache that can always be rebuilt from the filesystem. If the
+    database is deleted, Engrams reconstructs it automatically from the markdown files.
   </p>
 
   <h2>Visibility levels</h2>
   <p>
     Every item stored in Engrams — decisions, patterns, custom data — carries an optional
-    <strong>visibility</strong> label that controls who sees it and whether it is shared with
-    your team.
+    <strong>visibility</strong> label that controls who sees it and how it's stored.
   </p>
   <table>
-    <thead><tr><th>Visibility</th><th>Meaning</th></tr></thead>
+    <thead><tr><th>Visibility</th><th>Stored in <code>.engrams/</code>?</th><th>Meaning</th></tr></thead>
     <tbody>
-      <tr><td><code>team</code></td><td>Shared across all teammates. Exported and committed to Git.</td></tr>
-      <tr><td><code>individual</code></td><td>Personal notes or local state. Never committed.</td></tr>
-      <tr><td><code>proposed</code></td><td>Suggestions under review before becoming team decisions.</td></tr>
-      <tr><td><code>workspace</code></td><td>Workspace-wide defaults visible to anyone using this repo.</td></tr>
+      <tr><td><code>team</code></td><td>✅ Yes (write-through)</td><td>Shared across all teammates via Git</td></tr>
+      <tr><td><code>individual</code></td><td>❌ No (SQLite only)</td><td>Personal notes or local state — never committed</td></tr>
+      <tr><td><code>proposed</code></td><td>❌ No (until accepted)</td><td>Suggestions under review before becoming team decisions</td></tr>
+      <tr><td><code>workspace</code></td><td>✅ Yes</td><td>Workspace-wide defaults visible to anyone using this repo</td></tr>
     </tbody>
   </table>
 
   <h2>Team sync via Git</h2>
   <p>
-    Because the Engrams database is a binary SQLite file, Git cannot 3-way merge it when two
-    teammates both push changes. Engrams solves this with a <strong>markdown round-trip</strong>:
+    When your AI logs a team decision, Engrams performs a <strong>guaranteed write-through</strong>:
+    the item goes into SQLite <em>and</em> is written as a markdown file in <code>.engrams/</code>.
+    If the filesystem write fails, the entire operation fails — no silent data loss.
+  </p>
+  <p>
+    Sharing is then just normal Git:
   </p>
   <ol>
-    <li>A <strong>pre-commit hook</strong> exports <code>visibility=team</code> items to a versioned
-        <code>engrams-export/</code> directory and stages the markdown files automatically.</li>
-    <li>A <strong>post-merge hook</strong> imports those markdown files back into every teammate's
-        local database after each <code>git pull</code> or <code>git merge</code>.</li>
-    <li>The import uses <strong>merge mode</strong> — it only adds new items, so individual notes
-        and personal progress are never overwritten.</li>
+    <li><strong>Commit</strong> the <code>.engrams/</code> directory alongside your code changes.</li>
+    <li>Teammates <strong>pull</strong> and receive the new markdown files.</li>
+    <li>On the next MCP tool call, Engrams <strong>auto-imports</strong> new files into each
+        teammate's local SQLite cache.</li>
   </ol>
   <p>
     Decisions are identified across machines by a <strong>content-addressed slug</strong>
-    (a 12-character SHA-256 of the summary text), so the same decision exported from Alice's
-    machine is recognised as identical on Bob's machine and skipped rather than duplicated.
+    (a 12-character SHA-256 of the summary text), so the same decision is recognized as
+    identical and never duplicated.
   </p>
   <p>
-    Run <code>engrams install-hooks</code> once per repository to wire everything up automatically.
-    See the <a href="/docs/features/batch-export">Batch &amp; Export</a> page for details.
+    See <a href="/docs/features/team-sync">Team Sync</a> for the full architecture, directory
+    structure, and setup guide.
+  </p>
+
+  <h2>Decision enforcement</h2>
+  <p>
+    Before making changes, your AI can check whether a planned action conflicts with existing
+    team decisions using <code>tool_check_planned_action</code>. This pre-mutation check ensures
+    the AI respects prior architectural choices — like "use PostgreSQL for all storage" — before
+    writing any code.
   </p>
 
   <h2>Workspace detection</h2>

@@ -141,7 +141,35 @@ You: "Add a default export to this utility module."
 AI:  (Proceeding — deviation from Rule #31 "Prefer named exports" has been
      flagged in the active context for visibility in code review.)`}</code></pre>
 
-  <h2>Conflict detection</h2>
+  <h2>Pre-mutation decision check</h2>
+  <p>
+    Before making any changes, your AI should verify the planned action against existing team
+    decisions using <code>tool_check_planned_action</code>. This is a lightweight pre-check
+    that runs <em>before</em> any code is written.
+  </p>
+  <pre><code>{`You: "I want to use MongoDB for the analytics module"
+
+AI:  [Checking planned action against team decisions...]
+
+     ⛔ Conflict detected with Decision #23:
+     "Standardize on PostgreSQL for all data storage"
+
+     This decision is marked as a team-level hard block.
+     I cannot proceed without a formal amendment.
+     Would you like to propose one?`}</code></pre>
+  <p>
+    The pre-check is part of the <strong>defense-in-depth</strong> governance system:
+  </p>
+  <ol>
+    <li><strong>Pre-mutation</strong> — <code>tool_check_planned_action</code> checks against accepted team decisions before any work</li>
+    <li><strong>Post-write</strong> — <code>check_compliance</code> verifies items against scope rules after they are saved</li>
+  </ol>
+  <p>
+    Even if the pre-check is skipped, the post-write safety net still flags conflicts. Both
+    layers work together to prevent accidental violations of team standards.
+  </p>
+
+  <h2>Conflict detection (post-write)</h2>
   <pre><code>{`You: "I want to use MongoDB for the analytics module"
 
 AI:  Governance Conflict Detected
@@ -177,26 +205,21 @@ AI:  Individual strategy #4 created:
 
   <h2>Team sync via Git</h2>
   <p>
-    Governance decisions with <code>visibility=team</code> are automatically committed to your
-    repository's <code>engrams-export/</code> directory on every <code>git commit</code>, and
-    imported back into each teammate's local database after every <code>git pull</code>. This
-    means architectural mandates and governance rules are shared automatically — no manual
-    export required.
+    Governance decisions with <code>visibility=team</code> are automatically written to the
+    <code>.engrams/decisions/</code> directory as human-readable markdown files. Commit them
+    to Git and every teammate receives the architectural mandates on their next pull.
   </p>
   <p>
-    To set up the Git hooks, run once per repository:
-  </p>
-  <pre><code>engrams install-hooks</code></pre>
-  <p>
-    See the <a href="/docs/features/batch-export">Batch &amp; Export</a> page for the full
-    team-sync workflow.
+    See <a href="/docs/features/team-sync">Team Sync</a> for the full filesystem-first
+    architecture and setup guide.
   </p>
 
   <h2>MCP tools</h2>
   <ul>
+    <li><code>tool_check_planned_action</code> — <strong>pre-mutation check</strong> against accepted team decisions</li>
     <li><code>create_scope</code> / <code>get_scopes</code></li>
     <li><code>log_governance_rule</code> / <code>get_governance_rules</code></li>
-    <li><code>check_compliance</code></li>
+    <li><code>check_compliance</code> — post-write compliance verification</li>
     <li><code>get_scope_amendments</code> / <code>review_amendment</code></li>
     <li><code>get_effective_context</code></li>
   </ul>
